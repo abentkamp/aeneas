@@ -2124,6 +2124,7 @@ let extract_fun_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
   F.pp_open_hvbox fmt 0;
   (* Open a box for "(PARAMS) :" *)
   F.pp_open_hovbox fmt 0;
+  let ctx_before_params = ctx in
   let space = ref true in
   let ctx, ctx_body, all_params = extract_fun_parameters space ctx fmt def in
   (* Print the return type - note that we have to be careful when
@@ -2336,7 +2337,54 @@ let extract_fun_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
   F.pp_close_box fmt ();
   (* Add breaks to insert new lines between definitions *)
   if backend () <> HOL4 || decl_is_not_last_from_group kind then
-    F.pp_print_break fmt 0 0
+    F.pp_print_break fmt 0 0;
+  (* For the Lean backend, emit a theorem stub after every non-opaque function *)
+  if backend () = Lean && not is_opaque then (
+    let def_body = Option.get def.body in
+    let vars = List.map ([%add_loc] as_pat_open_fvar_id span) def_body.inputs in
+    (* Open a box for the theorem *)
+    F.pp_open_hvbox fmt 0;
+    (* Print "theorem def_name.spec" *)
+    F.pp_print_string fmt "\n@[spec]\ntheorem";
+    F.pp_print_space fmt ();
+    F.pp_print_string fmt (def_name ^ ".spec");
+    (* Re-extract the parameters for the theorem (same as the function parameters) *)
+    let space_thm = ref true in
+    let _ctx_thm, ctx_body_thm, all_params_thm =
+      extract_fun_parameters space_thm ctx_before_params fmt def
+    in
+    (* Print " :" *)
+    F.pp_print_space fmt ();
+    F.pp_print_string fmt ":";
+    F.pp_print_space fmt ();
+    (* Print "[hoare_triple] := sorry" *)
+    F.pp_open_hovbox fmt ctx.indent_incr;
+    let requires_str =
+      List.find_map
+        (function Meta.AttrRequires s -> Some s | _ -> None)
+        def.item_meta.attr_info.attributes
+      |> Option.value ~default:"True"
+    in
+    F.pp_print_string fmt ("⦃ ⌜ " ^ requires_str ^ " ⌝ ⦄");
+    F.pp_print_string fmt def_name;
+    (* Apply explicit generic params *)
+    List.iter
+      (fun (e, name) ->
+        if e = Explicit then (
+          F.pp_print_space fmt ();
+          F.pp_print_string fmt name))
+      all_params_thm;
+    (* Apply value params *)
+    List.iter
+      (fun v ->
+        F.pp_print_space fmt ();
+        F.pp_print_string fmt (ctx_get_var span v ctx_body_thm))
+      vars;
+    F.pp_print_space fmt ();
+    F.pp_print_string fmt "⦃ ⇓res => ⌜ True ⌝ ⦄ := by sorry";
+    F.pp_close_box fmt ();
+    F.pp_close_box fmt ();
+    F.pp_print_break fmt 0 0)
 
 (** Extract an opaque function declaration to HOL4.
 

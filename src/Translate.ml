@@ -1221,12 +1221,13 @@ let extract_file (config : gen_config) (ctx : gen_ctx) (fi : extract_file_info)
       Printf.fprintf out "Module %s.\n" fi.module_name
   | Lean ->
       Printf.fprintf out "import Aeneas\n";
+      Printf.fprintf out "import Std.Do\n";
       (* Add the custom imports *)
       List.iter (fun m -> Printf.fprintf out "import %s\n" m) fi.custom_imports;
       (* Add the custom includes *)
       List.iter (fun m -> Printf.fprintf out "import %s\n" m) fi.custom_includes;
       (* Always open the Primitives namespace *)
-      Printf.fprintf out "open Aeneas Aeneas.Std Result ControlFlow Error\n";
+      Printf.fprintf out "open Aeneas Aeneas.Std Result ControlFlow Error Std.Do\n";
       (* It happens that we generate duplicated namespaces, like `betree.betree`.
          We deactivate the linter for this, because otherwise it leads to too much
          noise. *)
