@@ -3900,6 +3900,24 @@ let rec find_return_in_expr (e : texpr) : texpr option =
       | Meta (_, inner) -> find_return_in_expr inner
       | _ -> None)
 
+(** Return [true] if the expression contains any [FVar] or [BVar] node.
+
+    [FVar] nodes are local to a single function's translation context
+    (opened binders).  [BVar] nodes use de Bruijn indices that are only
+    meaningful within the binder stack of their original function body.
+    Either kind would be meaningless when the expression is transplanted
+    into a different function's extraction context. *)
+let contains_local_var (e : texpr) : bool =
+  try
+    (object
+       inherit [_] iter_expr
+       method! visit_FVar _ _ = raise Exit
+       method! visit_BVar _ _ = raise Exit
+     end)
+      #visit_texpr () e;
+    false
+  with Exit -> true
+
 (** If [e] is a call to a [*::loop_invariant] function whose last argument
     is a plain lambda [(fun () => inv_body)], return [Some inv_body].
 
@@ -3941,13 +3959,74 @@ let get_loop_invariant_inv (ctx : ctx) (e : texpr) : texpr option =
                     | None -> None
                     | Some (_, call_binder) ->
                         let call_fid = call_binder.binder_value.fun_id in
-                        (match FunDeclId.Map.find_opt call_fid ctx.fun_decls with
-                        | None -> None
-                        | Some call_decl -> (
-                            match call_decl.body with
-                            | None -> None
-                            | Some body ->
-                                find_return_in_expr body.body))))
+                        (* Fast path: if the call function body returns a
+                           FVar-free expression (e.g., [ok true] for [|| true]),
+                           we can return the body directly rather than building a
+                           call expression. *)
+                        let fvar_free_body =
+                          match
+                            FunDeclId.Map.find_opt call_fid ctx.fun_decls
+                          with
+                          | None -> None
+                          | Some d -> (
+                              match d.body with
+                              | None -> None
+                              | Some fb -> (
+                                  match find_return_in_expr fb.body with
+                                  | None -> None
+                                  | Some v ->
+                                      if contains_local_var v then None
+                                      else Some v))
+                        in
+                        (match fvar_free_body with
+                        | Some v -> Some v
+                        | None ->
+                            (* Slow path: build App(App(call_fn, closure_arg), unit)
+                               using variables from the OUTER context ([args]).
+                               This avoids returning an expression with FVarIds
+                               local to the [call] body, which are meaningless in
+                               the extraction context of the outer function. *)
+                            (match List.rev args with
+                            | [] -> None
+                            | closure_arg :: _ ->
+                                let result_bool_ty =
+                                  mk_result_ty (TLiteral TBool)
+                                in
+                                let call_fn_ty =
+                                  TArrow
+                                    ( closure_arg.ty,
+                                      TArrow (mk_unit_ty, result_bool_ty) )
+                                in
+                                let call_qualif_id =
+                                  FunOrOp
+                                    (Fun
+                                       (FromLlbc
+                                          (FunId (FRegular call_fid), None)))
+                                in
+                                let call_fn_expr =
+                                  {
+                                    e =
+                                      Qualif
+                                        {
+                                          id = call_qualif_id;
+                                          generics = empty_generic_args;
+                                        };
+                                    ty = call_fn_ty;
+                                  }
+                                in
+                                let app1 =
+                                  {
+                                    e = App (call_fn_expr, closure_arg);
+                                    ty = TArrow (mk_unit_ty, result_bool_ty);
+                                  }
+                                in
+                                let app2 =
+                                  {
+                                    e = App (app1, mk_unit_texpr);
+                                    ty = result_bool_ty;
+                                  }
+                                in
+                                Some app2))))
             | _ -> None))
     | _ -> None
   in

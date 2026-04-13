@@ -1826,6 +1826,38 @@ and extract_for_loop_lean (span : Meta.span) (ctx : extraction_ctx)
     | PAdt { fields = [ f ]; _ } -> f
     | _ -> [%internal_error] span
   in
+  (* Find the None branch to determine what the loop returns when exhausted.
+     The None branch of Option is identified by option_none_id, NOT by the
+     OCaml None constructor (which would mean "no variant id", i.e. a struct). *)
+  let none_branch =
+    match
+      List.find_opt
+        (fun (br : match_branch) ->
+          match br.pat.pat with
+          | PAdt { variant_id = Some vid; _ } -> vid = option_none_id
+          | _ -> false)
+        branches
+    with
+    | Some br -> br
+    | None -> [%internal_error] span
+  in
+  (* Extract the return value from ControlFlow.done(return_val) in the None branch *)
+  let done_arg =
+    let none_body = strip_meta none_branch.branch in
+    let f, args = destruct_apps none_body in
+    match (f.e, args) with
+    | ( Qualif
+          {
+            id =
+              AdtCons
+                { adt_id = TBuiltin TLoopResult; variant_id = Some vid };
+            _;
+          },
+        [ arg ] )
+      when vid = loop_result_break_id ->
+        arg
+    | _ -> [%internal_error] span
+  in
   let some_body = some_branch.branch in
   (* 5. Decompose Some body: a sequence of lets + final LoopResult.cont(arg) *)
   let lets, final_expr = raw_destruct_lets some_body in
@@ -1909,12 +1941,23 @@ and extract_for_loop_lean (span : Meta.span) (ctx : extraction_ctx)
   | None -> ()
   | Some inv_expr ->
       F.pp_print_string fmt "-- loop_invariant: ";
-      (* Use a fresh buffer so the invariant is emitted on one line *)
+      (* Use a fresh buffer so the invariant is emitted on one line.
+         We open an explicit horizontal box so that pp_print_space always
+         yields a space (never a newline), then strip the trailing newline
+         that pp_print_flush appends. *)
       let inv_buf = Buffer.create 64 in
       let inv_fmt = F.formatter_of_buffer inv_buf in
+      F.pp_open_hbox inv_fmt ();
       extract_texpr span ctx inv_fmt ~inside:false ~inside_do:false inv_expr;
+      F.pp_close_box inv_fmt ();
       F.pp_print_flush inv_fmt ();
-      F.pp_print_string fmt (Buffer.contents inv_buf);
+      let inv_str = Buffer.contents inv_buf in
+      let inv_str =
+        if String.length inv_str > 0 && inv_str.[String.length inv_str - 1] = '\n'
+        then String.sub inv_str 0 (String.length inv_str - 1)
+        else inv_str
+      in
+      F.pp_print_string fmt inv_str;
       F.pp_print_space fmt ());
   (* Let-bindings from the Some branch body *)
   let ctx =
@@ -1975,31 +2018,15 @@ and extract_for_loop_lean (span : Meta.span) (ctx : extraction_ctx)
   (* A mandatory break in the outer vbox brings the column back to the `for`
      keyword's indentation level so that `return` is aligned with `for`. *)
   F.pp_print_space fmt ();
-  (* Emit `return ()` / `return var` / `return (var1, var2, ...)` *)
+  (* Emit `return <done_arg>` — use the None-branch return value, which is
+     exactly what the loop yields when the iterator is exhausted.  This is
+     correct even when not all state variables are returned (e.g. a loop
+     counter that is not part of the function's output type). *)
   F.pp_open_hvbox fmt 0;
   F.pp_open_hvbox fmt ctx.indent_incr;
   F.pp_print_string fmt "return";
   F.pp_print_space fmt ();
-  (match state_pats with
-  | [] ->
-      (* No state variables: return unit *)
-      F.pp_print_string fmt "()"
-  | [ pat ] ->
-      (* Single state variable *)
-      let fvar_id = ([%add_loc] as_pat_open_fvar_id span) pat in
-      F.pp_print_string fmt (ctx_get_var span fvar_id ctx)
-  | pats ->
-      (* Multiple state variables: return tuple *)
-      F.pp_print_string fmt "(";
-      List.iteri
-        (fun i pat ->
-          if i > 0 then (
-            F.pp_print_string fmt ",";
-            F.pp_print_space fmt ());
-          let fvar_id = ([%add_loc] as_pat_open_fvar_id span) pat in
-          F.pp_print_string fmt (ctx_get_var span fvar_id ctx))
-        pats;
-      F.pp_print_string fmt ")");
+  extract_texpr span ctx fmt ~inside:false ~inside_do:false done_arg;
   F.pp_close_box fmt ();
   F.pp_close_box fmt ();
   (* Close the outer vbox *)
