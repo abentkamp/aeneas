@@ -1177,6 +1177,8 @@ and loop_to_string ?(span : Meta.span option = None) (env : fmt_env)
     num_input_conts = _;
     loop_body;
     to_rec = _;
+    for_loop_iter = _;
+    for_loop_invariant = _;
   } =
     loop
   in

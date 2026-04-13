@@ -355,6 +355,21 @@ let apply_passes_to_pure_fun_translations (crate : LlbcAst.crate)
     (* Apply the micro-passes *)
     let f, pass_timings = apply_passes_to_def ctx f in
 
+    (* Detect Rust for-loops and mark their Loop nodes with for_loop_iter.
+       This must run before decompose_loops so that detected for-loops are
+       kept inline in the parent function rather than extracted. *)
+    let f =
+      if !Config.lean_for_loops && backend () = Lean then (
+        [%ltrace
+          "About to apply: 'detect_for_loops':\n" ^ fun_decl_to_string ctx f];
+        refresh_fvar_id_generator ();
+        let f = detect_for_loops ctx f in
+        [%ltrace
+          "After applying 'detect_for_loops':\n" ^ fun_decl_to_string ctx f];
+        f)
+      else f
+    in
+
     (* Decompose the loops *)
     [%ltrace "About to apply: 'decompose_loops':\n" ^ fun_decl_to_string ctx f];
     refresh_fvar_id_generator ();

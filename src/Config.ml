@@ -252,6 +252,11 @@ let extract_decreases_clauses = ref false
     given by the user. *)
 let extract_template_decreases_clauses = ref true
 
+(** When true, detect Rust for-loops and extract them as native Lean 4
+    [for x in xs do] loops instead of the usual [loop] fixed-point combinator.
+    Only meaningful for the Lean backend. *)
+let lean_for_loops = ref false
+
 (** {1 Micro passes} *)
 
 (** Some provers like F* and Coq don't support the decomposition of return

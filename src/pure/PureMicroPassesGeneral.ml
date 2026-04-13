@@ -1187,6 +1187,8 @@ let filter_useless (ctx : ctx) (def : fun_decl) : fun_decl =
               num_input_conts = _;
               loop_body;
               to_rec = _;
+              for_loop_iter = _;
+              for_loop_invariant = _;
             } =
               loop
             in

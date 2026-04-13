@@ -3238,17 +3238,22 @@ let decompose_loops_aux (ctx : ctx) (def : fun_decl) (body : fun_body) :
         (* First, decompose the inner loops *)
         let loop = self#visit_loop env loop in
 
-        (* Update the definition *)
-        let loop_def, constant_inputs, func = generate_loop_def loop in
+        (* If this is a detected for-loop, keep it inline in the parent function
+           instead of extracting it to a separate loop function *)
+        if Option.is_some loop.for_loop_iter then Loop loop
+        else begin
+          (* Update the definition *)
+          let loop_def, constant_inputs, func = generate_loop_def loop in
 
-        (* Store the loop definition *)
-        loops := LoopId.Map.add_strict loop.loop_id loop_def !loops;
+          (* Store the loop definition *)
+          loops := LoopId.Map.add_strict loop.loop_id loop_def !loops;
 
-        let inputs =
-          List.map mk_texpr_from_fvar constant_inputs @ loop.inputs
-        in
-        let loop = [%add_loc] mk_apps span func inputs in
-        loop.e
+          let inputs =
+            List.map mk_texpr_from_fvar constant_inputs @ loop.inputs
+          in
+          let loop = [%add_loc] mk_apps span func inputs in
+          loop.e
+        end
     end
   in
 
@@ -3273,6 +3278,10 @@ let loops_to_fixed_points_visitor (ctx : ctx) (def : fun_decl) =
     method! visit_Loop _ loop =
       [%ldebug
         "loop before introducing the fixed point:\n" ^ loop_to_string ctx loop];
+
+      (* For-loops are kept as Loop nodes for the extractor to handle *)
+      if Option.is_some loop.for_loop_iter then Loop loop
+      else
 
       let ({ output_tys; loop_body; _ } : loop) = loop in
       let output_ty = mk_simpl_tuple_ty output_tys in
@@ -3339,6 +3348,8 @@ let filter_loop_useless_inputs_visitor (ctx : ctx) (def : fun_decl) =
         num_input_conts;
         loop_body;
         to_rec;
+        for_loop_iter = _;
+        for_loop_invariant = _;
       } =
         loop
       in
@@ -3416,6 +3427,8 @@ let filter_loop_useless_inputs_visitor (ctx : ctx) (def : fun_decl) =
           num_input_conts;
           loop_body;
           to_rec;
+          for_loop_iter = loop.for_loop_iter;
+          for_loop_invariant = loop.for_loop_invariant;
         }
       in
 
@@ -3699,3 +3712,117 @@ let decompose_loop_bodies (ctx : ctx) (loops : fun_decl list) :
   let loops = List.map fst loops_and_bodies in
   let bodies = List.filter_map snd loops_and_bodies in
   (loops, bodies)
+
+(** Check if an expression is a call to an Iterator::next method.
+
+    We detect this by looking for a [TraitMethod] reference with method name
+    ["next"]. This is the pattern produced when Rust's [for x in xs] loop
+    is desugared: the compiler generates [Iterator::next] calls in a loop. *)
+let is_iterator_next_call (e : texpr) : bool =
+  match opt_destruct_qualif_apps e with
+  | Some
+      ( {
+          id =
+            FunOrOp
+              (Fun (FromLlbc (TraitMethod (_, method_name, _), None)));
+          _;
+        },
+        _ ) ->
+      method_name = "next"
+  | _ -> false
+
+(** For a loop node, attempt to detect if it corresponds to a Rust for-loop.
+
+    The for-loop pattern in the loop body is:
+    {[
+      let (opt, iter') <- Iterator::next step_impl iter in
+      match opt with
+      | None -> break ...
+      | Some x -> <user body>; continue (iter', ...)
+    ]}
+
+    We check that the first expression in the loop body is a monadic let
+    binding where the bound expression is a call to [Iterator::next], and
+    that the bound argument includes a variable that matches one of the loop
+    body inputs (the iterator).
+
+    Returns [Some iter_init] where [iter_init] is the initial iterator value
+    from [loop.inputs], or [None] if the pattern is not recognized. *)
+let detect_for_loop_pattern (loop : loop) : texpr option =
+  let body = loop.loop_body.loop_body in
+  match body.e with
+  | Let (true (* monadic *), _bind_pat, next_call, _continuation) ->
+      if not (is_iterator_next_call next_call) then None
+      else begin
+        (* Gather the FVar IDs of the loop body input patterns *)
+        let input_fvars =
+          List.filter_map
+            (fun (pat : tpat) ->
+              match pat.pat with
+              | POpen (fv, _) -> Some fv.id
+              | _ -> None)
+            loop.loop_body.inputs
+        in
+        (* Among the args to 'next', find the one that is an FVar matching
+           a loop body input - that is the iterator variable *)
+        let _fn, args = destruct_apps next_call in
+        (* Search from the end since the iterator is typically the last arg *)
+        let iter_fvar_opt =
+          List.fold_right
+            (fun (arg : texpr) acc ->
+              match acc with
+              | Some _ -> acc (* already found *)
+              | None -> (
+                  match arg.e with
+                  | FVar id
+                    when List.exists (fun fid -> FVarId.equal id fid)
+                           input_fvars ->
+                      Some arg
+                  | _ -> None))
+            args None
+        in
+        match iter_fvar_opt with
+        | None -> None
+        | Some iter_arg -> (
+            (* Find the index of this FVar in the loop body inputs *)
+            let iter_idx = ref None in
+            List.iteri
+              (fun i (pat : tpat) ->
+                match pat.pat with
+                | POpen (fv, _) -> (
+                    match iter_arg.e with
+                    | FVar id when FVarId.equal id fv.id -> iter_idx := Some i
+                    | _ -> ())
+                | _ -> ())
+              loop.loop_body.inputs;
+            match !iter_idx with
+            | None -> None
+            | Some idx ->
+                if idx >= List.length loop.inputs then None
+                else Some (List.nth loop.inputs idx))
+      end
+  | _ -> None
+
+(** Detect Rust for-loops in a function's body and mark the corresponding
+    [Loop] nodes with [for_loop_iter].
+
+    This pass runs before [decompose_loops]. When a [Loop] node matches the
+    for-loop pattern (Iterator::next + Some/None match), we set
+    [loop.for_loop_iter = Some iter_init] on it. This causes [decompose_loops]
+    to keep the loop inline (not extract it to a separate function) and
+    [loops_to_fixed_points] to leave the [Loop] node intact for the extractor
+    to emit as a native Lean [for x in xs do] expression. *)
+let detect_for_loops_visitor (_ctx : ctx) (_def : fun_decl) =
+  object
+    inherit [_] map_expr
+
+    method! visit_Loop _ loop =
+      if Option.is_some loop.for_loop_iter then
+        Loop loop (* Already detected, skip *)
+      else
+        match detect_for_loop_pattern loop with
+        | None -> Loop loop
+        | Some iter_init -> Loop { loop with for_loop_iter = Some iter_init }
+  end
+
+let detect_for_loops = lift_expr_map_visitor detect_for_loops_visitor

@@ -1388,6 +1388,15 @@ and loop = {
       (** Should we extract this loop to a recursive function? This boolean is
           initially [false] and might be set to [true] inside the micro-passes.
       *)
+  for_loop_iter : texpr option;
+      (** If [Some expr], this loop was detected as originating from a Rust
+          [for x in expr { }] loop. [expr] is the initial iterator expression
+          (the collection being iterated). Populated by the [detect_for_loops]
+          micro-pass when [-lean-for-loops] is active. *)
+  for_loop_invariant : texpr option;
+      (** If [Some expr], an [aeneas::loop_invariant(...)] call was associated
+          with this loop in the Rust source. [expr] is the invariant predicate.
+          Populated by the [detect_loop_invariants] micro-pass. *)
 }
 
 (** A loop body.

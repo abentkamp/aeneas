@@ -1862,6 +1862,8 @@ and translate_loop (loop : S.loop) (ctx0 : bs_ctx) : texpr =
       num_input_conts = List.length input_abs;
       loop_body;
       to_rec = false;
+      for_loop_iter = None;
+      for_loop_invariant = None;
     }
   in
   [%sanity_check] loop.span

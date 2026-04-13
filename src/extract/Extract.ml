@@ -725,6 +725,9 @@ let rec extract_texpr (span : Meta.span) (ctx : extraction_ctx)
       extract_Switch span ctx fmt ~inside ~inside_do scrut body
   | Meta (m, e) -> extract_meta span ctx fmt ~inside ~inside_do m e
   | StructUpdate supd -> extract_StructUpdate span ctx fmt ~inside supd e.ty
+  | Loop loop when Option.is_some loop.for_loop_iter ->
+      (* A Rust for-loop detected by detect_for_loops; emit native Lean for-loop *)
+      extract_for_loop_lean span ctx fmt ~inside ~inside_do loop
   | Loop _ ->
       (* The loop nodes should have been eliminated in {!PureMicroPasses} *)
       [%admit_raise] span "Unreachable" fmt
@@ -1727,6 +1730,255 @@ and extract_StructUpdate (span : Meta.span) (ctx : extraction_ctx)
         extract_array_or_slice span ctx fmt ~inside ~is_array:true ty
           (List.map snd supd.updates)
     | _ -> [%admit_raise] span "Unreachable" fmt
+
+(** Emit a Lean native [for x in xs do] expression for a detected Rust for-loop.
+
+    Called when [loop.for_loop_iter = Some iter_init] and the backend is Lean
+    with [-lean-for-loops].  Emits a [do]-block of the form:
+    {[
+      let mut state_1 := init_1
+      ...
+      for elem_pat in iter_init do
+        <body lets>
+        state_1 := new_val_1
+        ...
+      return (state_1, ...)
+    ]}
+    where the whole block may be nested inside an existing [do] block. *)
+and extract_for_loop_lean (span : Meta.span) (ctx : extraction_ctx)
+    (fmt : F.formatter) ~(inside : bool) ~(inside_do : bool) (loop : loop) :
+    unit =
+  let _ = inside in
+  (* 1. Retrieve the iterator initial value *)
+  let iter_init = Option.get loop.for_loop_iter in
+  (* 2. Find the iterator's position in loop.inputs by structural equality on the
+        expression case (FVars from the outer function scope) *)
+  let iter_idx =
+    let rec find_idx i = function
+      | [] -> [%internal_error] span
+      | (input : texpr) :: rest ->
+          if input.e = iter_init.e then i else find_idx (i + 1) rest
+    in
+    find_idx 0 loop.inputs
+  in
+  (* 3. Compute state variable data (all non-iterator inputs) *)
+  let n_inputs = List.length loop.inputs in
+  let state_idxs =
+    List.init n_inputs Fun.id |> List.filter (fun i -> i <> iter_idx)
+  in
+  let state_inits = List.map (fun i -> List.nth loop.inputs i) state_idxs in
+  let state_pats =
+    List.map (fun i -> List.nth loop.loop_body.inputs i) state_idxs
+  in
+  (* 4. Decompose the loop body to find the Some(x) branch.
+        body = Let(true, bind_pat, next_call, Switch(opt, Match[None→brk; Some(x)→body])) *)
+  let rec strip_meta (e : texpr) =
+    match e.e with Meta (_, inner) -> strip_meta inner | _ -> e
+  in
+  let body = loop.loop_body.loop_body in
+  let bind_pat, switch_expr =
+    match body.e with
+    | Let (_, bp, _, cont) -> (bp, strip_meta cont)
+    | _ -> [%internal_error] span
+  in
+  (* Silently register bind_pat variables in ctx so they're resolvable if the
+     body references e.g. the new iterator variable *)
+  let ctx =
+    let rec register_pat ctx (pat : tpat) =
+      match pat.pat with
+      | POpen (fv, _) ->
+          let name = ctx_compute_var_basename span ctx fv.basename fv.ty in
+          fst (ctx_add_var span name fv.id ctx)
+      | PAdt { fields; _ } -> List.fold_left register_pat ctx fields
+      | PIgnored | PConstant _ | PBound _ -> ctx
+    in
+    register_pat ctx bind_pat
+  in
+  let branches =
+    match switch_expr.e with
+    | Switch (_, Match branches) -> branches
+    | _ -> [%internal_error] span
+  in
+  (* Find the Some(x) branch (option_some_id variant) *)
+  let some_branch =
+    match
+      List.find_opt
+        (fun (br : match_branch) ->
+          match br.pat.pat with
+          | PAdt { variant_id = Some vid; _ } -> vid = option_some_id
+          | _ -> false)
+        branches
+    with
+    | Some br -> br
+    | None -> [%internal_error] span
+  in
+  (* The element pattern is the single field of the Some constructor *)
+  let elem_pat =
+    match some_branch.pat.pat with
+    | PAdt { fields = [ f ]; _ } -> f
+    | _ -> [%internal_error] span
+  in
+  let some_body = some_branch.branch in
+  (* 5. Decompose Some body: a sequence of lets + final LoopResult.cont(arg) *)
+  let lets, final_expr = raw_destruct_lets some_body in
+  let final_expr = strip_meta final_expr in
+  (* Detect LoopResult.cont(arg) and extract the per-input arguments *)
+  let cont_args =
+    let f, args = destruct_apps final_expr in
+    match (f.e, args) with
+    | ( Qualif
+          {
+            id =
+              AdtCons
+                { adt_id = TBuiltin TLoopResult; variant_id = Some vid };
+            _;
+          },
+        [ arg ] )
+      when vid = loop_result_continue_id ->
+        (* Decompose the tuple: one element per loop input *)
+        try_destruct_tuple_texpr span arg
+    | _ -> [%internal_error] span
+  in
+  [%sanity_check] span (List.length cont_args = n_inputs);
+  (* Keep only the state-variable slots (drop the iterator slot) *)
+  let state_cont_args =
+    List.filter_map
+      (fun (i, arg) -> if i <> iter_idx then Some arg else None)
+      (List.mapi (fun i arg -> (i, arg)) cont_args)
+  in
+  (* --- Emission --- *)
+  (* Use a vbox so each top-level statement is on its own line *)
+  F.pp_open_vbox fmt 0;
+  (* Open a [do] block if the caller is not already inside one *)
+  if not inside_do then (
+    F.pp_print_string fmt "do";
+    F.pp_print_space fmt ());
+  (* Emit `let mut state_i := init_i` for each state variable *)
+  let ctx =
+    List.fold_left2
+      (fun ctx (pat : tpat) (init : texpr) ->
+        F.pp_open_hvbox fmt 0;
+        F.pp_open_hvbox fmt ctx.indent_incr;
+        F.pp_print_string fmt "let mut ";
+        let ctx = extract_tpat span ctx fmt ~is_let:true ~inside:false pat in
+        F.pp_print_space fmt ();
+        F.pp_print_string fmt ":=";
+        F.pp_close_box fmt ();
+        F.pp_print_space fmt ();
+        F.pp_open_hvbox fmt ctx.indent_incr;
+        extract_texpr span ctx fmt ~inside:false ~inside_do:false init;
+        F.pp_close_box fmt ();
+        F.pp_close_box fmt ();
+        F.pp_print_space fmt ();
+        ctx)
+      ctx state_pats state_inits
+  in
+  (* Emit `for elem_pat in iter_init do` *)
+  F.pp_open_hvbox fmt 0;
+  F.pp_open_hvbox fmt ctx.indent_incr;
+  F.pp_print_string fmt "for ";
+  let ctx = extract_tpat span ctx fmt ~is_let:true ~inside:false elem_pat in
+  F.pp_print_space fmt ();
+  F.pp_print_string fmt "in ";
+  (* Add a type annotation to help Lean's type inference for the iterator.
+     E.g.: `({ start := 0#usize, «end» := n } : Range Usize)` *)
+  F.pp_print_string fmt "(";
+  extract_texpr span ctx fmt ~inside:false ~inside_do:false iter_init;
+  F.pp_print_string fmt " : ";
+  extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false iter_init.ty;
+  F.pp_print_string fmt ")";
+  F.pp_print_string fmt " do";
+  F.pp_close_box fmt ();
+  F.pp_close_box fmt ();
+  F.pp_print_space fmt ();
+  (* Emit the for-loop body (let-bindings + state-variable updates)
+     inside an indented vbox *)
+  F.pp_open_vbox fmt ctx.indent_incr;
+  (* Let-bindings from the Some branch body *)
+  let ctx =
+    List.fold_left
+      (fun ctx (monadic, (pat : tpat), (expr : texpr)) ->
+        (* In Lean, if the pattern is ignored and the type is unit, we can
+           skip the `let` and just evaluate the expression for its effect *)
+        let ignore_let = monadic && is_ignored_pat pat && ty_is_unit pat.ty in
+        if ignore_let then (
+          F.pp_open_hvbox fmt 0;
+          extract_texpr span ctx fmt ~inside:false ~inside_do:true expr;
+          F.pp_close_box fmt ();
+          F.pp_print_space fmt ();
+          ctx)
+        else (
+          F.pp_open_hvbox fmt 0;
+          F.pp_open_hvbox fmt ctx.indent_incr;
+          F.pp_print_string fmt "let ";
+          let ctx =
+            extract_tpat span ctx fmt ~is_let:true ~inside:false pat
+          in
+          F.pp_print_space fmt ();
+          F.pp_print_string fmt (if monadic then "←" else ":=");
+          F.pp_close_box fmt ();
+          F.pp_print_space fmt ();
+          F.pp_open_hvbox fmt ctx.indent_incr;
+          extract_texpr span ctx fmt ~inside:false ~inside_do:false expr;
+          F.pp_close_box fmt ();
+          F.pp_close_box fmt ();
+          F.pp_print_space fmt ();
+          ctx))
+      ctx lets
+  in
+  (* If the body is completely empty (no lets, no state vars), emit a unit *)
+  if lets = [] && state_cont_args = [] then (
+    F.pp_print_string fmt "pure ()";
+    F.pp_print_space fmt ());
+  (* Emit state-variable updates: `var_name := new_val` *)
+  List.iter2
+    (fun (pat : tpat) (new_val : texpr) ->
+      let fvar_id = ([%add_loc] as_pat_open_fvar_id span) pat in
+      let var_name = ctx_get_var span fvar_id ctx in
+      F.pp_open_hvbox fmt 0;
+      F.pp_open_hvbox fmt ctx.indent_incr;
+      F.pp_print_string fmt var_name;
+      F.pp_print_space fmt ();
+      F.pp_print_string fmt ":=";
+      F.pp_close_box fmt ();
+      F.pp_print_space fmt ();
+      F.pp_open_hvbox fmt ctx.indent_incr;
+      extract_texpr span ctx fmt ~inside:false ~inside_do:false new_val;
+      F.pp_close_box fmt ();
+      F.pp_close_box fmt ();
+      F.pp_print_space fmt ())
+    state_pats state_cont_args;
+  F.pp_close_box fmt ();
+  (* close vbox for for-loop body *)
+  (* Emit `return ()` / `return var` / `return (var1, var2, ...)` *)
+  F.pp_open_hvbox fmt 0;
+  F.pp_open_hvbox fmt ctx.indent_incr;
+  F.pp_print_string fmt "return";
+  F.pp_print_space fmt ();
+  (match state_pats with
+  | [] ->
+      (* No state variables: return unit *)
+      F.pp_print_string fmt "()"
+  | [ pat ] ->
+      (* Single state variable *)
+      let fvar_id = ([%add_loc] as_pat_open_fvar_id span) pat in
+      F.pp_print_string fmt (ctx_get_var span fvar_id ctx)
+  | pats ->
+      (* Multiple state variables: return tuple *)
+      F.pp_print_string fmt "(";
+      List.iteri
+        (fun i pat ->
+          if i > 0 then (
+            F.pp_print_string fmt ",";
+            F.pp_print_space fmt ());
+          let fvar_id = ([%add_loc] as_pat_open_fvar_id span) pat in
+          F.pp_print_string fmt (ctx_get_var span fvar_id ctx))
+        pats;
+      F.pp_print_string fmt ")");
+  F.pp_close_box fmt ();
+  F.pp_close_box fmt ();
+  (* Close the outer vbox *)
+  F.pp_close_box fmt ()
 
 (** A small utility to print the parameters of a function signature.
 

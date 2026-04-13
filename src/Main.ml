@@ -218,6 +218,11 @@ let () =
       ( "-loops-no-rec",
         Arg.Set no_recursive_loops,
         " Never attempt to extract loops to recursive functions." );
+      ( "-lean-for-loops",
+        Arg.Set lean_for_loops,
+        " (Lean only) Detect Rust iterator for-loops and extract them as \
+         native Lean `for x in xs do` loops. Loop invariants can be provided \
+         via `aeneas::loop_invariant(|| expr)` calls in the Rust source." );
       ( "-max-heartbeats",
         Arg.Int
           (fun x ->
@@ -449,6 +454,9 @@ let () =
   if !set_max_heartbeats && not (backend () = Lean) then
     fail_with_error
       "The -max-heartbeats option is valid only for the Lean backend";
+  if !lean_for_loops && not (backend () = Lean) then
+    fail_with_error
+      "The -lean-for-loops option is valid only for the Lean backend";
 
   check_arg_implies !diagnose_detailed "-diagnose-detailed"
     !diagnose_micro_passes "-diagnose-micro-passes";
