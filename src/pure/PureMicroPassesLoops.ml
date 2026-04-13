@@ -3826,3 +3826,81 @@ let detect_for_loops_visitor (_ctx : ctx) (_def : fun_decl) =
   end
 
 let detect_for_loops = lift_expr_map_visitor detect_for_loops_visitor
+
+(** Detect Rust [loop_invariant(|| expr)] calls immediately before a [Loop]
+    node (for-loop), extract the invariant expression, store it in
+    [loop.for_loop_invariant], and remove the [loop_invariant] call.
+
+    This pass must run before [filter_useless] so that the call is not
+    eliminated before we can detect it.
+
+    Pattern:
+    {[
+      let _ ← loop_invariant (fun () => inv_expr) in
+      Loop { ... }
+        ~~>
+      Loop { for_loop_invariant = Some inv_expr; ... }
+    ]}
+
+    We identify [loop_invariant] by the suffix of the debug name of the called
+    function: any function whose name ends with ["loop_invariant"] is treated as
+    a loop invariant annotation. This covers both [aeneas::loop_invariant] and
+    user-defined variants in other crates. *)
+
+(** Return [Some inv_expr] if [e] is a call to a [*::loop_invariant] function
+    whose first argument is a thunk [(fun () => inv_body)].  Return [None]
+    otherwise. *)
+let get_loop_invariant_inv (ctx : ctx) (e : texpr) : texpr option =
+  let fn_expr, args = destruct_apps e in
+  match fn_expr.e with
+  | Qualif { id = FunOrOp (Fun (FromLlbc (FunId (FRegular fid), _))); _ } ->
+      let is_inv_fn =
+        match FunDeclId.Map.find_opt fid ctx.fun_decls with
+        | None -> false
+        | Some d ->
+            let name = d.name in
+            let suffix = "loop_invariant" in
+            let nlen = String.length name in
+            let slen = String.length suffix in
+            nlen >= slen && String.sub name (nlen - slen) slen = suffix
+      in
+      if not is_inv_fn then None
+      else begin
+        (* The last argument is the invariant thunk: fun () => inv_body *)
+        match List.rev args with
+        | [] -> None
+        | thunk :: _ -> (
+            match thunk.e with
+            | Lambda (_, body) -> Some body
+            | _ -> None (* non-lambda argument: skip *))
+      end
+  | _ -> None
+
+let detect_loop_invariants_visitor (ctx : ctx) (_def : fun_decl) =
+  object
+    inherit [_] map_expr
+
+    (** Visit in pre-order so we can drop the [loop_invariant] let-binding
+        before recursing into the loop body. *)
+    method! visit_texpr env e =
+      match e.e with
+      | Let (_, _, bound, cont) -> (
+          match get_loop_invariant_inv ctx bound with
+          | None -> super#visit_texpr env e
+          | Some inv_expr -> (
+              (* The invariant call must be immediately followed by a Loop *)
+              match cont.e with
+              | Loop loop ->
+                  let new_cont =
+                    { cont with
+                      e =
+                        Loop { loop with for_loop_invariant = Some inv_expr }
+                    }
+                  in
+                  (* Skip the let-binding; visit only the updated loop *)
+                  super#visit_texpr env new_cont
+              | _ -> super#visit_texpr env e))
+      | _ -> super#visit_texpr env e
+  end
+
+let detect_loop_invariants = lift_expr_map_visitor detect_loop_invariants_visitor

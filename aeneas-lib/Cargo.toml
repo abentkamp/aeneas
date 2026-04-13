@@ -1,0 +1,6 @@
+[package]
+name = "aeneas-lib"
+version = "0.1.0"
+edition = "2021"
+description = "Helper annotations for Aeneas (Rust-to-Lean translator)"
+license = "Apache-2.0 OR MIT"

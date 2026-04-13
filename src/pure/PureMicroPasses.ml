@@ -54,6 +54,13 @@ let passes :
     ( Some (fun _ -> !Config.merge_let_app_decompose_tuple),
       "merge_let_app_then_decompose_tuple",
       merge_let_app_then_decompose_tuple );
+    (* Detect [loop_invariant(|| expr)] calls before for-loops and annotate
+       the Loop node with [for_loop_invariant = Some expr].  Must run before
+       [filter_useless] so the call is not eliminated before we see it.
+       Only applies when [-lean-for-loops] is active. *)
+    ( Some (fun _ -> !Config.lean_for_loops && backend () = Lean),
+      "detect_loop_invariants",
+      detect_loop_invariants );
     (* Filter the useless variables, assignments, function calls, etc. *)
     (None, "filter_useless", filter_useless);
     (* Do the following kind of transformations (note that such expressions

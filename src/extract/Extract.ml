@@ -1894,6 +1894,18 @@ and extract_for_loop_lean (span : Meta.span) (ctx : extraction_ctx)
   (* Emit the for-loop body (let-bindings + state-variable updates)
      inside an indented vbox *)
   F.pp_open_vbox fmt ctx.indent_incr;
+  (* Emit optional loop-invariant annotation as a Lean comment *)
+  (match loop.for_loop_invariant with
+  | None -> ()
+  | Some inv_expr ->
+      F.pp_print_string fmt "-- loop_invariant: ";
+      (* Use a fresh buffer so the invariant is emitted on one line *)
+      let inv_buf = Buffer.create 64 in
+      let inv_fmt = F.formatter_of_buffer inv_buf in
+      extract_texpr span ctx inv_fmt ~inside:false ~inside_do:false inv_expr;
+      F.pp_print_flush inv_fmt ();
+      F.pp_print_string fmt (Buffer.contents inv_buf);
+      F.pp_print_space fmt ());
   (* Let-bindings from the Some branch body *)
   let ctx =
     List.fold_left

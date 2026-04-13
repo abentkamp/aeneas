@@ -12,13 +12,27 @@ set_option maxHeartbeats 1000000
 namespace for_loops
 
 /-- [for_loops::copy_arrays]:
-    Source: 'tests/src/for_loops.rs', lines 9:0-13:1 -/
+    Source: 'tests/src/for_loops.rs', lines 13:0-17:1 -/
 def copy_arrays
   (src : Array Std.U8 256#usize) (dst : Array Std.U8 256#usize) :
   Result (Array Std.U8 256#usize)
   := do
   let mut dst1 := dst
   for i in ({ start := 0#usize, «end» := 256#usize } : core.ops.range.Range Std.Usize) do
+    let i1 ← Array.index_usize src i
+    let a ← Array.update dst1 i i1
+    dst1 := a
+  return dst1
+
+/-- [for_loops::copy_arrays_with_inv]:
+    Source: 'tests/src/for_loops.rs', lines 20:0-25:1 -/
+def copy_arrays_with_inv
+  (src : Array Std.U8 256#usize) (dst : Array Std.U8 256#usize) :
+  Result (Array Std.U8 256#usize)
+  := do
+  let mut dst1 := dst
+  for i in ({ start := 0#usize, «end» := 256#usize } : core.ops.range.Range Std.Usize) do
+    -- loop_invariant: true
     let i1 ← Array.index_usize src i
     let a ← Array.update dst1 i i1
     dst1 := a
