@@ -114,6 +114,7 @@ def copy_arrays_with_inv
     core.ops.range.Range
     Std.Usize) do
   
+    -- loop_invariant: true
     let i1 ← Array.index_usize src i
     let a ← Array.update dst1 i i1
     dst1 := a

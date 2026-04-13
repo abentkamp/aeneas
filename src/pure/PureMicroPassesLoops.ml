@@ -3885,18 +3885,75 @@ let is_loop_invariant_call (ctx : ctx) (e : texpr) : bool =
           nlen >= slen && String.sub name (nlen - slen) slen = suffix)
   | _ -> false
 
+(** Traverse through let-bindings and Meta wrappers in [e] looking for
+    [ok v] (i.e., [Mk@Result::Ok v]) and return [Some v].
+    Checks the bound expression of each [Let] first, then the continuation. *)
+let rec find_return_in_expr (e : texpr) : texpr option =
+  match opt_destruct_ret e with
+  | Some v -> Some v
+  | None -> (
+      match e.e with
+      | Let (_, _, bound, cont) -> (
+          match find_return_in_expr bound with
+          | Some _ as r -> r
+          | None -> find_return_in_expr cont)
+      | Meta (_, inner) -> find_return_in_expr inner
+      | _ -> None)
+
 (** If [e] is a call to a [*::loop_invariant] function whose last argument
     is a plain lambda [(fun () => inv_body)], return [Some inv_body].
-    Return [None] when the argument is a reified closure struct (the common
-    case for [|| expr] closures that get desugared by the Rust compiler). *)
-let get_loop_invariant_inv (_ctx : ctx) (e : texpr) : texpr option =
-  let _fn_expr, args = destruct_apps e in
-  match List.rev args with
-  | [] -> None
-  | thunk :: _ -> (
-      match thunk.e with
-      | Lambda (_, body) -> Some body
-      | _ -> None (* reified closure or non-lambda — skip body extraction *))
+
+    For the common case of a Rust [|| expr] closure, the closure is
+    desugared by the Rust compiler into a reified zero-capture struct with a
+    [Fn] trait implementation.  In that case the trait instance is passed as
+    an extra generic argument ([fn_expr.generics.trait_refs]) rather than as
+    a direct argument.  We navigate through the [Fn] impl's [call] method to
+    recover the boolean body. *)
+let get_loop_invariant_inv (ctx : ctx) (e : texpr) : texpr option =
+  let fn_expr, args = destruct_apps e in
+  (* Fast path: last explicit argument is a plain lambda *)
+  let try_lambda () =
+    match List.rev args with
+    | [] -> None
+    | thunk :: _ -> (
+        match thunk.e with
+        | Lambda (_, body) -> Some body
+        | _ -> None)
+  in
+  (* Slow path: Fn instance is in [fn_expr.generics.trait_refs].
+     Traverse: trait impl → "call" method → fun_decl body → arg of Return. *)
+  let try_trait_impl () =
+    match fn_expr.e with
+    | Qualif { generics = { trait_refs; _ }; _ } -> (
+        match trait_refs with
+        | [] -> None
+        | fn_inst :: _ -> (
+            match fn_inst.trait_id with
+            | TraitImpl (impl_id, _) -> (
+                match TraitImplId.Map.find_opt impl_id ctx.trait_impls with
+                | None -> None
+                | Some impl ->
+                    let call_opt =
+                      List.find_opt (fun (name, _) -> name = "call")
+                        impl.methods
+                    in
+                    (match call_opt with
+                    | None -> None
+                    | Some (_, call_binder) ->
+                        let call_fid = call_binder.binder_value.fun_id in
+                        (match FunDeclId.Map.find_opt call_fid ctx.fun_decls with
+                        | None -> None
+                        | Some call_decl -> (
+                            match call_decl.body with
+                            | None -> None
+                            | Some body ->
+                                find_return_in_expr body.body))))
+            | _ -> None))
+    | _ -> None
+  in
+  match try_lambda () with
+  | Some _ as result -> result
+  | None -> try_trait_impl ()
 
 let detect_loop_invariants_visitor (ctx : ctx) (_def : fun_decl) =
   (* When a [loop_invariant] call is found, we store the invariant body (or
