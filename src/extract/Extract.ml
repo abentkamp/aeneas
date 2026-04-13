@@ -1751,13 +1751,21 @@ and extract_for_loop_lean (span : Meta.span) (ctx : extraction_ctx)
   let _ = inside in
   (* 1. Retrieve the iterator initial value *)
   let iter_init = Option.get loop.for_loop_iter in
-  (* 2. Find the iterator's position in loop.inputs by structural equality on the
-        expression case (FVars from the outer function scope) *)
+  (* 2. Find the iterator's position in loop.inputs.
+        We strip Meta wrappers before comparing because [add_type_annotations]
+        may have added [Meta(TypeAnnot, ...)] to elements of [loop.inputs]
+        after [detect_for_loops] stored the (un-annotated) [iter_init]. *)
+  let rec strip_meta_e (e : texpr) : texpr =
+    match e.e with Meta (_, inner) -> strip_meta_e inner | _ -> e
+  in
+  let iter_init_stripped = strip_meta_e iter_init in
   let iter_idx =
     let rec find_idx i = function
       | [] -> [%internal_error] span
       | (input : texpr) :: rest ->
-          if input.e = iter_init.e then i else find_idx (i + 1) rest
+          let input_stripped = strip_meta_e input in
+          if input_stripped.e = iter_init_stripped.e then i
+          else find_idx (i + 1) rest
     in
     find_idx 0 loop.inputs
   in
@@ -1880,20 +1888,22 @@ and extract_for_loop_lean (span : Meta.span) (ctx : extraction_ctx)
   let ctx = extract_tpat span ctx fmt ~is_let:true ~inside:false elem_pat in
   F.pp_print_space fmt ();
   F.pp_print_string fmt "in ";
-  (* Add a type annotation to help Lean's type inference for the iterator.
-     E.g.: `({ start := 0#usize, «end» := n } : Range Usize)` *)
-  F.pp_print_string fmt "(";
-  extract_texpr span ctx fmt ~inside:false ~inside_do:false iter_init;
-  F.pp_print_string fmt " : ";
-  extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false iter_init.ty;
-  F.pp_print_string fmt ")";
+  (* [add_type_annotations] already wraps iter_init in Meta(TypeAnnot, ...) so
+     it renders as `({ ... } : RangeType)`.  Passing ~inside:true asks the
+     extractor to parenthesise if needed; for a type-annotated struct it is
+     already parenthesised. *)
+  extract_texpr span ctx fmt ~inside:true ~inside_do:false iter_init;
   F.pp_print_string fmt " do";
   F.pp_close_box fmt ();
   F.pp_close_box fmt ();
   F.pp_print_space fmt ();
   (* Emit the for-loop body (let-bindings + state-variable updates)
-     inside an indented vbox *)
+     inside an indented vbox.  We open the vbox and immediately emit a
+     pp_print_cut (zero-width mandatory break) so that the first body item
+     appears on an indented new line rather than at the same column as the
+     `for` keyword. *)
   F.pp_open_vbox fmt ctx.indent_incr;
+  F.pp_print_cut fmt ();
   (* Emit optional loop-invariant annotation as a Lean comment *)
   (match loop.for_loop_invariant with
   | None -> ()
@@ -1962,6 +1972,9 @@ and extract_for_loop_lean (span : Meta.span) (ctx : extraction_ctx)
     state_pats state_cont_args;
   F.pp_close_box fmt ();
   (* close vbox for for-loop body *)
+  (* A mandatory break in the outer vbox brings the column back to the `for`
+     keyword's indentation level so that `return` is aligned with `for`. *)
+  F.pp_print_space fmt ();
   (* Emit `return ()` / `return var` / `return (var1, var2, ...)` *)
   F.pp_open_hvbox fmt 0;
   F.pp_open_hvbox fmt ctx.indent_incr;

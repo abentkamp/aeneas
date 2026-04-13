@@ -11,31 +11,113 @@ set_option maxHeartbeats 1000000
 
 namespace for_loops
 
+/-- [for_loops::loop_invariant]:
+    Source: 'tests/src/for_loops.rs', lines 10:0-10:50
+    Visibility: public -/
+def loop_invariant
+  {P : Type} (coreopsfunctionFnPTupleBoolInst : core.ops.function.Fn P Unit
+  Bool) (_inv : P) :
+  Result Unit
+  := do
+  ok ()
+
 /-- [for_loops::copy_arrays]:
-    Source: 'tests/src/for_loops.rs', lines 13:0-17:1 -/
+    Source: 'tests/src/for_loops.rs', lines 13:0-17:1
+    Visibility: public -/
 def copy_arrays
   (src : Array Std.U8 256#usize) (dst : Array Std.U8 256#usize) :
   Result (Array Std.U8 256#usize)
   := do
   let mut dst1 := dst
-  for i in ({ start := 0#usize, «end» := 256#usize } : core.ops.range.Range Std.Usize) do
+  for i
+    in ({ start := 0#usize, «end» := 256#usize }
+    :
+    core.ops.range.Range
+    Std.Usize) do
+  
     let i1 ← Array.index_usize src i
     let a ← Array.update dst1 i i1
     dst1 := a
+    
   return dst1
 
+/-- [for_loops::copy_arrays_with_inv::closure]
+    Source: 'tests/src/for_loops.rs', lines 21:19-21:26 -/
+@[reducible]
+def copy_arrays_with_inv.closure := Unit
+
+/-- [for_loops::copy_arrays_with_inv::{core::ops::function::Fn<(), bool> for for_loops::copy_arrays_with_inv::closure}::call]:
+    Source: 'tests/src/for_loops.rs', lines 21:19-21:26 -/
+def copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnTupleBool.call
+  (c : copy_arrays_with_inv.closure) (_ : Unit) : Result Bool := do
+  ok true
+
+/-- [for_loops::copy_arrays_with_inv::{core::ops::function::FnMut<(), bool> for for_loops::copy_arrays_with_inv::closure}::call_mut]:
+    Source: 'tests/src/for_loops.rs', lines 21:19-21:26 -/
+def copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnMutTupleBool.call_mut
+  (state : copy_arrays_with_inv.closure) (_ : Unit) :
+  Result (Bool × copy_arrays_with_inv.closure)
+  := do
+  let b ←
+    copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnTupleBool.call state ()
+  ok (b, state)
+
+/-- [for_loops::copy_arrays_with_inv::{core::ops::function::FnOnce<(), bool> for for_loops::copy_arrays_with_inv::closure}::call_once]:
+    Source: 'tests/src/for_loops.rs', lines 21:19-21:26 -/
+def copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnOnceTupleBool.call_once
+  (c : copy_arrays_with_inv.closure) (_ : Unit) : Result Bool := do
+  let (b, _) ←
+    copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnMutTupleBool.call_mut c
+      ()
+  ok b
+
+/-- Trait implementation: [for_loops::copy_arrays_with_inv::{core::ops::function::FnOnce<(), bool> for for_loops::copy_arrays_with_inv::closure}]
+    Source: 'tests/src/for_loops.rs', lines 21:19-21:26 -/
+@[reducible]
+def copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnOnceTupleBool :
+  core.ops.function.FnOnce copy_arrays_with_inv.closure Unit Bool := {
+  call_once :=
+    copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnOnceTupleBool.call_once
+}
+
+/-- Trait implementation: [for_loops::copy_arrays_with_inv::{core::ops::function::FnMut<(), bool> for for_loops::copy_arrays_with_inv::closure}]
+    Source: 'tests/src/for_loops.rs', lines 21:19-21:26 -/
+@[reducible]
+def copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnMutTupleBool :
+  core.ops.function.FnMut copy_arrays_with_inv.closure Unit Bool := {
+  FnOnceInst :=
+    copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnOnceTupleBool
+  call_mut :=
+    copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnMutTupleBool.call_mut
+}
+
+/-- Trait implementation: [for_loops::copy_arrays_with_inv::{core::ops::function::Fn<(), bool> for for_loops::copy_arrays_with_inv::closure}]
+    Source: 'tests/src/for_loops.rs', lines 21:19-21:26 -/
+@[reducible]
+def copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnTupleBool :
+  core.ops.function.Fn copy_arrays_with_inv.closure Unit Bool := {
+  FnMutInst := copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnMutTupleBool
+  call := copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnTupleBool.call
+}
+
 /-- [for_loops::copy_arrays_with_inv]:
-    Source: 'tests/src/for_loops.rs', lines 20:0-25:1 -/
+    Source: 'tests/src/for_loops.rs', lines 20:0-25:1
+    Visibility: public -/
 def copy_arrays_with_inv
   (src : Array Std.U8 256#usize) (dst : Array Std.U8 256#usize) :
   Result (Array Std.U8 256#usize)
   := do
   let mut dst1 := dst
-  for i in ({ start := 0#usize, «end» := 256#usize } : core.ops.range.Range Std.Usize) do
-    -- loop_invariant: true
+  for i
+    in ({ start := 0#usize, «end» := 256#usize }
+    :
+    core.ops.range.Range
+    Std.Usize) do
+  
     let i1 ← Array.index_usize src i
     let a ← Array.update dst1 i i1
     dst1 := a
+    
   return dst1
 
 end for_loops

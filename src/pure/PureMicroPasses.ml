@@ -58,7 +58,7 @@ let passes :
        the Loop node with [for_loop_invariant = Some expr].  Must run before
        [filter_useless] so the call is not eliminated before we see it.
        Only applies when [-lean-for-loops] is active. *)
-    ( Some (fun _ -> !Config.lean_for_loops && backend () = Lean),
+    ( Some (fun _ -> !Config.lean_for_loops && Config.backend () = Lean),
       "detect_loop_invariants",
       detect_loop_invariants );
     (* Filter the useless variables, assignments, function calls, etc. *)
@@ -366,7 +366,7 @@ let apply_passes_to_pure_fun_translations (crate : LlbcAst.crate)
        This must run before decompose_loops so that detected for-loops are
        kept inline in the parent function rather than extracted. *)
     let f =
-      if !Config.lean_for_loops && backend () = Lean then (
+      if !Config.lean_for_loops && Config.backend () = Lean then (
         [%ltrace
           "About to apply: 'detect_for_loops':\n" ^ fun_decl_to_string ctx f];
         refresh_fvar_id_generator ();

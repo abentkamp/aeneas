@@ -83,9 +83,25 @@ let add_type_annotations_to_fun_decl (trans_ctx : trans_ctx)
         let discr = visit hole discr in
         let body = visit_switch_body ty body in
         { e with e = Switch (discr, body) }
-    | Loop _ ->
-        (* Loops should have been eliminated *)
-        [%internal_error] span
+    | Loop loop ->
+        (* Regular loops should have been eliminated by loops_to_fixed_points.
+           Only for-loops (detected by detect_for_loops) are kept as Loop nodes
+           all the way to the extractor. *)
+        if Option.is_none loop.for_loop_iter then [%internal_error] span
+        else
+          (* For-loop: recurse into the loop body expressions without a
+             meaningful type context (use hole) since we don't know how the
+             body interacts with the surrounding type. *)
+          let loop_body_body = visit hole loop.loop_body.loop_body in
+          let loop_body = { loop.loop_body with loop_body = loop_body_body } in
+          let loop_iter =
+            Option.map (visit hole) loop.for_loop_iter
+          in
+          let loop_inv =
+            Option.map (visit hole) loop.for_loop_invariant
+          in
+          { e with e = Loop { loop with loop_body; for_loop_iter = loop_iter;
+                                        for_loop_invariant = loop_inv } }
     | StructUpdate supd ->
         [%ldebug "exploring: " ^ texpr_to_string e];
         (* Some backends need a type annotation here if we create a new structure

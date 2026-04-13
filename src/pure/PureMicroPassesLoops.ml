@@ -3715,20 +3715,31 @@ let decompose_loop_bodies (ctx : ctx) (loops : fun_decl list) :
 
 (** Check if an expression is a call to an Iterator::next method.
 
-    We detect this by looking for a [TraitMethod] reference with method name
-    ["next"]. This is the pattern produced when Rust's [for x in xs] loop
-    is desugared: the compiler generates [Iterator::next] calls in a loop. *)
-let is_iterator_next_call (e : texpr) : bool =
+    By the time this runs (after the simplification micro-passes), Rust's
+    desugared for-loop iterator call can appear in two forms:
+
+    1. [TraitMethod] reference: the function is still a polymorphic trait
+       method call.  Method name "next" is sufficient to identify it.
+
+    2. [FunId (FRegular fid)] reference: the function has been resolved to a
+       concrete implementation.  We look up the function name in [ctx.fun_decls]
+       and check that it ends with [::next] (this covers all Iterator::next
+       concrete impls such as [core::iter::range::...::next]). *)
+let is_iterator_next_call (ctx : ctx) (e : texpr) : bool =
   match opt_destruct_qualif_apps e with
-  | Some
-      ( {
-          id =
-            FunOrOp
-              (Fun (FromLlbc (TraitMethod (_, method_name, _), None)));
-          _;
-        },
-        _ ) ->
-      method_name = "next"
+  | Some ({ id = FunOrOp (Fun (FromLlbc (fn_ptr, None))); _ }, _) -> (
+      match fn_ptr with
+      | TraitMethod (_, method_name, _) -> method_name = "next"
+      | FunId (FRegular fid) -> (
+          match FunDeclId.Map.find_opt fid ctx.fun_decls with
+          | None -> false
+          | Some d ->
+              let name = d.name in
+              let suffix = "::next" in
+              let nlen = String.length name in
+              let slen = String.length suffix in
+              nlen >= slen && String.sub name (nlen - slen) slen = suffix)
+      | _ -> false)
   | _ -> false
 
 (** For a loop node, attempt to detect if it corresponds to a Rust for-loop.
@@ -3748,11 +3759,19 @@ let is_iterator_next_call (e : texpr) : bool =
 
     Returns [Some iter_init] where [iter_init] is the initial iterator value
     from [loop.inputs], or [None] if the pattern is not recognized. *)
-let detect_for_loop_pattern (loop : loop) : texpr option =
-  let body = loop.loop_body.loop_body in
+let detect_for_loop_pattern (ctx : ctx) (loop : loop) : texpr option =
+  (* Skip over pure (non-monadic) let-bindings at the start of the loop body.
+     Aeneas sometimes inserts [let _ = UNIT_METADATA in ...] preambles before
+     the first real statement in a loop. *)
+  let rec skip_pure_lets (e : texpr) : texpr =
+    match e.e with
+    | Let (false (* pure *), _, _, cont) -> skip_pure_lets cont
+    | _ -> e
+  in
+  let body = skip_pure_lets loop.loop_body.loop_body in
   match body.e with
   | Let (true (* monadic *), _bind_pat, next_call, _continuation) ->
-      if not (is_iterator_next_call next_call) then None
+      if not (is_iterator_next_call ctx next_call) then None
       else begin
         (* Gather the FVar IDs of the loop body input patterns *)
         let input_fvars =
@@ -3764,7 +3783,8 @@ let detect_for_loop_pattern (loop : loop) : texpr option =
             loop.loop_body.inputs
         in
         (* Among the args to 'next', find the one that is an FVar matching
-           a loop body input - that is the iterator variable *)
+           a loop body input - that is the iterator variable.
+           Note: FVar nodes may be wrapped in Meta (mplace annotation). *)
         let _fn, args = destruct_apps next_call in
         (* Search from the end since the iterator is typically the last arg *)
         let iter_fvar_opt =
@@ -3773,11 +3793,12 @@ let detect_for_loop_pattern (loop : loop) : texpr option =
               match acc with
               | Some _ -> acc (* already found *)
               | None -> (
-                  match arg.e with
+                  let arg_inner = unmeta arg in
+                  match arg_inner.e with
                   | FVar id
-                    when List.exists (fun fid -> FVarId.equal id fid)
+                    when List.exists (fun fid -> id = fid)
                            input_fvars ->
-                      Some arg
+                      Some arg_inner
                   | _ -> None))
             args None
         in
@@ -3791,7 +3812,7 @@ let detect_for_loop_pattern (loop : loop) : texpr option =
                 match pat.pat with
                 | POpen (fv, _) -> (
                     match iter_arg.e with
-                    | FVar id when FVarId.equal id fv.id -> iter_idx := Some i
+                    | FVar id when id = fv.id -> iter_idx := Some i
                     | _ -> ())
                 | _ -> ())
               loop.loop_body.inputs;
@@ -3812,7 +3833,7 @@ let detect_for_loop_pattern (loop : loop) : texpr option =
     to keep the loop inline (not extract it to a separate function) and
     [loops_to_fixed_points] to leave the [Loop] node intact for the extractor
     to emit as a native Lean [for x in xs do] expression. *)
-let detect_for_loops_visitor (_ctx : ctx) (_def : fun_decl) =
+let detect_for_loops_visitor (ctx : ctx) (_def : fun_decl) =
   object
     inherit [_] map_expr
 
@@ -3820,7 +3841,7 @@ let detect_for_loops_visitor (_ctx : ctx) (_def : fun_decl) =
       if Option.is_some loop.for_loop_iter then
         Loop loop (* Already detected, skip *)
       else
-        match detect_for_loop_pattern loop with
+        match detect_for_loop_pattern ctx loop with
         | None -> Loop loop
         | Some iter_init -> Loop { loop with for_loop_iter = Some iter_init }
   end
@@ -3847,59 +3868,69 @@ let detect_for_loops = lift_expr_map_visitor detect_for_loops_visitor
     a loop invariant annotation. This covers both [aeneas::loop_invariant] and
     user-defined variants in other crates. *)
 
-(** Return [Some inv_expr] if [e] is a call to a [*::loop_invariant] function
-    whose first argument is a thunk [(fun () => inv_body)].  Return [None]
-    otherwise. *)
-let get_loop_invariant_inv (ctx : ctx) (e : texpr) : texpr option =
-  let fn_expr, args = destruct_apps e in
+(** Return [true] if [e] is a call to a function whose name ends with
+    ["loop_invariant"] (e.g. [aeneas::loop_invariant] or any user-defined
+    variant). *)
+let is_loop_invariant_call (ctx : ctx) (e : texpr) : bool =
+  let fn_expr, _ = destruct_apps e in
   match fn_expr.e with
-  | Qualif { id = FunOrOp (Fun (FromLlbc (FunId (FRegular fid), _))); _ } ->
-      let is_inv_fn =
-        match FunDeclId.Map.find_opt fid ctx.fun_decls with
-        | None -> false
-        | Some d ->
-            let name = d.name in
-            let suffix = "loop_invariant" in
-            let nlen = String.length name in
-            let slen = String.length suffix in
-            nlen >= slen && String.sub name (nlen - slen) slen = suffix
-      in
-      if not is_inv_fn then None
-      else begin
-        (* The last argument is the invariant thunk: fun () => inv_body *)
-        match List.rev args with
-        | [] -> None
-        | thunk :: _ -> (
-            match thunk.e with
-            | Lambda (_, body) -> Some body
-            | _ -> None (* non-lambda argument: skip *))
-      end
-  | _ -> None
+  | Qualif { id = FunOrOp (Fun (FromLlbc (FunId (FRegular fid), _))); _ } -> (
+      match FunDeclId.Map.find_opt fid ctx.fun_decls with
+      | None -> false
+      | Some d ->
+          let name = d.name in
+          let suffix = "loop_invariant" in
+          let nlen = String.length name in
+          let slen = String.length suffix in
+          nlen >= slen && String.sub name (nlen - slen) slen = suffix)
+  | _ -> false
+
+(** If [e] is a call to a [*::loop_invariant] function whose last argument
+    is a plain lambda [(fun () => inv_body)], return [Some inv_body].
+    Return [None] when the argument is a reified closure struct (the common
+    case for [|| expr] closures that get desugared by the Rust compiler). *)
+let get_loop_invariant_inv (_ctx : ctx) (e : texpr) : texpr option =
+  let _fn_expr, args = destruct_apps e in
+  match List.rev args with
+  | [] -> None
+  | thunk :: _ -> (
+      match thunk.e with
+      | Lambda (_, body) -> Some body
+      | _ -> None (* reified closure or non-lambda — skip body extraction *))
 
 let detect_loop_invariants_visitor (ctx : ctx) (_def : fun_decl) =
-  object
-    inherit [_] map_expr
+  (* When a [loop_invariant] call is found, we store the invariant body (or
+     [None] if it cannot be extracted from a reified closure) and set
+     [pending] to [true].  We then remove the [loop_invariant] let-binding
+     and visit the continuation.  The NEXT [Loop] node we encounter in the
+     continuation (possibly nested as the bound expression of another Let)
+     is annotated with [for_loop_invariant] and the pending flag is cleared.
 
-    (** Visit in pre-order so we can drop the [loop_invariant] let-binding
-        before recursing into the loop body. *)
+     We use a mutable ref so the flag is shared across the whole visit of
+     the continuation. *)
+  let pending_inv : texpr option option ref = ref None in
+  (* [None]        = no pending invariant
+     [Some None]   = invariant call found but body could not be extracted
+     [Some (Some e)] = invariant call found with body [e] *)
+  object
+    inherit [_] map_expr as super
+
     method! visit_texpr env e =
       match e.e with
-      | Let (_, _, bound, cont) -> (
-          match get_loop_invariant_inv ctx bound with
-          | None -> super#visit_texpr env e
-          | Some inv_expr -> (
-              (* The invariant call must be immediately followed by a Loop *)
-              match cont.e with
-              | Loop loop ->
-                  let new_cont =
-                    { cont with
-                      e =
-                        Loop { loop with for_loop_invariant = Some inv_expr }
-                    }
-                  in
-                  (* Skip the let-binding; visit only the updated loop *)
-                  super#visit_texpr env new_cont
-              | _ -> super#visit_texpr env e))
+      | Let (_, _, bound, cont) when is_loop_invariant_call ctx bound ->
+          (* Remove the loop_invariant let-binding.  Store whatever invariant
+             body we can extract (may be None for reified closures). *)
+          pending_inv := Some (get_loop_invariant_inv ctx bound);
+          let result = super#visit_texpr env cont in
+          (* Safety: clear the flag in case no Loop was found in the cont *)
+          pending_inv := None;
+          result
+      | Loop loop when !pending_inv <> None ->
+          (* This is the loop we were looking for: annotate it. *)
+          let inv_opt = Option.join !pending_inv in
+          pending_inv := None;
+          super#visit_texpr env
+            { e with e = Loop { loop with for_loop_invariant = inv_opt } }
       | _ -> super#visit_texpr env e
   end
 

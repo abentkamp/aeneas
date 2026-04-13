@@ -15,7 +15,8 @@ open Result
     Enables `for i in (range : Range Usize) do body` in Aeneas-generated code. -/
 instance : ForIn Result (core.ops.range.Range Usize) Usize where
   forIn range init f :=
-    loop (fun ⟨r, acc⟩ => do
+    loop (fun p => do
+      let (r, acc) := p
       let (opt, r') ← core.iter.range.IteratorRange.next core.iter.range.StepUsize r
       match opt with
       | none => ok (ControlFlow.done acc)
@@ -24,13 +25,14 @@ instance : ForIn Result (core.ops.range.Range Usize) Usize where
         match step with
         | ForInStep.done acc' => ok (ControlFlow.done acc')
         | ForInStep.yield acc' => ok (ControlFlow.cont (r', acc')))
-    ⟨range, init⟩
+    (range, init)
 
 /-- ForIn instance for slice iterators in the Result monad.
     Enables `for x in (iter : core.slice.iter.Iter T) do body`. -/
 instance {T : Type} : ForIn Result (core.slice.iter.Iter T) T where
   forIn iter init f :=
-    loop (fun ⟨it, acc⟩ => do
+    loop (fun p => do
+      let (it, acc) := p
       let (opt, it') ← core.slice.iter.IteratorSliceIter.next it
       match opt with
       | none => ok (ControlFlow.done acc)
@@ -39,13 +41,14 @@ instance {T : Type} : ForIn Result (core.slice.iter.Iter T) T where
         match step with
         | ForInStep.done acc' => ok (ControlFlow.done acc')
         | ForInStep.yield acc' => ok (ControlFlow.cont (it', acc')))
-    ⟨iter, init⟩
+    (iter, init)
 
 /-- ForIn instance for ChunksExact slice iterators in the Result monad.
     Enables `for chunk in data.chunks_exact(n) do body`. -/
 instance {T : Type} : ForIn Result (core.slice.iter.ChunksExact T) (Slice T) where
   forIn iter init f :=
-    loop (fun ⟨it, acc⟩ => do
+    loop (fun p => do
+      let (it, acc) := p
       let (opt, it') ← core.slice.iter.IteratorChunksExact.next it
       match opt with
       | none => ok (ControlFlow.done acc)
@@ -54,6 +57,6 @@ instance {T : Type} : ForIn Result (core.slice.iter.ChunksExact T) (Slice T) whe
         match step with
         | ForInStep.done acc' => ok (ControlFlow.done acc')
         | ForInStep.yield acc' => ok (ControlFlow.cont (it', acc')))
-    ⟨iter, init⟩
+    (iter, init)
 
 end Aeneas.Std
