@@ -18,18 +18,19 @@ pub fn copy_arrays(src: &[u8; 256], dst: &mut [u8; 256]) {
 
 /// For-loop with a loop-invariant annotation.
 pub fn copy_arrays_with_inv(src: &[u8; 256], dst: &mut [u8; 256]) {
-    loop_invariant(|| true);
     for i in 0usize..256 {
+        loop_invariant(|| true);
         dst[i] = src[i];
     }
 }
 
-/// For-loop with an invariant referencing a mutable counter and a running sum.
+/// For-loop with an invariant referencing the loop counter and a running sum.
+/// The invariant is placed inside the loop, so the loop counter `i` is in scope.
 pub fn sum_with_inv(arr: &[u8; 256]) -> u32 {
     let mut sum: u32 = 0;
     let mut count: usize = 0;
-    loop_invariant(|| (sum as usize) <= count * 255);
     for i in 0usize..256 {
+        loop_invariant(|| (sum as usize) <= i * 255);
         sum += arr[i] as u32;
         count = i + 1;
     }

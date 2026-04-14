@@ -1531,6 +1531,32 @@ let opt_destruct_ret (e : texpr) : texpr option =
     when variant_id = Some result_ok_id -> Some arg
   | _ -> None
 
+(** Traverse through let-bindings and Meta wrappers in [e] looking for
+    [ok v] and return [Some v]. *)
+let rec find_return_in_expr (e : texpr) : texpr option =
+  match opt_destruct_ret e with
+  | Some v -> Some v
+  | None -> (
+      match e.e with
+      | Let (_, _, bound, cont) -> (
+          match find_return_in_expr bound with
+          | Some _ as r -> r
+          | None -> find_return_in_expr cont)
+      | Meta (_, inner) -> find_return_in_expr inner
+      | _ -> None)
+
+(** Return [true] if the expression contains any [FVar] or [BVar] node. *)
+let contains_local_var (e : texpr) : bool =
+  try
+    (object
+       inherit [_] iter_expr
+       method! visit_FVar _ _ = raise Exit
+       method! visit_BVar _ _ = raise Exit
+     end)
+      #visit_texpr () e;
+    false
+  with Exit -> true
+
 (** Check if a *monadic* texpr is guaranteed to always return [ok]. Used by
     [filter_useless] to safely remove [let _ ← e; cont] when [e] can't fail. *)
 let rec texpr_cannot_fail (e : texpr) : bool =

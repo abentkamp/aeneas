@@ -3848,25 +3848,22 @@ let detect_for_loops_visitor (ctx : ctx) (_def : fun_decl) =
 
 let detect_for_loops = lift_expr_map_visitor detect_for_loops_visitor
 
-(** Detect Rust [loop_invariant(|| expr)] calls immediately before a [Loop]
-    node (for-loop), extract the invariant expression, store it in
-    [loop.for_loop_invariant], and remove the [loop_invariant] call.
+(** Detect Rust [loop_invariant(|| expr)] calls as the first statement inside a
+    for-loop body and emit them as [-- loop_invariant: ...] comments in the
+    generated Lean output.
 
-    This pass must run before [filter_useless] so that the call is not
-    eliminated before we can detect it.
+    Detection happens at extraction time in [extract_for_loop_lean] (Extract.ml)
+    rather than here, because storing invariant expressions containing FVars
+    from inside the loop body in the [for_loop_invariant] field of the [Loop]
+    node causes scoping issues when [close_all_fun_body] tries to close them at
+    the wrong de Bruijn scope depth.
 
-    Pattern:
-    {[
-      let _ ← loop_invariant (fun () => inv_expr) in
-      Loop { ... }
-        ~~>
-      Loop { for_loop_invariant = Some inv_expr; ... }
-    ]}
+    [filter_useless] does NOT remove [loop_invariant] calls because
+    [texpr_cannot_fail(App(...))] returns [false], so the calls survive until
+    extraction time.
 
-    We identify [loop_invariant] by the suffix of the debug name of the called
-    function: any function whose name ends with ["loop_invariant"] is treated as
-    a loop invariant annotation. This covers both [aeneas::loop_invariant] and
-    user-defined variants in other crates. *)
+    This pass is kept as a no-op for historical reasons; it may be re-activated
+    or extended in the future. *)
 
 (** Return [true] if [e] is a call to a function whose name ends with
     ["loop_invariant"] (e.g. [aeneas::loop_invariant] or any user-defined
@@ -3885,189 +3882,15 @@ let is_loop_invariant_call (ctx : ctx) (e : texpr) : bool =
           nlen >= slen && String.sub name (nlen - slen) slen = suffix)
   | _ -> false
 
-(** Traverse through let-bindings and Meta wrappers in [e] looking for
-    [ok v] (i.e., [Mk@Result::Ok v]) and return [Some v].
-    Checks the bound expression of each [Let] first, then the continuation. *)
-let rec find_return_in_expr (e : texpr) : texpr option =
-  match opt_destruct_ret e with
-  | Some v -> Some v
-  | None -> (
-      match e.e with
-      | Let (_, _, bound, cont) -> (
-          match find_return_in_expr bound with
-          | Some _ as r -> r
-          | None -> find_return_in_expr cont)
-      | Meta (_, inner) -> find_return_in_expr inner
-      | _ -> None)
-
-(** Return [true] if the expression contains any [FVar] or [BVar] node.
-
-    [FVar] nodes are local to a single function's translation context
-    (opened binders).  [BVar] nodes use de Bruijn indices that are only
-    meaningful within the binder stack of their original function body.
-    Either kind would be meaningless when the expression is transplanted
-    into a different function's extraction context. *)
-let contains_local_var (e : texpr) : bool =
-  try
-    (object
-       inherit [_] iter_expr
-       method! visit_FVar _ _ = raise Exit
-       method! visit_BVar _ _ = raise Exit
-     end)
-      #visit_texpr () e;
-    false
-  with Exit -> true
-
-(** If [e] is a call to a [*::loop_invariant] function whose last argument
-    is a plain lambda [(fun () => inv_body)], return [Some inv_body].
-
-    For the common case of a Rust [|| expr] closure, the closure is
-    desugared by the Rust compiler into a reified zero-capture struct with a
-    [Fn] trait implementation.  In that case the trait instance is passed as
-    an extra generic argument ([fn_expr.generics.trait_refs]) rather than as
-    a direct argument.  We navigate through the [Fn] impl's [call] method to
-    recover the boolean body. *)
-let get_loop_invariant_inv (ctx : ctx) (e : texpr) : texpr option =
-  let fn_expr, args = destruct_apps e in
-  (* Fast path: last explicit argument is a plain lambda *)
-  let try_lambda () =
-    match List.rev args with
-    | [] -> None
-    | thunk :: _ -> (
-        match thunk.e with
-        | Lambda (_, body) -> Some body
-        | _ -> None)
-  in
-  (* Slow path: Fn instance is in [fn_expr.generics.trait_refs].
-     Traverse: trait impl → "call" method → fun_decl body → arg of Return. *)
-  let try_trait_impl () =
-    match fn_expr.e with
-    | Qualif { generics = { trait_refs; _ }; _ } -> (
-        match trait_refs with
-        | [] -> None
-        | fn_inst :: _ -> (
-            match fn_inst.trait_id with
-            | TraitImpl (impl_id, _) -> (
-                match TraitImplId.Map.find_opt impl_id ctx.trait_impls with
-                | None -> None
-                | Some impl ->
-                    let call_opt =
-                      List.find_opt (fun (name, _) -> name = "call")
-                        impl.methods
-                    in
-                    (match call_opt with
-                    | None -> None
-                    | Some (_, call_binder) ->
-                        let call_fid = call_binder.binder_value.fun_id in
-                        (* Fast path: if the call function body returns a
-                           FVar-free expression (e.g., [ok true] for [|| true]),
-                           we can return the body directly rather than building a
-                           call expression. *)
-                        let fvar_free_body =
-                          match
-                            FunDeclId.Map.find_opt call_fid ctx.fun_decls
-                          with
-                          | None -> None
-                          | Some d -> (
-                              match d.body with
-                              | None -> None
-                              | Some fb -> (
-                                  match find_return_in_expr fb.body with
-                                  | None -> None
-                                  | Some v ->
-                                      if contains_local_var v then None
-                                      else Some v))
-                        in
-                        (match fvar_free_body with
-                        | Some v -> Some v
-                        | None ->
-                            (* Slow path: build App(App(call_fn, closure_arg), unit)
-                               using variables from the OUTER context ([args]).
-                               This avoids returning an expression with FVarIds
-                               local to the [call] body, which are meaningless in
-                               the extraction context of the outer function. *)
-                            (match List.rev args with
-                            | [] -> None
-                            | closure_arg :: _ ->
-                                let result_bool_ty =
-                                  mk_result_ty (TLiteral TBool)
-                                in
-                                let call_fn_ty =
-                                  TArrow
-                                    ( closure_arg.ty,
-                                      TArrow (mk_unit_ty, result_bool_ty) )
-                                in
-                                let call_qualif_id =
-                                  FunOrOp
-                                    (Fun
-                                       (FromLlbc
-                                          (FunId (FRegular call_fid), None)))
-                                in
-                                let call_fn_expr =
-                                  {
-                                    e =
-                                      Qualif
-                                        {
-                                          id = call_qualif_id;
-                                          generics = empty_generic_args;
-                                        };
-                                    ty = call_fn_ty;
-                                  }
-                                in
-                                let app1 =
-                                  {
-                                    e = App (call_fn_expr, closure_arg);
-                                    ty = TArrow (mk_unit_ty, result_bool_ty);
-                                  }
-                                in
-                                let app2 =
-                                  {
-                                    e = App (app1, mk_unit_texpr);
-                                    ty = result_bool_ty;
-                                  }
-                                in
-                                Some app2))))
-            | _ -> None))
-    | _ -> None
-  in
-  match try_lambda () with
-  | Some _ as result -> result
-  | None -> try_trait_impl ()
-
-let detect_loop_invariants_visitor (ctx : ctx) (_def : fun_decl) =
-  (* When a [loop_invariant] call is found, we store the invariant body (or
-     [None] if it cannot be extracted from a reified closure) and set
-     [pending] to [true].  We then remove the [loop_invariant] let-binding
-     and visit the continuation.  The NEXT [Loop] node we encounter in the
-     continuation (possibly nested as the bound expression of another Let)
-     is annotated with [for_loop_invariant] and the pending flag is cleared.
-
-     We use a mutable ref so the flag is shared across the whole visit of
-     the continuation. *)
-  let pending_inv : texpr option option ref = ref None in
-  (* [None]        = no pending invariant
-     [Some None]   = invariant call found but body could not be extracted
-     [Some (Some e)] = invariant call found with body [e] *)
+let detect_loop_invariants_visitor (_ctx : ctx) (_def : fun_decl) =
+  (* Loop-invariant annotation is detected at extraction time in
+     [extract_for_loop_lean] (Extract.ml), not here.  Storing invariant
+     expressions containing FVars from inside the loop body in the
+     [for_loop_invariant] field of the [Loop] node causes scoping issues when
+     [close_all_fun_body] tries to close them at the wrong scope depth.
+     This visitor is therefore a no-op. *)
   object
-    inherit [_] map_expr as super
-
-    method! visit_texpr env e =
-      match e.e with
-      | Let (_, _, bound, cont) when is_loop_invariant_call ctx bound ->
-          (* Remove the loop_invariant let-binding.  Store whatever invariant
-             body we can extract (may be None for reified closures). *)
-          pending_inv := Some (get_loop_invariant_inv ctx bound);
-          let result = super#visit_texpr env cont in
-          (* Safety: clear the flag in case no Loop was found in the cont *)
-          pending_inv := None;
-          result
-      | Loop loop when !pending_inv <> None ->
-          (* This is the loop we were looking for: annotate it. *)
-          let inv_opt = Option.join !pending_inv in
-          pending_inv := None;
-          super#visit_texpr env
-            { e with e = Loop { loop with for_loop_invariant = inv_opt } }
-      | _ -> super#visit_texpr env e
+    inherit [_] map_expr
   end
 
 let detect_loop_invariants = lift_expr_map_visitor detect_loop_invariants_visitor

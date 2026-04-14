@@ -1862,6 +1862,143 @@ and extract_for_loop_lean (span : Meta.span) (ctx : extraction_ctx)
   (* 5. Decompose Some body: a sequence of lets + final LoopResult.cont(arg) *)
   let lets, final_expr = raw_destruct_lets some_body in
   let final_expr = strip_meta final_expr in
+  (* 5b. Detect [loop_invariant(|| expr)] as the first statement in the
+     for-loop body (possibly after a leading pure let for closure-struct
+     creation).  Detection happens here at extraction time so that the FVars
+     in the invariant expression (e.g. [sum], [i]) are already registered in
+     the extraction context and render with readable names.
+
+     We use [find_return_in_expr] + [contains_local_var] from PureUtils to
+     inspect the [call] method body and determine the invariant expression. *)
+  let is_inv_call (e : texpr) : bool =
+    let fn_expr, _ = destruct_apps e in
+    match fn_expr.e with
+    | Qualif { id = FunOrOp (Fun (FromLlbc (FunId (FRegular fid), _))); _ } ->
+        (match FunDeclId.Map.find_opt fid ctx.trans_funs with
+        | None -> false
+        | Some trans ->
+            let name = trans.f.name in
+            let suffix = "loop_invariant" in
+            let nlen = String.length name in
+            let slen = String.length suffix in
+            nlen >= slen && String.sub name (nlen - slen) slen = suffix)
+    | _ -> false
+  in
+  let get_inv_texpr (e : texpr) : texpr option =
+    let fn_expr, args = destruct_apps e in
+    (* Fast path: last explicit arg is a plain lambda *)
+    let try_lambda () =
+      match List.rev args with
+      | [] -> None
+      | thunk :: _ -> (
+          match thunk.e with
+          | Lambda (_, body) -> Some body
+          | _ -> None)
+    in
+    (* Slow path: Fn instance is in fn_expr.generics.trait_refs.
+       Traverse: trait impl → "call" method → fun_decl body → arg of Return. *)
+    let try_trait_impl () =
+      match fn_expr.e with
+      | Qualif { generics = { trait_refs; _ }; _ } -> (
+          match trait_refs with
+          | [] -> None
+          | fn_inst :: _ -> (
+              match fn_inst.trait_id with
+              | TraitImpl (impl_id, _) -> (
+                  match
+                    TraitImplId.Map.find_opt impl_id ctx.trans_trait_impls
+                  with
+                  | None -> None
+                  | Some impl -> (
+                      let call_opt =
+                        List.find_opt (fun (name, _) -> name = "call")
+                          impl.methods
+                      in
+                      match call_opt with
+                      | None -> None
+                      | Some (_, call_binder) -> (
+                          let call_fid = call_binder.binder_value.fun_id in
+                          (* If the call body returns a FVar/BVar-free expression
+                             (e.g. [ok true] for [|| true]), emit that directly. *)
+                          let fvar_free_body =
+                            match
+                              FunDeclId.Map.find_opt call_fid ctx.trans_funs
+                            with
+                            | None -> None
+                            | Some call_trans -> (
+                                match call_trans.f.body with
+                                | None -> None
+                                | Some fb -> (
+                                    match find_return_in_expr fb.body with
+                                    | None -> None
+                                    | Some v ->
+                                        if contains_local_var v then None
+                                        else Some v))
+                          in
+                          match fvar_free_body with
+                          | Some v -> Some v
+                          | None ->
+                              (* Build [App(App(call_fn, closure_arg), ())] using
+                                 [closure_arg] from the outer [loop_invariant]
+                                 call arguments.  These FVars are from the
+                                 opened function body and are already registered
+                                 in the extraction context. *)
+                              (match List.rev args with
+                              | [] -> None
+                              | closure_arg :: _ ->
+                                  let result_bool_ty =
+                                    mk_result_ty (TLiteral TBool)
+                                  in
+                                  let call_fn_ty =
+                                    TArrow
+                                      ( closure_arg.ty,
+                                        TArrow (mk_unit_ty, result_bool_ty) )
+                                  in
+                                  let call_qualif_id =
+                                    FunOrOp
+                                      (Fun
+                                         (FromLlbc
+                                            (FunId (FRegular call_fid), None)))
+                                  in
+                                  let call_fn_expr =
+                                    {
+                                      e =
+                                        Qualif
+                                          {
+                                            id = call_qualif_id;
+                                            generics = empty_generic_args;
+                                          };
+                                      ty = call_fn_ty;
+                                    }
+                                  in
+                                  let app1 =
+                                    {
+                                      e = App (call_fn_expr, closure_arg);
+                                      ty = TArrow (mk_unit_ty, result_bool_ty);
+                                    }
+                                  in
+                                  Some
+                                    {
+                                      e = App (app1, mk_unit_texpr);
+                                      ty = result_bool_ty;
+                                    }))))
+              | _ -> None))
+      | _ -> None
+    in
+    match try_lambda () with
+    | Some _ as result -> result
+    | None -> try_trait_impl ()
+  in
+  (* Scan [lets] for an invariant call: optionally preceded by a single pure
+     let (the closure-struct creation), then a monadic [loop_invariant] call. *)
+  let inv_opt, lets =
+    match lets with
+    | (false, _, _) :: (true, _, inv_call) :: rest when is_inv_call inv_call ->
+        (get_inv_texpr inv_call, rest)
+    | (true, _, inv_call) :: rest when is_inv_call inv_call ->
+        (get_inv_texpr inv_call, rest)
+    | _ -> (None, lets)
+  in
   (* Detect LoopResult.cont(arg) and extract the per-input arguments *)
   let cont_args =
     let f, args = destruct_apps final_expr in
@@ -1936,8 +2073,11 @@ and extract_for_loop_lean (span : Meta.span) (ctx : extraction_ctx)
      `for` keyword. *)
   F.pp_open_vbox fmt ctx.indent_incr;
   F.pp_print_cut fmt ();
-  (* Emit optional loop-invariant annotation as a Lean comment *)
-  (match loop.for_loop_invariant with
+  (* Emit optional loop-invariant annotation as a Lean comment.
+     [inv_opt] was populated by scanning [lets] above for a [loop_invariant]
+     call; at this point [ctx] already contains the element variable (e.g. [i])
+     and state variables (e.g. [sum]), so FVars render with readable names. *)
+  (match inv_opt with
   | None -> ()
   | Some inv_expr ->
       F.pp_print_string fmt "-- loop_invariant: ";

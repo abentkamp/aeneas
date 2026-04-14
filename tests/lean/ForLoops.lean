@@ -42,18 +42,18 @@ def copy_arrays
   return dst1
 
 /-- [for_loops::copy_arrays_with_inv::closure]
-    Source: 'tests/src/for_loops.rs', lines 21:19-21:26 -/
+    Source: 'tests/src/for_loops.rs', lines 22:23-22:30 -/
 @[reducible]
 def copy_arrays_with_inv.closure := Unit
 
 /-- [for_loops::copy_arrays_with_inv::{core::ops::function::Fn<(), bool> for for_loops::copy_arrays_with_inv::closure}::call]:
-    Source: 'tests/src/for_loops.rs', lines 21:19-21:26 -/
+    Source: 'tests/src/for_loops.rs', lines 22:23-22:30 -/
 def copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnTupleBool.call
   (c : copy_arrays_with_inv.closure) (_ : Unit) : Result Bool := do
   ok true
 
 /-- [for_loops::copy_arrays_with_inv::{core::ops::function::FnMut<(), bool> for for_loops::copy_arrays_with_inv::closure}::call_mut]:
-    Source: 'tests/src/for_loops.rs', lines 21:19-21:26 -/
+    Source: 'tests/src/for_loops.rs', lines 22:23-22:30 -/
 def copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnMutTupleBool.call_mut
   (state : copy_arrays_with_inv.closure) (_ : Unit) :
   Result (Bool × copy_arrays_with_inv.closure)
@@ -63,7 +63,7 @@ def copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnMutTupleBool.call_mut
   ok (b, state)
 
 /-- [for_loops::copy_arrays_with_inv::{core::ops::function::FnOnce<(), bool> for for_loops::copy_arrays_with_inv::closure}::call_once]:
-    Source: 'tests/src/for_loops.rs', lines 21:19-21:26 -/
+    Source: 'tests/src/for_loops.rs', lines 22:23-22:30 -/
 def copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnOnceTupleBool.call_once
   (c : copy_arrays_with_inv.closure) (_ : Unit) : Result Bool := do
   let (b, _) ←
@@ -72,7 +72,7 @@ def copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnOnceTupleBool.call_once
   ok b
 
 /-- Trait implementation: [for_loops::copy_arrays_with_inv::{core::ops::function::FnOnce<(), bool> for for_loops::copy_arrays_with_inv::closure}]
-    Source: 'tests/src/for_loops.rs', lines 21:19-21:26 -/
+    Source: 'tests/src/for_loops.rs', lines 22:23-22:30 -/
 @[reducible]
 def copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnOnceTupleBool :
   core.ops.function.FnOnce copy_arrays_with_inv.closure Unit Bool := {
@@ -81,7 +81,7 @@ def copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnOnceTupleBool :
 }
 
 /-- Trait implementation: [for_loops::copy_arrays_with_inv::{core::ops::function::FnMut<(), bool> for for_loops::copy_arrays_with_inv::closure}]
-    Source: 'tests/src/for_loops.rs', lines 21:19-21:26 -/
+    Source: 'tests/src/for_loops.rs', lines 22:23-22:30 -/
 @[reducible]
 def copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnMutTupleBool :
   core.ops.function.FnMut copy_arrays_with_inv.closure Unit Bool := {
@@ -92,7 +92,7 @@ def copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnMutTupleBool :
 }
 
 /-- Trait implementation: [for_loops::copy_arrays_with_inv::{core::ops::function::Fn<(), bool> for for_loops::copy_arrays_with_inv::closure}]
-    Source: 'tests/src/for_loops.rs', lines 21:19-21:26 -/
+    Source: 'tests/src/for_loops.rs', lines 22:23-22:30 -/
 @[reducible]
 def copy_arrays_with_inv.closure.Insts.CoreOpsFunctionFnTupleBool :
   core.ops.function.Fn copy_arrays_with_inv.closure Unit Bool := {
@@ -122,11 +122,11 @@ def copy_arrays_with_inv
   return dst1
 
 /-- [for_loops::sum_with_inv::closure]
-    Source: 'tests/src/for_loops.rs', lines 31:19-31:51 -/
+    Source: 'tests/src/for_loops.rs', lines 33:23-33:51 -/
 def sum_with_inv.closure := Std.U32 × Std.Usize
 
 /-- [for_loops::sum_with_inv::{core::ops::function::Fn<(), bool> for for_loops::sum_with_inv::closure<0, 1>}::call]:
-    Source: 'tests/src/for_loops.rs', lines 31:19-31:51 -/
+    Source: 'tests/src/for_loops.rs', lines 33:23-33:51 -/
 def sum_with_inv.closure.Insts.CoreOpsFunctionFnTupleBool.call
   (c : sum_with_inv.closure) (_ : Unit) : Result Bool := do
   let (i, i1) := c
@@ -135,7 +135,7 @@ def sum_with_inv.closure.Insts.CoreOpsFunctionFnTupleBool.call
   ok (i2 <= i3)
 
 /-- [for_loops::sum_with_inv::{core::ops::function::FnMut<(), bool> for for_loops::sum_with_inv::closure<0, 1>}::call_mut]:
-    Source: 'tests/src/for_loops.rs', lines 31:19-31:51 -/
+    Source: 'tests/src/for_loops.rs', lines 33:23-33:51 -/
 def sum_with_inv.closure.Insts.CoreOpsFunctionFnMutTupleBool.call_mut
   (state : sum_with_inv.closure) (_ : Unit) :
   Result (Bool × sum_with_inv.closure)
@@ -144,7 +144,7 @@ def sum_with_inv.closure.Insts.CoreOpsFunctionFnMutTupleBool.call_mut
   ok (b, state)
 
 /-- [for_loops::sum_with_inv::{core::ops::function::FnOnce<(), bool> for for_loops::sum_with_inv::closure<0, 1>}::call_once]:
-    Source: 'tests/src/for_loops.rs', lines 31:19-31:51 -/
+    Source: 'tests/src/for_loops.rs', lines 33:23-33:51 -/
 def sum_with_inv.closure.Insts.CoreOpsFunctionFnOnceTupleBool.call_once
   (c : sum_with_inv.closure) (_ : Unit) : Result Bool := do
   let (b, _) ←
@@ -152,7 +152,7 @@ def sum_with_inv.closure.Insts.CoreOpsFunctionFnOnceTupleBool.call_once
   ok b
 
 /-- Trait implementation: [for_loops::sum_with_inv::{core::ops::function::FnOnce<(), bool> for for_loops::sum_with_inv::closure<0, 1>}]
-    Source: 'tests/src/for_loops.rs', lines 31:19-31:51 -/
+    Source: 'tests/src/for_loops.rs', lines 33:23-33:51 -/
 @[reducible]
 def sum_with_inv.closure.Insts.CoreOpsFunctionFnOnceTupleBool :
   core.ops.function.FnOnce sum_with_inv.closure Unit Bool := {
@@ -161,7 +161,7 @@ def sum_with_inv.closure.Insts.CoreOpsFunctionFnOnceTupleBool :
 }
 
 /-- Trait implementation: [for_loops::sum_with_inv::{core::ops::function::FnMut<(), bool> for for_loops::sum_with_inv::closure<0, 1>}]
-    Source: 'tests/src/for_loops.rs', lines 31:19-31:51 -/
+    Source: 'tests/src/for_loops.rs', lines 33:23-33:51 -/
 @[reducible]
 def sum_with_inv.closure.Insts.CoreOpsFunctionFnMutTupleBool :
   core.ops.function.FnMut sum_with_inv.closure Unit Bool := {
@@ -170,7 +170,7 @@ def sum_with_inv.closure.Insts.CoreOpsFunctionFnMutTupleBool :
 }
 
 /-- Trait implementation: [for_loops::sum_with_inv::{core::ops::function::Fn<(), bool> for for_loops::sum_with_inv::closure<0, 1>}]
-    Source: 'tests/src/for_loops.rs', lines 31:19-31:51 -/
+    Source: 'tests/src/for_loops.rs', lines 33:23-33:51 -/
 @[reducible]
 def sum_with_inv.closure.Insts.CoreOpsFunctionFnTupleBool :
   core.ops.function.Fn sum_with_inv.closure Unit Bool := {
@@ -179,7 +179,7 @@ def sum_with_inv.closure.Insts.CoreOpsFunctionFnTupleBool :
 }
 
 /-- [for_loops::sum_with_inv]:
-    Source: 'tests/src/for_loops.rs', lines 28:0-37:1
+    Source: 'tests/src/for_loops.rs', lines 29:0-38:1
     Visibility: public -/
 def sum_with_inv (arr : Array Std.U8 256#usize) : Result Std.U32 := do
   let mut sum := 0#u32
@@ -190,7 +190,7 @@ def sum_with_inv (arr : Array Std.U8 256#usize) : Result Std.U32 := do
     core.ops.range.Range
     Std.Usize) do
   
-    -- loop_invariant: sum_with_inv.closure.Insts.CoreOpsFunctionFnTupleBool.call (0#u32, 0#usize) ()
+    -- loop_invariant: sum_with_inv.closure.Insts.CoreOpsFunctionFnTupleBool.call (sum, i) ()
     let i1 ← Array.index_usize arr i
     let i2 ← lift (UScalar.cast .U32 i1)
     let sum1 ← sum + i2

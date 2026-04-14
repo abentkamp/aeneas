@@ -54,9 +54,10 @@ let passes :
     ( Some (fun _ -> !Config.merge_let_app_decompose_tuple),
       "merge_let_app_then_decompose_tuple",
       merge_let_app_then_decompose_tuple );
-    (* Detect [loop_invariant(|| expr)] calls before for-loops and annotate
-       the Loop node with [for_loop_invariant = Some expr].  Must run before
-       [filter_useless] so the call is not eliminated before we see it.
+    (* No-op pass: [loop_invariant] detection now happens at extraction time
+       in [extract_for_loop_lean] (Extract.ml), which avoids scoping issues
+       when closing FVars from inside the loop body.  The pass is kept in the
+       list so it can be re-activated if needed.
        Only applies when [-lean-for-loops] is active. *)
     ( Some (fun _ -> !Config.lean_for_loops && Config.backend () = Lean),
       "detect_loop_invariants",
