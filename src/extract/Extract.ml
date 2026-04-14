@@ -2062,6 +2062,11 @@ and extract_for_loop_lean (span : Meta.span) (ctx : extraction_ctx)
      extractor to parenthesise if needed; for a type-annotated struct it is
      already parenthesised. *)
   extract_texpr span ctx fmt ~inside:true ~inside_do:false iter_init;
+  (match inv_opt with
+  | None -> ()
+  | Some inv_expr ->
+      F.pp_print_string fmt " where ";
+      extract_texpr span ctx fmt ~inside:true ~inside_do:false inv_expr);
   F.pp_print_string fmt " do";
   F.pp_close_box fmt ();
   F.pp_close_box fmt ();
@@ -2073,32 +2078,6 @@ and extract_for_loop_lean (span : Meta.span) (ctx : extraction_ctx)
      `for` keyword. *)
   F.pp_open_vbox fmt ctx.indent_incr;
   F.pp_print_cut fmt ();
-  (* Emit optional loop-invariant annotation as a Lean comment.
-     [inv_opt] was populated by scanning [lets] above for a [loop_invariant]
-     call; at this point [ctx] already contains the element variable (e.g. [i])
-     and state variables (e.g. [sum]), so FVars render with readable names. *)
-  (match inv_opt with
-  | None -> ()
-  | Some inv_expr ->
-      F.pp_print_string fmt "-- loop_invariant: ";
-      (* Use a fresh buffer so the invariant is emitted on one line.
-         We open an explicit horizontal box so that pp_print_space always
-         yields a space (never a newline), then strip the trailing newline
-         that pp_print_flush appends. *)
-      let inv_buf = Buffer.create 64 in
-      let inv_fmt = F.formatter_of_buffer inv_buf in
-      F.pp_open_hbox inv_fmt ();
-      extract_texpr span ctx inv_fmt ~inside:false ~inside_do:false inv_expr;
-      F.pp_close_box inv_fmt ();
-      F.pp_print_flush inv_fmt ();
-      let inv_str = Buffer.contents inv_buf in
-      let inv_str =
-        if String.length inv_str > 0 && inv_str.[String.length inv_str - 1] = '\n'
-        then String.sub inv_str 0 (String.length inv_str - 1)
-        else inv_str
-      in
-      F.pp_print_string fmt inv_str;
-      F.pp_print_space fmt ());
   (* Let-bindings from the Some branch body *)
   let ctx =
     List.fold_left

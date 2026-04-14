@@ -112,9 +112,8 @@ def copy_arrays_with_inv
     in ({ start := 0#usize, «end» := 256#usize }
     :
     core.ops.range.Range
-    Std.Usize) do
+    Std.Usize) where true do
   
-    -- loop_invariant: true
     let i1 ← Array.index_usize src i
     let a ← Array.update dst1 i i1
     dst1 := a
@@ -188,9 +187,11 @@ def sum_with_inv (arr : Array Std.U8 256#usize) : Result Std.U32 := do
     in ({ start := 0#usize, «end» := 256#usize }
     :
     core.ops.range.Range
-    Std.Usize) do
+    Std.Usize) where (sum_with_inv.closure.Insts.CoreOpsFunctionFnTupleBool.call
+    (sum,
+    i)
+    ()) do
   
-    -- loop_invariant: sum_with_inv.closure.Insts.CoreOpsFunctionFnTupleBool.call (sum, i) ()
     let i1 ← Array.index_usize arr i
     let i2 ← lift (UScalar.cast .U32 i1)
     let sum1 ← sum + i2
