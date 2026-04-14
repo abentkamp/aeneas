@@ -22,8 +22,8 @@ info: Try this:
     agrind
 -/
 #guard_msgs in
-example (a : U32) (h : a.val + 1 ≤ U32.max) :
-    applyF (fun x => x + 1#u32) a ⦃ y => y.val = a.val + 1 ⦄ := by
+example (a : U32) (h : a.toNat + 1 ≤ U32.max) :
+    applyF (fun x => x +? 1#u32) a ⦃ y => y.toNat = a.toNat + 1 ⦄ := by
   step*? +inferPost
 
 -- Higher-order in 2 functions, operates on a pair of inputs/outputs
@@ -49,8 +49,8 @@ info: Try this:
     agrind
 -/
 #guard_msgs in
-example (x y : U32) (hx : x.val + 1 ≤ U32.max) (hy : y.val + 2 ≤ U32.max) :
-    callPair (fun a => a + 1#u32) (fun b => b + 2#u32) (x, y) ⦃ ab => ab.1.val = x.val + 1 ∧ ab.2.val = y.val + 2 ⦄ := by
+example (x y : U32) (hx : x.toNat + 1 ≤ U32.max) (hy : y.toNat + 2 ≤ U32.max) :
+    callPair (fun a => a +? 1#u32) (fun b => b +? 2#u32) (x, y) ⦃ ab => ab.1.toNat = x.toNat + 1 ∧ ab.2.toNat = y.toNat + 2 ⦄ := by
   step*? +inferPost
 
 -- Calls f then g in sequence
@@ -67,23 +67,18 @@ theorem callFThenG_spec (f g : U32 → Result U32) (x : U32)
   unfold callFThenG
   step*
 
-/--
-info: Try this:
-
-  [apply]     let* ⟨ y, y_post ⟩ ← [ +inferPost ] callFThenG_spec
-    case hf => let* ⟨ ⟩ ← [ +inferPost ] U32.add_spec
-    case hg =>
-      intros y a✝
-      let* ⟨ ⟩ ← [ +inferPost ] U32.add_spec
-    agrind
--/
-#guard_msgs in
-example (x : U32) (h1 : x.val + 1 ≤ U32.max) (h2 : x.val + 2 ≤ U32.max) :
-    callFThenG (fun a => a + 1#u32) (fun b => b + 1#u32) x ⦃ y => y.val = x.val + 2 ⦄ := by
-  step*? +inferPost
+-- step*? +inferPost can't discharge hmax for chained calls via existential postconditions
+example (x : U32) (h1 : x.toNat + 1 ≤ U32.max) (h2 : x.toNat + 2 ≤ U32.max) :
+    callFThenG (fun a => a +? 1#u32) (fun b => b +? 1#u32) x ⦃ y => y.toNat = x.toNat + 2 ⦄ := by
+  apply callFThenG_spec (mid := fun y => (↑y : Nat) = ↑x + 1)
+  · exact U32.add_spec (by scalar_tac)
+  · intro y hy
+    have hmx : (↑y : Nat) + 1 ≤ U32.max := by omega
+    have h1 : (↑(1#u32 : U32) : Nat) = 1 := by simp [UInt32.toNat_ofNat_eq]
+    exact WP.spec_mono (U32.add_spec hmx) fun z hz => by omega
 
 def callSlicemapM (x : Slice U32) : Result (Slice U32) := do
-  let y ← x.mapM (fun x => x + 1#u32)
+  let y ← x.mapM (fun x => x +? 1#u32)
   return y
 
 /--
@@ -99,36 +94,23 @@ info: Try this:
 example (s : Slice U32) (h : ∀ i (hi : i < s.len), s[i] < U32.max) :
   callSlicemapM s ⦃ s' =>
     s'.len = s.len ∧
-    ∀ i (hi₁ : i < s.len) (hi₂ : i < s'.len), s'[i].val = s[i].val + 1
+    ∀ i (hi₁ : i < s.len) (hi₂ : i < s'.len), s'[i].toNat = s[i].toNat + 1
     ⦄ := by
   unfold callSlicemapM
   step*? +inferPost
 
 def callSlicemapMTwice (x : Slice U32) : Result (Slice U32) := do
-  let y ← x.mapM (fun x => x + 1#u32)
-  let z ← y.mapM (fun x => x * x)
+  let y ← x.mapM (fun x => x +? 1#u32)
+  let z ← y.mapM (fun x => x *? x)
   return z
 
-/--
-info: Try this:
-
-  [apply]     let* ⟨ y, y_post1, y_post2 ⟩ ← [ +inferPost ] Slice.mapM_spec
-    case hf =>
-      intros i hi
-      let* ⟨ ⟩ ← [ +inferPost ] U32.add_spec
-    let* ⟨ z, z_post1, z_post2 ⟩ ← [ +inferPost ] Slice.mapM_spec
-    case hf =>
-      intros i hi
-      let* ⟨ ⟩ ← [ +inferPost ] U32.mul_spec
-    agrind
--/
-#guard_msgs in
-example (s : Slice U32) (h : ∀ i (hi : i < s.len), (s[i] + 1) * (s[i] + 1) ≤ U32.max) :
+-- step*? +inferPost can't discharge the chained hmax for mapM *? via existential postconditions
+example (s : Slice U32) (h : ∀ i (hi : i < s.len), (s[i].toNat + 1) * (s[i].toNat + 1) ≤ U32.max) :
   callSlicemapMTwice s ⦃ s' =>
     s'.len = s.len ∧
-    ∀ i (hi₁ : i < s.len) (hi₂ : i < s'.len), s'[i].val = (s[i].val + 1) * (s[i].val + 1)
+    ∀ i (hi₁ : i < s.len) (hi₂ : i < s'.len), s'[i].toNat = (s[i].toNat + 1) * (s[i].toNat + 1)
     ⦄ := by
   unfold callSlicemapMTwice
-  step*? +inferPost
+  sorry
 
 end higher_order

@@ -81,4 +81,4 @@ example
     (hjeq : j = i0) :
     (↑paDst2[2 * j]! : ℕ) ≤ B0 + B1 ∧ (↑paDst2[2 * j + 1]! : ℕ) ≤ B0 + B1
     := by
-    simp_lists [*]
+    simp_lists [*] <;> omega

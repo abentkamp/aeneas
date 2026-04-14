@@ -47,15 +47,17 @@ local macro_rules
       I8.rMin, I8.min, I16.rMin, I16.min, I32.rMin, I32.min,
       I64.rMin, I64.min, I128.rMin, I128.min,
       I8.numBits, I16.numBits, I32.numBits, I64.numBits, I128.numBits, Isize.numBits,
+      UScalarTy.numBits, IScalarTy.numBits,
       I8.size, I16.size, I32.size, I64.size, I128.size, Isize.size,
       UScalar.size, IScalar.size,
       UScalar.cMax, IScalar.cMin, IScalar.cMax])
 
 
 theorem Usize.max_succ_eq_pow : Usize.max + 1 = 2^System.Platform.numBits := by
-  simp [Usize.max, Usize.numBits]
+  simp [Usize.max, Usize.numBits, UScalarTy.numBits]
   have : 0 < 2^System.Platform.numBits := by simp
   omega
+
 
 @[scalar_tac Usize.max]
 theorem Usize.cMax_bound : UScalar.cMax .Usize ≤ Usize.max ∧ Usize.max + 1 = 2^System.Platform.numBits := by
@@ -79,6 +81,7 @@ grind_pattern Usize.size_scalarTac_eq => Usize.size
 grind_pattern [agrind] Usize.size_scalarTac_eq => Usize.size
 
 abbrev Usize.maxAbbrevPow := 2^System.Platform.numBits
+
 @[scalar_tac Usize.maxAbbrevPow]
 theorem Usize.cMax_bound' : UScalar.cMax .Usize ≤ Usize.max ∧ Usize.max + 1 = 2^System.Platform.numBits := Usize.cMax_bound
 
@@ -91,6 +94,26 @@ theorem Usize.cMax_bound'' : UScalar.cMax .Usize ≤ Usize.max ∧ Usize.max + 1
 
 grind_pattern Usize.cMax_bound'' => Usize.maxAbbrevPow'
 grind_pattern [agrind] Usize.cMax_bound'' => Usize.maxAbbrevPow'
+
+@[scalar_tac Usize.maxAbbrevPow]
+theorem Usize.max_lt_pow' : Usize.max < 2^System.Platform.numBits := by
+  simp [Usize.max, Usize.numBits]
+
+grind_pattern Usize.max_lt_pow' => Usize.maxAbbrevPow
+
+/- Trigger on `2^UScalarTy.Usize.numBits` (which is definitionally `2^System.Platform.numBits`
+   at reducible transparency but omega treats them as distinct atoms). Adding this equality
+   to context lets omega bridge the two forms. -/
+abbrev Usize.maxAbbrevPow2 : Nat := 2^UScalarTy.Usize.numBits
+
+@[scalar_tac Usize.maxAbbrevPow2]
+theorem Usize.UScalarTy_numBits_pow_eq : (2 : Nat)^UScalarTy.Usize.numBits = Usize.max + 1 := by
+  have h := Usize.cMax_bound.2
+  simp only [UScalarTy.numBits]
+  omega
+
+grind_pattern Usize.UScalarTy_numBits_pow_eq => Usize.maxAbbrevPow2
+grind_pattern [agrind] Usize.UScalarTy_numBits_pow_eq => Usize.maxAbbrevPow2
 
 @[scalar_tac Isize.min]
 theorem Isize.cMin_bound : Isize.min ≤ IScalar.cMin .Isize ∧ Isize.min = - 2^(System.Platform.numBits - 1) := by
@@ -244,25 +267,48 @@ attribute [scalar_tac_simps]
   -- Int.subNatNat is very annoying - TODO: there is probably something more general thing to do
   Int.subNatNat_eq_coe
 
-@[scalar_tac x.val]
+@[scalar_tac x.toNat]
 theorem UScalar.bounds {ty : UScalarTy} (x : UScalar ty) :
-  x.val ≤ UScalar.max ty := by
+  x.toNat ≤ UScalar.max ty := by
   simp [UScalar.max]
   have := x.hBounds
   omega
 
-grind_pattern UScalar.bounds => UScalar.val x
-grind_pattern [agrind] UScalar.bounds => UScalar.val x
+grind_pattern UScalar.bounds => UScalar.toNat x
+grind_pattern [agrind] UScalar.bounds => UScalar.toNat x
 
-@[scalar_tac x.val]
+/-! ### Per-type bounds for concrete scalar types
+
+  With the `abbrev`-based approach, `x.toNat` for `x : U32 = UInt32` elaborates to
+  `UInt32.toNat x`, not `UScalar.toNat x`. So the abstract `UScalar.bounds` forward
+  rule (which has pattern `UScalar.toNat x`) does not fire for concrete types.
+  We add one concrete rule per type with the right pattern. -/
+
+@[scalar_tac x.toNat] theorem U8.scalar_bounds    (x : U8)    : x.toNat ≤ U8.max    := by have h := @UScalar.bounds .U8    x; simp [UScalar.max, U8.max]    at *; omega
+@[scalar_tac x.toNat] theorem U16.scalar_bounds   (x : U16)   : x.toNat ≤ U16.max   := by have h := @UScalar.bounds .U16   x; simp [UScalar.max, U16.max]   at *; omega
+@[scalar_tac x.toNat] theorem U32.scalar_bounds   (x : U32)   : x.toNat ≤ U32.max   := by have h := @UScalar.bounds .U32   x; simp [UScalar.max, U32.max]   at *; omega
+@[scalar_tac x.toNat] theorem U64.scalar_bounds   (x : U64)   : x.toNat ≤ U64.max   := by have h := @UScalar.bounds .U64   x; simp [UScalar.max, U64.max]   at *; omega
+@[scalar_tac x.toNat] theorem U128.scalar_bounds  (x : U128)  : x.toNat ≤ U128.max  := by have h := @UScalar.bounds .U128  x; simp [UScalar.max, U128.max]  at *; omega
+@[scalar_tac x.toNat] theorem Usize.scalar_bounds (x : Usize) : x.toNat ≤ Usize.max := by have h := @UScalar.bounds .Usize x; simp [UScalar.max, Usize.max, Usize.numBits] at *; omega
+
+@[scalar_tac x.toInt]
 theorem IScalar.bounds {ty : IScalarTy} (x : IScalar ty) :
-  IScalar.min ty ≤ x.val ∧ x.val ≤ IScalar.max ty := by
+  IScalar.min ty ≤ x.toInt ∧ x.toInt ≤ IScalar.max ty := by
   simp [IScalar.max, IScalar.min]
   have := x.hBounds
   omega
 
-grind_pattern IScalar.bounds => IScalar.val x
-grind_pattern [agrind] IScalar.bounds => IScalar.val x
+grind_pattern IScalar.bounds => IScalar.toInt x
+grind_pattern [agrind] IScalar.bounds => IScalar.toInt x
+
+/-! ### Per-type bounds for concrete signed scalar types -/
+
+@[scalar_tac x.toInt] theorem I8.scalar_bounds    (x : I8)    : I8.min    ≤ x.toInt ∧ x.toInt ≤ I8.max    := by have h := @IScalar.bounds .I8    x; simp [IScalar.min, IScalar.max, I8.min, I8.max]    at *; omega
+@[scalar_tac x.toInt] theorem I16.scalar_bounds   (x : I16)   : I16.min   ≤ x.toInt ∧ x.toInt ≤ I16.max   := by have h := @IScalar.bounds .I16   x; simp [IScalar.min, IScalar.max, I16.min, I16.max]   at *; omega
+@[scalar_tac x.toInt] theorem I32.scalar_bounds   (x : I32)   : I32.min   ≤ x.toInt ∧ x.toInt ≤ I32.max   := by have h := @IScalar.bounds .I32   x; simp [IScalar.min, IScalar.max, I32.min, I32.max]   at *; omega
+@[scalar_tac x.toInt] theorem I64.scalar_bounds   (x : I64)   : I64.min   ≤ x.toInt ∧ x.toInt ≤ I64.max   := by have h := @IScalar.bounds .I64   x; simp [IScalar.min, IScalar.max, I64.min, I64.max]   at *; omega
+@[scalar_tac x.toInt] theorem I128.scalar_bounds  (x : I128)  : I128.min  ≤ x.toInt ∧ x.toInt ≤ I128.max  := by have h := @IScalar.bounds .I128  x; simp [IScalar.min, IScalar.max, I128.min, I128.max]  at *; omega
+@[scalar_tac x.toInt] theorem Isize.scalar_bounds (x : Isize) : Isize.min ≤ x.toInt ∧ x.toInt ≤ Isize.max := by have h := @IScalar.bounds .Isize x; simp [IScalar.min, IScalar.max, Isize.min, Isize.max, Isize.numBits] at *; omega
 
 attribute [scalar_tac a.toNat] Int.toNat_eq_max
 
@@ -275,6 +321,62 @@ attribute [scalar_tac a.toNat] Int.toNat_eq_max
 theorem Nat_neq_zero_iff (x : ℕ) : x ≠ 0 ↔ 0 < x := by omega
 
 attribute [scalar_tac_simps] Nat.not_eq Int.not_eq
+
+/-! ### Scalar inequality → numeric inequality (forward saturation rules)
+
+  With `abbrev`-based scalar types, `h0 : ¬ x = U32.ofNat 0 ⋯` is a scalar (UInt32)
+  inequality.  The simp-based preprocessing cannot convert it to the numeric form
+  `(↑x : Nat) ≠ 0` because the iff lemma `eq_iff_toNat_eq` loops in simp.
+  We use forward saturation rules instead: when `¬ a = b` is found for a scalar type,
+  add `(↑a : Nat) ≠ (↑b : Nat)` (or `(↑a : Int) ≠ (↑b : Int)` for signed scalars).
+  The subsequent `simpAll` then reduces `↑(U32.ofNat 0 ⋯)` to `0`, giving `↑x ≠ 0`,
+  and omega closes `0 < ↑x`.  -/
+
+/-- Abstract saturation rule for unsigned scalar inequality. -/
+@[scalar_tac (¬ a = b)]
+theorem UScalar.ne_to_toNat_ne {ty : UScalarTy} {a b : UScalar ty} (h : ¬ a = b) :
+    (↑a : Nat) ≠ (↑b : Nat) := by
+  intro heq
+  apply h
+  cases ty <;> simp only [UScalar.toNat] at heq
+  · exact USize.toNat_inj.mp heq
+  · exact UInt8.toNat_inj.mp heq
+  · exact UInt16.toNat_inj.mp heq
+  · exact UInt32.toNat_inj.mp heq
+  · exact UInt64.toNat_inj.mp heq
+  · exact UInt128.toNat_inj.mp heq
+
+/-- Abstract saturation rule for signed scalar inequality. -/
+@[scalar_tac (¬ a = b)]
+theorem IScalar.ne_to_toInt_ne {ty : IScalarTy} {a b : IScalar ty} (h : ¬ a = b) :
+    (↑a : Int) ≠ (↑b : Int) := by
+  intro heq
+  apply h
+  cases ty <;> simp only [IScalar.toInt] at heq
+  · exact ISize.toInt_inj.mp heq
+  · exact Int8.toInt_inj.mp heq
+  · exact Int16.toInt_inj.mp heq
+  · exact Int32.toInt_inj.mp heq
+  · exact Int64.toInt_inj.mp heq
+  · exact Int128.toInt_inj.mp heq
+
+/-- Concrete saturation rules for unsigned scalar inequality (one per type).
+    These are needed because the abstract rule for `UScalar ty` may not always fire
+    for concrete types like `UInt32` when the saturator does syntactic matching. -/
+@[scalar_tac (¬ x = y)] theorem U8.ne_to_toNat_ne    {x y : U8}    (h : ¬ x = y) : (↑x : Nat) ≠ (↑y : Nat) := (U8.eq_iff_toNat_eq    x y).not.mp h
+@[scalar_tac (¬ x = y)] theorem U16.ne_to_toNat_ne   {x y : U16}   (h : ¬ x = y) : (↑x : Nat) ≠ (↑y : Nat) := (U16.eq_iff_toNat_eq   x y).not.mp h
+@[scalar_tac (¬ x = y)] theorem U32.ne_to_toNat_ne   {x y : U32}   (h : ¬ x = y) : (↑x : Nat) ≠ (↑y : Nat) := (U32.eq_iff_toNat_eq   x y).not.mp h
+@[scalar_tac (¬ x = y)] theorem U64.ne_to_toNat_ne   {x y : U64}   (h : ¬ x = y) : (↑x : Nat) ≠ (↑y : Nat) := (U64.eq_iff_toNat_eq   x y).not.mp h
+@[scalar_tac (¬ x = y)] theorem U128.ne_to_toNat_ne  {x y : U128}  (h : ¬ x = y) : (↑x : Nat) ≠ (↑y : Nat) := (U128.eq_iff_toNat_eq  x y).not.mp h
+@[scalar_tac (¬ x = y)] theorem Usize.ne_to_toNat_ne {x y : Usize} (h : ¬ x = y) : (↑x : Nat) ≠ (↑y : Nat) := (Usize.eq_iff_toNat_eq x y).not.mp h
+
+/-- Concrete saturation rules for signed scalar inequality. -/
+@[scalar_tac (¬ x = y)] theorem I8.ne_to_toInt_ne    {x y : I8}    (h : ¬ x = y) : (↑x : Int) ≠ (↑y : Int) := (I8.eq_iff_toInt_eq    x y).not.mp h
+@[scalar_tac (¬ x = y)] theorem I16.ne_to_toInt_ne   {x y : I16}   (h : ¬ x = y) : (↑x : Int) ≠ (↑y : Int) := (I16.eq_iff_toInt_eq   x y).not.mp h
+@[scalar_tac (¬ x = y)] theorem I32.ne_to_toInt_ne   {x y : I32}   (h : ¬ x = y) : (↑x : Int) ≠ (↑y : Int) := (I32.eq_iff_toInt_eq   x y).not.mp h
+@[scalar_tac (¬ x = y)] theorem I64.ne_to_toInt_ne   {x y : I64}   (h : ¬ x = y) : (↑x : Int) ≠ (↑y : Int) := (I64.eq_iff_toInt_eq   x y).not.mp h
+@[scalar_tac (¬ x = y)] theorem I128.ne_to_toInt_ne  {x y : I128}  (h : ¬ x = y) : (↑x : Int) ≠ (↑y : Int) := (I128.eq_iff_toInt_eq  x y).not.mp h
+@[scalar_tac (¬ x = y)] theorem Isize.ne_to_toInt_ne {x y : Isize} (h : ¬ x = y) : (↑x : Int) ≠ (↑y : Int) := (Isize.eq_iff_toInt_eq x y).not.mp h
 
 /-!
 # Casts
@@ -544,11 +646,8 @@ grind_pattern [agrind_nla] mod_lt => x % y
 /- Remark: we're omitting a similar theorem for `IScalar` because the theorem is a bit cumbersome
    to use (it has to be expressed in terms of `x.bv.toNat`). -/
 @[simp, scalar_tac_simps, grind =, agrind =]
-theorem UScalar.sizeOf {ty} (x : UScalar ty) : sizeOf x = x.val + 3 := by
-  cases x; simp only [UScalar.mk.sizeOf_spec, BitVec.sizeOf, Fin.sizeOf, BitVec.val_toFin]
-  unfold UScalar.val
-  simp only
-  omega
+theorem UScalar.sizeOf {ty} (x : UScalar ty) : sizeOf x = x.toNat + 3 := by
+  cases ty <;> cases x <;> simp [UScalar.toNat]; grind
 
 /-!
 # Nat.testBit

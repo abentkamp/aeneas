@@ -29,27 +29,27 @@ scalar @[reducible] def core.cmp.Eq'S : core.cmp.Eq «%S» := {
 
 /- [core::cmp::impls::{core::cmp::PartialOrd<u8> for u8}::partial_cmp]:
    Name pattern: core::cmp::impls::{core::cmp::PartialOrd<u8, u8>}::partial_cmp -/
-scalar def core.cmp.impls.PartialOrd'S.partial_cmp (x y : «%S») : Option Ordering := some (compare x.val y.val)
+scalar def core.cmp.impls.PartialOrd'S.partial_cmp (x y : «%S») : Option Ordering := some (compare x y)
 
 /- [core::cmp::impls::{core::cmp::Ord for u8}::cmp]:
    Name pattern: core::cmp::impls::{core::cmp::Ord<u8>}::cmp -/
-scalar @[simp] abbrev core.cmp.impls.Ord'S.cmp (x y : «%S») : Ordering := compare x.val y.val
+scalar @[simp] abbrev core.cmp.impls.Ord'S.cmp (x y : «%S») : Ordering := compare x y
 
 /- [core::cmp::impls::{core::cmp::PartialOrd<u8> for u8}::lt]:
    Name pattern: core::cmp::impls::{core::cmp::PartialOrd<u8, u8>}::lt -/
-scalar def core.cmp.impls.PartialOrd'S.lt (x y : «%S») : Bool := x.val < y.val
+scalar def core.cmp.impls.PartialOrd'S.lt (x y : «%S») : Bool := x < y
 
 /- [core::cmp::impls::{core::cmp::PartialOrd<u8> for u8}::le]:
    Name pattern: core::cmp::impls::{core::cmp::PartialOrd<u8, u8>}::le -/
-scalar def core.cmp.impls.PartialOrd'S.le (x y : «%S») : Bool := x.val ≤ y.val
+scalar def core.cmp.impls.PartialOrd'S.le (x y : «%S») : Bool := x ≤ y
 
 /- [core::cmp::impls::{core::cmp::PartialOrd<u8> for u8}::gt]:
    Name pattern: core::cmp::impls::{core::cmp::PartialOrd<u8, u8>}::gt -/
-scalar def core.cmp.impls.PartialOrd'S.gt (x y : «%S») : Bool := x.val > y.val
+scalar def core.cmp.impls.PartialOrd'S.gt (x y : «%S») : Bool := x > y
 
 /- [core::cmp::impls::{core::cmp::PartialOrd<u8> for u8}::ge]:
    Name pattern: core::cmp::impls::{core::cmp::PartialOrd<u8, u8>}::ge -/
-scalar def core.cmp.impls.PartialOrd'S.ge (x y : «%S») : Bool := x.val ≥ y.val
+scalar def core.cmp.impls.PartialOrd'S.ge (x y : «%S») : Bool := x ≥ y
 
 /- Trait implementation: [core::cmp::impls::{core::cmp::PartialOrd<u8> for u8}]
    Name pattern: core::cmp::PartialOrd<u8, u8> -/
@@ -64,24 +64,40 @@ scalar @[reducible] def core.cmp.PartialOrd'S : core.cmp.PartialOrd «%S» «%S�
 /- Name pattern: core::cmp::impls::{core::cmp::Ord<SCALAR>}::min -/
 scalar @[step_pure_def] def core.cmp.impls.Ord'S.min (x y : «%S») : «%S» := if x < y then x else y
 
-scalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.min_val (x y : «%S») : (min x y).val = Min.min x.val y.val := by simp [min]; split <;> simp <;> omega
+uscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.min_toNat (x y : «%S») : (min x y).toNat = Min.min x.toNat y.toNat := by
+  by_cases h: x < y
+  · rw [min, if_pos, min_eq_left] <;> grind
+  · rw [min, if_neg, min_eq_right] <;> grind
+
+iscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.min_toInt (x y : «%S») : (min x y).toInt = Min.min x.toInt y.toInt := by
+  by_cases h: x < y
+  · rw [min, if_pos, min_eq_left] <;> grind
+  · rw [min, if_neg, min_eq_right] <;> grind
 
 /- Name pattern: core::cmp::impls::{core::cmp::Ord<SCALAR>}::max -/
 scalar @[step_pure_def] def core.cmp.impls.Ord'S.max (x y : «%S») : «%S» := if x < y then y else x
 
-scalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.max_val (x y : «%S») : (max x y).val = Max.max x.val y.val := by simp [max]; split <;> simp <;> omega
+uscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.max_toNat (x y : «%S») : (max x y).toNat = Max.max x.toNat y.toNat := by
+  by_cases h: x < y
+  · rw [max, if_pos, max_eq_right] <;> grind
+  · rw [max, if_neg, max_eq_left] <;> grind
+
+iscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.max_toInt (x y : «%S») : (max x y).toInt = Max.max x.toInt y.toInt := by
+  by_cases h: x < y
+  · rw [max, if_pos, max_eq_right] <;> grind
+  · rw [max, if_neg, max_eq_left] <;> grind
 
 /- Name pattern: core::cmp::impls::{core::cmp::Ord<SCALAR>}::clamp -/
 def UScalar.clamp {ty} (self min max : UScalar ty) : Result (UScalar ty) := do
-  massert (min.val ≤ max.val)
-  if self.val < min.val then ok min
-  else if self.val > max.val then ok max
+  massert (min.toNat ≤ max.toNat)
+  if self.toNat < min.toNat then ok min
+  else if self.toNat > max.toNat then ok max
   else ok self
 
 def IScalar.clamp {ty} (self min max : IScalar ty) : Result (IScalar ty) := do
-  massert (min.val ≤ max.val)
-  if self.val < min.val then ok min
-  else if self.val > max.val then ok max
+  massert (min.toInt ≤ max.toInt)
+  if self.toInt < min.toInt then ok min
+  else if self.toInt > max.toInt then ok max
   else ok self
 
 uscalar def core.cmp.impls.Ord'S.clamp (self min max : «%S») : Result «%S» := UScalar.clamp self min max

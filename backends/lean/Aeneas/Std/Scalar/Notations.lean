@@ -3,6 +3,7 @@ import Lean.Meta.Tactic.Simp
 import Mathlib.Tactic.Linarith
 import Aeneas.Std.Scalar.Core
 import Aeneas.Std.Scalar.Ops.Add -- we need to use addition in some of the tests below
+import Aeneas.Std.Scalar.Ops.CheckedArith
 import Aeneas.Tactic.Solver.ScalarTac
 
 namespace Aeneas
@@ -70,11 +71,6 @@ def unexpI128ofInt : Unexpander | `($_ $n $_) => `($n#i128) | _ => throw ()
 @[app_unexpander Isize.ofInt]
 def unexpIsizeofInt : Unexpander | `($_ $n $_) => `($n#isize) | _ => throw ()
 
--- Notation for pattern matching
--- We make the precedence looser than the negation.
-notation:70 a:70 "#uscalar" => UScalar.mk (a)
-notation:70 a:70 "#iscalar" => IScalar.mk (a)
-
 /- Testing the notations -/
 example := 0#u32
 example := 1#u32
@@ -84,65 +80,8 @@ example := (-1)#isize
 
 example := 1#u32
 
-/-
--- This doesn't work anymore
-example (x : U32) : Bool :=
-  match x with
-  | 0#u32 => true
-  | _ => false
-
-example (x : U32) : Bool :=
-  match x with
-  | 1#u32 => true
-  | _ => false
-
-example (x : I32) : Bool :=
-  match x with
-  | (-1)#i32 => true
-  | _ => false
--/
-
-example (x : U32) : Bool :=
-  match x with
-  | 0#uscalar => true
-  | _ => false
-
-example (x : U32) : Bool :=
-  match x with
-  | 1#uscalar => true
-  | _ => false
-
-example (x : I32) : Bool :=
-  match x with
-  | (-1)#iscalar => true
-  | _ => false
-
-/-
--- FIXME
-example {ty} (x : UScalar ty) : ℕ :=
-  match x with
-  | v#uscalar => v
-
-example {ty} (x : IScalar ty) : ℤ :=
-  match x with
-  | v#iscalar => v
--/
-
-/-
--- FIXME
-example {ty} (x : UScalar ty) : Bool :=
-  match x with
-  | 1#uscalar => true
-  | _ => false
-
-example {ty} (x : IScalar ty) : Bool :=
-  match x with
-  | -(1 : Int)#iscalar => true
-  | _ => false
--/
-
 -- Testing the notations
-example : Result Usize := 0#usize + 1#usize
+example : Result Usize := 0#usize +? 1#usize
 
 -- More complex expressions
 example (x y : Nat) (h : x + y ≤ 1000) : U32 := (x + y)#u32
@@ -150,7 +89,7 @@ example (x y : Int) (h : 0 ≤ x + y ∧ x + y ≤ 1000) : I32 := (x + y)#i32
 
 namespace Scalar.Examples
 
-  abbrev Array (a : Type) (len : U32) := { l : List a // l.length = len.val }
+  abbrev Array (a : Type) (len : U32) := { l : List a // l.length = len.toNat }
 
   -- Checking the syntax
   example : Array Int 0#u32 := ⟨ [], by simp ⟩
