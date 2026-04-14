@@ -3,6 +3,7 @@ import Aeneas.Std.Scalar.Misc
 import Aeneas.Std.Scalar.Elab
 import Aeneas.Tactic.Solver.ScalarTac
 import Mathlib.Data.BitVec
+import Aeneas.Std.Scalar.Ops.CheckedArith
 
 namespace Aeneas.Std
 
@@ -13,12 +14,12 @@ open Result Error Arith ScalarElab WP
 -/
 
 def UScalar.div {ty : UScalarTy} (x y : UScalar ty) : Result (UScalar ty) :=
-  if y.bv != 0 then ok ⟨ BitVec.udiv x.bv y.bv ⟩ else fail divisionByZero
+  if y.bv != 0 then ok (UScalar.ofBitVec ty (BitVec.udiv (UScalar.toBitVec x) (UScalar.toBitVec y))) else fail divisionByZero
 
 def IScalar.div {ty : IScalarTy} (x y : IScalar ty): Result (IScalar ty) :=
   if y.val != 0 then
     -- There can be an overflow if `x` is equal to the lower bound and `y` to `-1`
-    if ¬ (x.val = IScalar.min ty && y.val = -1) then ok ⟨ BitVec.sdiv x.bv y.bv ⟩
+    if ¬ (x.val = IScalar.min ty && y.val = -1) then ok (IScalar.ofBitVec ty (BitVec.sdiv (IScalar.toBitVec x) (IScalar.toBitVec y)))
     else fail integerOverflow
   else fail divisionByZero
 
@@ -28,11 +29,11 @@ def UScalar.try_div {ty : UScalarTy} (x y : UScalar ty) : Option (UScalar ty) :=
 def IScalar.try_div {ty : IScalarTy} (x y : IScalar ty): Option (IScalar ty) :=
   Option.ofResult (div x y)
 
-instance {ty} : HDiv (UScalar ty) (UScalar ty) (Result (UScalar ty)) where
-  hDiv x y := UScalar.div x y
+instance {ty} : HCheckedDiv (UScalar ty) (UScalar ty) (Result (UScalar ty)) where
+  hCheckedDiv x y := UScalar.div x y
 
-instance {ty} : HDiv (IScalar ty) (IScalar ty) (Result (IScalar ty)) where
-  hDiv x y := IScalar.div x y
+instance {ty} : HCheckedDiv (IScalar ty) (IScalar ty) (Result (IScalar ty)) where
+  hCheckedDiv x y := IScalar.div x y
 
 /-!
 # Sanity Checks
@@ -78,12 +79,12 @@ Theorems with a specification which use integers and bit-vectors
 /-- Generic theorem - shouldn't be used much -/
 theorem UScalar.div_bv_spec {ty} (x : UScalar ty) {y : UScalar ty}
   (hzero : y.val ≠ 0) :
-  ∃ z, x / y = ok z ∧ (↑z : Nat) = ↑x / ↑y ∧ z.bv = x.bv / y.bv := by
+  ∃ z, x /? y = ok z ∧ (↑z : Nat) = ↑x / ↑y ∧ z.bv = x.bv / y.bv := by
   have hzero' : y.bv ≠ 0#ty.numBits := by
     intro h
     zify at h
     simp_all
-  conv => congr; ext; lhs; simp [HDiv.hDiv]
+  conv => congr; ext; lhs; simp [HCheckedDiv.hCheckedDiv]
   simp [hzero', div]
   simp only [val]
   simp
@@ -135,8 +136,8 @@ theorem IScalar.neg_imp_neg_val_toNat_mod_pow_eq_neg_val {ty} (x : IScalar ty)
 /-- Generic theorem - shouldn't be used much -/
 theorem IScalar.div_bv_spec {ty} {x y : IScalar ty}
   (hzero : y.val ≠ 0) (hNoOverflow : ¬ (x.val = IScalar.min ty ∧ y.val = -1)) :
-  ∃ z, x / y = ok z ∧ (↑z : Int) = Int.tdiv ↑x ↑y ∧ z.bv = BitVec.sdiv x.bv y.bv := by
-  conv => congr; ext; lhs; simp only [HDiv.hDiv]
+  ∃ z, x /? y = ok z ∧ (↑z : Int) = Int.tdiv ↑x ↑y ∧ z.bv = BitVec.sdiv x.bv y.bv := by
+  conv => congr; ext; lhs; simp only [HCheckedDiv.hCheckedDiv]
   simp only [div, bne_iff_ne, ne_eq, hzero, not_false_eq_true, ↓reduceIte, Int.reduceNeg,
     Bool.and_eq_true, decide_eq_true_eq, hNoOverflow, ok.injEq, _root_.exists_eq_left', and_true]
   simp only [val]
@@ -388,12 +389,12 @@ theorem IScalar.div_bv_spec {ty} {x y : IScalar ty}
     simp only [Int.tdiv_neg, Int.neg_tdiv, neg_neg]
 
 uscalar theorem «%S».div_bv_spec (x : «%S») {y : «%S»} (hnz : ↑y ≠ (0 : Nat)) :
-  x / y ⦃ z => (↑z : Nat) = ↑x / ↑y ∧ z.bv = x.bv / y.bv ⦄ :=
+  x /? y ⦃ z => (↑z : Nat) = ↑x / ↑y ∧ z.bv = x.bv / y.bv ⦄ :=
   exists_imp_spec (UScalar.div_bv_spec x hnz)
 
 iscalar theorem «%S».div_bv_spec {x y : «%S»} (hnz : ↑y ≠ (0 : Int))
   (hNoOverflow : ¬ (x.val = «%S».min ∧ y.val = -1)) :
-  ∃ z, x / y = ok z ∧ (↑z : Int) = Int.tdiv ↑x ↑y ∧ z.bv = BitVec.sdiv x.bv y.bv :=
+  ∃ z, x /? y = ok z ∧ (↑z : Int) = Int.tdiv ↑x ↑y ∧ z.bv = BitVec.sdiv x.bv y.bv :=
   IScalar.div_bv_spec hnz (by scalar_tac)
 
 /-!
@@ -403,7 +404,7 @@ Theorems with a specification which only use integers
 /-- Generic theorem - shouldn't be used much -/
 theorem UScalar.div_spec {ty} (x : UScalar ty) {y : UScalar ty}
   (hzero : y.val ≠ 0) :
-  ∃ z, x / y = ok z ∧ (↑z : Nat) = ↑x / ↑y := by
+  ∃ z, x /? y = ok z ∧ (↑z : Nat) = ↑x / ↑y := by
   have ⟨ z, hz ⟩ := UScalar.div_bv_spec x hzero
   simp [hz]
 
@@ -411,17 +412,17 @@ theorem UScalar.div_spec {ty} (x : UScalar ty) {y : UScalar ty}
 theorem IScalar.div_spec {ty} {x y : IScalar ty}
   (hzero : y.val ≠ 0)
   (hNoOverflow : ¬ (x.val = IScalar.min ty ∧ y.val = -1)) :
-  ∃ z, x / y = ok z ∧ (↑z : Int) = Int.tdiv ↑x ↑y := by
+  ∃ z, x /? y = ok z ∧ (↑z : Int) = Int.tdiv ↑x ↑y := by
   have ⟨ z, hz ⟩ := IScalar.div_bv_spec hzero hNoOverflow
   simp [hz]
 
 uscalar @[step] theorem «%S».div_spec (x : «%S») {y : «%S»} (hnz : ↑y ≠ (0 : Nat)) :
-  (x / y) ⦃ z => (↑z : Nat) = ↑x / ↑y ⦄ :=
+  (x /? y) ⦃ z => (↑z : Nat) = ↑x / ↑y ⦄ :=
   exists_imp_spec (UScalar.div_spec x hnz)
 
 iscalar @[step] theorem «%S».div_spec {x y : «%S»} (hnz : ↑y ≠ (0 : Int))
   (hNoOverflow : ¬ (x.val = «%S».min ∧ y.val = -1)) :
-  (x / y) ⦃ z => (↑z : Int) = Int.tdiv ↑x ↑y ⦄ :=
+  (x /? y) ⦃ z => (↑z : Int) = Int.tdiv ↑x ↑y ⦄ :=
   exists_imp_spec (IScalar.div_spec hnz (by scalar_tac))
 
 end Aeneas.Std

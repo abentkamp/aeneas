@@ -1,4 +1,5 @@
 import Aeneas.Std.Scalar.Ops.Div
+import Aeneas.Std.Scalar.Ops.CheckedArith
 import Aeneas.Std.Scalar.Elab
 
 namespace Aeneas.Std
@@ -11,13 +12,13 @@ open Result Error Arith ScalarElab
 
 /- [core::num::{T}::checked_div] -/
 def core.num.checked_div_UScalar {ty} (x y : UScalar ty) : Option (UScalar ty) :=
-  Option.ofResult (UScalar.div x y)
+  Option.ofResult (x /? y)
 
 uscalar def «%S».checked_div (x y : «%S») : Option «%S» := core.num.checked_div_UScalar x y
 
 /- [core::num::{T}::checked_div] -/
 def core.num.checked_div_IScalar {ty} (x y : IScalar ty) : Option (IScalar ty) :=
-  Option.ofResult (IScalar.div x y)
+  Option.ofResult (x /? y)
 
 iscalar def «%S».checked_div (x y : «%S») : Option «%S» := core.num.checked_div_IScalar x y
 
@@ -40,7 +41,7 @@ theorem core.num.checked_div_UScalar_bv_spec {ty} (x y : UScalar ty) :
     simp
     have hnz' : y.val ≠ 0 := by zify at *; simp_all
     have ⟨ z, hz ⟩ := UScalar.div_bv_spec x hnz'
-    have : x / y = x.div y := by rfl
+    have : x /? y = x.div y := by rfl
     simp [this, UScalar.div, hnz] at hz
     simp [hz, hnz']
 
@@ -68,7 +69,7 @@ theorem core.num.checked_div_IScalar_bv_spec {ty} (x y : IScalar ty) :
     simp
     have hnz' : y.val ≠ 0 := by zify at *; simp_all
     have ⟨ z, hz ⟩ := @IScalar.div_bv_spec _ x y hnz' (by simp; tauto)
-    have : x / y = x.div y := by rfl
+    have : x /? y = x.div y := by rfl
     simp [this, IScalar.div, hnz] at hz
     split_ifs at hz
     simp at hz

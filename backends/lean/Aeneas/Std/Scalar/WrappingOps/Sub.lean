@@ -9,9 +9,9 @@ open Result Error ScalarElab
 # Wrapping Sub
 -/
 
-def UScalar.wrapping_sub {ty} (x y : UScalar ty) : UScalar ty := ⟨ x.bv - y.bv ⟩
+def UScalar.wrapping_sub {ty} (x y : UScalar ty) : UScalar ty := UScalar.ofBitVec ty (x.bv - y.bv)
 
-def IScalar.wrapping_sub {ty} (x y : IScalar ty) : IScalar ty := ⟨ x.bv - y.bv ⟩
+def IScalar.wrapping_sub {ty} (x y : IScalar ty) : IScalar ty := IScalar.ofBitVec ty (x.bv - y.bv)
 
 uscalar @[step_pure_def]
 def «%S».wrapping_sub : «%S» → «%S» → «%S» := @UScalar.wrapping_sub UScalarTy.«%S»
@@ -29,34 +29,31 @@ def core.num.«%S».wrapping_sub : «%S» → «%S» → «%S»  := @IScalar.wra
 
 @[simp, bvify] theorem UScalar.wrapping_sub_bv_eq {ty} (x y : UScalar ty) :
   (wrapping_sub x y).bv = x.bv - y.bv := by
-  simp only [wrapping_sub]
+  simp only [wrapping_sub, UScalar.ofBitVec_bv]
 
 uscalar @[simp, bvify, grind =, agrind =] theorem «%S».wrapping_sub_bv_eq (x y : «%S») :
-  («%S».wrapping_sub x y).bv = x.bv - y.bv := by
-  simp [«%S».wrapping_sub]
+  («%S».wrapping_sub x y).bv = x.bv - y.bv :=
+  UScalar.wrapping_sub_bv_eq x y
 
 uscalar @[simp, bvify, grind =, agrind =] theorem core.num.«%S».wrapping_sub_bv_eq (x y : «%S») :
-  (core.num.«%S».wrapping_sub x y).bv = x.bv - y.bv := by
-  simp [core.num.«%S».wrapping_sub]
+  (core.num.«%S».wrapping_sub x y).bv = x.bv - y.bv :=
+  UScalar.wrapping_sub_bv_eq x y
 
 @[simp, bvify] theorem IScalar.wrapping_sub_bv_eq {ty} (x y : IScalar ty) :
   (wrapping_sub x y).bv = x.bv - y.bv := by
-  simp only [wrapping_sub]
+  simp only [wrapping_sub, IScalar.ofBitVec_bv]
 
 iscalar @[simp, bvify, grind =, agrind =] theorem «%S».wrapping_sub_bv_eq (x y : «%S») :
-  («%S».wrapping_sub x y).bv = x.bv - y.bv := by
-  simp [«%S».wrapping_sub]
+  («%S».wrapping_sub x y).bv = x.bv - y.bv :=
+  IScalar.wrapping_sub_bv_eq x y
 
 iscalar @[simp, bvify, grind =, agrind =] theorem core.num.«%S».wrapping_sub_bv_eq (x y : «%S») :
-  (core.num.«%S».wrapping_sub x y).bv = x.bv - y.bv := by
-  simp [core.num.«%S».wrapping_sub]
+  (core.num.«%S».wrapping_sub x y).bv = x.bv - y.bv :=
+  IScalar.wrapping_sub_bv_eq x y
 
 @[simp] theorem UScalar.wrapping_sub_val_eq {ty} (x y : UScalar ty) :
   (wrapping_sub x y).val = (x.val + (UScalar.size ty - y.val)) % UScalar.size ty := by
-  simp only [wrapping_sub, val, size]
-  have : 0 < 2^ty.numBits := by simp
-  have : 2 ^ ty.numBits - 1 + 1 = 2^ty.numBits := by omega
-  simp only [BitVec.toNat_sub, bv_toNat]
+  simp only [wrapping_sub, UScalar.ofBitVec_val, BitVec.toNat_sub, bv_toNat, size]
   ring_nf
 
 uscalar @[simp, grind =, agrind =] theorem «%S».wrapping_sub_val_eq (x y : «%S») :
@@ -69,8 +66,7 @@ uscalar @[simp, grind =, agrind =] theorem core.num.«%S».wrapping_sub_val_eq (
 
 @[simp] theorem IScalar.wrapping_sub_val_eq {ty} (x y : IScalar ty) :
   (wrapping_sub x y).val = Int.bmod (x.val - y.val) (2^ty.numBits) := by
-  simp only [wrapping_sub, val]
-  simp only [BitVec.toInt_sub, bv_toInt_eq]
+  simp only [wrapping_sub, IScalar.ofBitVec_val, BitVec.toInt_sub, bv_toInt_eq]
 
 iscalar @[simp, grind =, agrind =] theorem «%S».wrapping_sub_val_eq (x y : «%S») :
   («%S».wrapping_sub x y).val = Int.bmod (x.val - y.val) (2^ %BitWidth) :=

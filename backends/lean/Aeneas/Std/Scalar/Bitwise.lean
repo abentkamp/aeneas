@@ -17,13 +17,13 @@ Bit shifts
 def UScalar.shiftLeft {ty : UScalarTy} (x : UScalar ty) (s : Nat) :
   Result (UScalar ty) :=
   if s < ty.numBits then
-    ok ⟨ x.bv.shiftLeft s ⟩
+    ok (UScalar.ofBitVec ty (x.bv.shiftLeft s))
   else fail .integerOverflow
 
 def UScalar.shiftRight {ty : UScalarTy} (x : UScalar ty) (s : Nat) :
   Result (UScalar ty) :=
   if s < ty.numBits then
-    ok ⟨ x.bv.ushiftRight s ⟩
+    ok (UScalar.ofBitVec ty (x.bv.ushiftRight s))
   else fail .integerOverflow
 
 def UScalar.shiftLeft_UScalar {ty tys} (x : UScalar ty) (s : UScalar tys) :
@@ -45,13 +45,13 @@ def UScalar.shiftRight_IScalar {ty tys} (x : UScalar ty) (s : IScalar tys) :
 def IScalar.shiftLeft {ty : IScalarTy} (x : IScalar ty) (s : Nat) :
   Result (IScalar ty) :=
   if s < ty.numBits then
-    ok ⟨ x.bv.shiftLeft s ⟩
+    ok (IScalar.ofBitVec ty (x.bv.shiftLeft s))
   else fail .integerOverflow
 
 def IScalar.shiftRight {ty : IScalarTy} (x : IScalar ty) (s : Nat) :
   Result (IScalar ty) :=
   if s < ty.numBits then
-    ok ⟨ x.bv.sshiftRight s ⟩
+    ok (IScalar.ofBitVec ty (x.bv.sshiftRight s))
   else fail .integerOverflow
 
 def IScalar.shiftLeft_UScalar {ty tys} (x : IScalar ty) (s : UScalar tys) :
@@ -101,9 +101,9 @@ instance {ty0 ty1} : HShiftRight (IScalar ty0) (IScalar ty1) (Result (IScalar ty
 /-!
 Bitwise and
 -/
-def UScalar.and {ty} (x y : UScalar ty) : UScalar ty := ⟨ x.bv &&& y.bv ⟩
+def UScalar.and {ty} (x y : UScalar ty) : UScalar ty := UScalar.ofBitVec ty (x.bv &&& y.bv)
 
-def IScalar.and {ty} (x y : IScalar ty) : IScalar ty := ⟨ x.bv &&& y.bv ⟩
+def IScalar.and {ty} (x y : IScalar ty) : IScalar ty := IScalar.ofBitVec ty (x.bv &&& y.bv)
 
 instance {ty} : HAnd (UScalar ty) (UScalar ty) (UScalar ty) where
   hAnd x y := UScalar.and x y
@@ -114,9 +114,9 @@ instance {ty} : HAnd (IScalar ty) (IScalar ty) (IScalar ty) where
 /-!
 Bitwise or
 -/
-def UScalar.or {ty} (x y : UScalar ty) : UScalar ty := ⟨ x.bv ||| y.bv ⟩
+def UScalar.or {ty} (x y : UScalar ty) : UScalar ty := UScalar.ofBitVec ty (x.bv ||| y.bv)
 
-def IScalar.or {ty} (x y : IScalar ty) : IScalar ty := ⟨ x.bv ||| y.bv ⟩
+def IScalar.or {ty} (x y : IScalar ty) : IScalar ty := IScalar.ofBitVec ty (x.bv ||| y.bv)
 
 instance {ty} : HOr (UScalar ty) (UScalar ty) (UScalar ty) where
   hOr x y := UScalar.or x y
@@ -127,9 +127,9 @@ instance {ty} : HOr (IScalar ty) (IScalar ty) (IScalar ty) where
 /-!
 Xor
 -/
-def UScalar.xor {ty} (x y : UScalar ty) : UScalar ty := ⟨ x.bv ^^^ y.bv ⟩
+def UScalar.xor {ty} (x y : UScalar ty) : UScalar ty := UScalar.ofBitVec ty (x.bv ^^^ y.bv)
 
-def IScalar.xor {ty} (x y : IScalar ty) : IScalar ty := ⟨ x.bv ^^^ y.bv ⟩
+def IScalar.xor {ty} (x y : IScalar ty) : IScalar ty := IScalar.ofBitVec ty (x.bv ^^^ y.bv)
 
 instance {ty} : HXor (UScalar ty) (UScalar ty) (UScalar ty) where
   hXor x y := UScalar.xor x y
@@ -140,9 +140,9 @@ instance {ty} : HXor (IScalar ty) (IScalar ty) (IScalar ty) where
 /-!
 Not
 -/
-def UScalar.not {ty} (x : UScalar ty) : UScalar ty := ⟨ ~~~x.bv ⟩
+def UScalar.not {ty} (x : UScalar ty) : UScalar ty := UScalar.ofBitVec ty (~~~x.bv)
 
-def IScalar.not {ty} (x : IScalar ty) : IScalar ty := ⟨ ~~~x.bv ⟩
+def IScalar.not {ty} (x : IScalar ty) : IScalar ty := IScalar.ofBitVec ty (~~~x.bv)
 
 instance {ty} : Complement (UScalar ty) where
   complement x := UScalar.not x

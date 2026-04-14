@@ -10,8 +10,8 @@ open Result ScalarElab
 /- [core::default::{core::default::Default for u32}::default]:
    Source: '/rustc/library/core/src/default.rs', lines 156:12-156:30
    Name pattern: [core::default::{core::default::Default<u32>}::default] -/
-uscalar @[simp, scalar_tac_simps] def core.default.Default'S.default : «%S» := ⟨ 0, by scalar_tac ⟩
-iscalar @[simp, scalar_tac_simps] def core.default.Default'S.default : «%S» := ⟨ 0, by scalar_tac ⟩
+uscalar @[simp, scalar_tac_simps] def core.default.Default'S.default : «%S» := «%S».ofNat 0 (by scalar_tac)
+iscalar @[simp, scalar_tac_simps] def core.default.Default'S.default : «%S» := «%S».ofInt 0 (by scalar_tac)
 
 /- Trait implementation: [core::default::{core::default::Default for u32}#7]
    Source: '/rustc/library/core/src/default.rs', lines 153:8-153:27

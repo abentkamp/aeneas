@@ -12,10 +12,10 @@ open ScalarElab
 -- TODO: we should redefine this, in particular so that it doesn't live in the `Result` monad
 
 def UScalar.overflowing_add {ty} (x y : UScalar ty) : UScalar ty × Bool :=
-  (⟨ BitVec.ofNat _ (x.val + y.val) ⟩, 2^ty.numBits ≤ x.val + y.val)
+  (UScalar.ofBitVec ty (BitVec.ofNat ty.numBits (x.val + y.val)), 2^ty.numBits ≤ x.val + y.val)
 
 def IScalar.overflowing_add (ty : IScalarTy) (x y : IScalar ty) : IScalar ty × Bool :=
-  (⟨ BitVec.ofInt _ (x.val + y.val) ⟩,
+  (IScalar.ofBitVec ty (BitVec.ofInt ty.numBits (x.val + y.val)),
      ¬ (-2^(ty.numBits -1) ≤ x.val + y.val ∧ x.val + y.val < 2^(ty.numBits-1)))
 
 /- [core::num::{u8}::overflowing_add] -/
@@ -35,25 +35,18 @@ theorem UScalar.overflowing_add_eq {ty} (x y : UScalar ty) :
     z.fst.val = x.val + y.val ∧
     z.snd = false
   := by
-  simp [overflowing_add]
-  simp only [val, BitVec.toNat_ofNat, max]
+  have hx := x.hBounds
+  have hy := y.hBounds
+  have hN : 0 < 2 ^ ty.numBits := Nat.pos_pow_of_pos _ (by norm_num)
+  simp only [overflowing_add, UScalar.ofBitVec_val, BitVec.toNat_ofNat,
+             UScalar.max_def, UScalar.size_def]
   split <;> rename_i hLt
-  . split_conjs
-    . have : (x.bv.toNat + y.bv.toNat) % 2^ty.numBits =
-             (x.bv.toNat + y.bv.toNat - 2^ty.numBits) % 2^ty.numBits := by
-        rw [Nat.mod_eq_sub_mod]
-        omega
-      rw [this]; clear this
-
-      have := @Nat.mod_eq_of_lt (x.bv.toNat + y.bv.toNat - 2^ty.numBits) (2^ty.numBits) (by omega)
-      rw [this]; clear this
-      simp [size]
-      scalar_tac
-    . omega
-  . split_conjs
-    . apply Nat.mod_eq_of_lt
-      omega
-    . omega
+  · refine ⟨?_, ?_⟩
+    · omega
+    · simp only [decide_eq_true_eq]; omega
+  · refine ⟨?_, ?_⟩
+    · apply Nat.mod_eq_of_lt; omega
+    · simp only [decide_eq_false_iff_not, Nat.not_le]; omega
 
 uscalar @[step_pure overflowing_add x y]
 theorem core.num.«%S».overflowing_add_eq (x y : «%S») :

@@ -1,4 +1,5 @@
 import Aeneas.Std.Scalar.Ops.Mul
+import Aeneas.Std.Scalar.Ops.CheckedArith
 import Aeneas.Std.Scalar.Elab
 
 namespace Aeneas.Std
@@ -11,13 +12,13 @@ open Result Error Arith ScalarElab
 
 /- [core::num::{T}::checked_mul] -/
 def core.num.checked_mul_UScalar {ty} (x y : UScalar ty) : Option (UScalar ty) :=
-  Option.ofResult (UScalar.mul x y)
+  Option.ofResult (x *? y)
 
 uscalar def «%S».checked_mul (x y : «%S») : Option «%S» := core.num.checked_mul_UScalar x y
 
 /- [core::num::{T}::checked_mul] -/
 def core.num.checked_mul_IScalar {ty} (x y : IScalar ty) : Option (IScalar ty) :=
-  Option.ofResult (IScalar.mul x y)
+  Option.ofResult (x *? y)
 
 iscalar def «%S».checked_mul (x y : «%S») : Option «%S» := core.num.checked_mul_IScalar x y
 
@@ -33,6 +34,8 @@ theorem core.num.checked_mul_UScalar_bv_spec {ty} (x y : UScalar ty) :
   | some z => x.val * y.val ≤ UScalar.max ty ∧ z.val = x.val * y.val ∧ z.bv = x.bv * y.bv
   | none => UScalar.max ty < x.val * y.val := by
   have h := UScalar.mul_equiv x y
+  have hMul : x *? y = UScalar.mul x y := by rfl
+  rw [hMul] at *
   simp [checked_mul_UScalar]
   cases hEq : UScalar.mul x y <;> simp_all [Option.ofResult]
 
@@ -53,6 +56,8 @@ theorem core.num.checked_mul_IScalar_bv_spec {ty} (x y : IScalar ty) :
   | some z => IScalar.min ty ≤ x.val * y.val ∧ x.val * y.val ≤ IScalar.max ty ∧ z.val = x.val * y.val ∧ z.bv = x.bv * y.bv
   | none => ¬ (IScalar.min ty ≤ x.val * y.val ∧ x.val * y.val ≤ IScalar.max ty) := by
   have h := IScalar.mul_equiv x y
+  have hMul : x *? y = IScalar.mul x y := by rfl
+  rw [hMul] at *
   simp [checked_mul_IScalar]
   cases hEq : IScalar.mul x y <;> simp_all [Option.ofResult]
 

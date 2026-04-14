@@ -90,93 +90,65 @@ theorem IScalar.neg_imp_toNat_neg_eq_neg_toInt {ty} (x : IScalar ty) (hNeg : x.v
   (∃ (a : UScalar ty), a.val = a'.val ∧ p a) ↔ p a' := by
   constructor <;> intro h
   . replace ⟨ a, h, hp ⟩ := h
-    cases a'
-    simp_all only [val]
-    have := @BitVec.toNat_injective ty.numBits
-    have := this h
-    simp [← this]
-    apply hp
-  . exists a'
+    have ha : a = a' := UScalar.val_eq_imp a a' h
+    subst ha; exact hp
+  . exact ⟨a', rfl, h⟩
 
 @[simp] theorem IScalar.exists_eq_left {p : IScalar ty → Prop} {a' : IScalar ty} :
   (∃ (a : IScalar ty), a.val = a'.val ∧ p a) ↔ p a' := by
   constructor <;> intro h
   . replace ⟨ a, h, hp ⟩ := h
-    cases a'
-    simp_all only [val, eq_comm]
-    rw [BitVec.toInt_inj] at h
-    simp [h]
-    apply hp
-  . exists a'
+    have ha : a = a' := IScalar.val_eq_imp a a' h
+    subst ha; exact hp
+  . exact ⟨a', rfl, h⟩
 
 @[simp] theorem UScalar.exists_eq_left' {p : UScalar ty → Prop} {a' : UScalar ty} :
   (∃ (a : UScalar ty), a'.val = a.val ∧ p a) ↔ p a' := by
   constructor <;> intro h
   . replace ⟨ a, h, hp ⟩ := h
-    cases a'
-    simp_all only [val]
-    have := @BitVec.toNat_injective ty.numBits
-    have := this h
-    simp [this]
-    apply hp
-  . exists a'
+    have ha : a = a' := UScalar.val_eq_imp a a' h.symm
+    subst ha; exact hp
+  . exact ⟨a', rfl, h⟩
 
 @[simp] theorem IScalar.exists_eq_left' {p : IScalar ty → Prop} {a' : IScalar ty} :
   (∃ (a : IScalar ty), a'.val = a.val ∧ p a) ↔ p a' := by
   constructor <;> intro h
   . replace ⟨ a, h, hp ⟩ := h
-    cases a'
-    simp_all only [val]
-    rw [BitVec.toInt_inj] at h
-    simp [h]
-    apply hp
-  . exists a'
+    have ha : a = a' := IScalar.val_eq_imp a a' h.symm
+    subst ha; exact hp
+  . exact ⟨a', rfl, h⟩
 
 @[simp] theorem UScalar.exists_eq_right {p : UScalar ty → Prop} {a' : UScalar ty} :
   (∃ (a : UScalar ty), p a ∧ a.val = a'.val) ↔ p a' := by
   constructor <;> intro h
   . replace ⟨ a, hp, h ⟩ := h
-    cases a'
-    simp_all only [val]
-    have := @BitVec.toNat_injective ty.numBits
-    have := this h
-    simp [← this]
-    apply hp
-  . exists a'
+    have ha : a = a' := UScalar.val_eq_imp a a' h
+    subst ha; exact hp
+  . exact ⟨a', h, rfl⟩
 
 @[simp] theorem IScalar.exists_eq_right {p : IScalar ty → Prop} {a' : IScalar ty} :
   (∃ (a : IScalar ty), p a ∧ a.val = a'.val) ↔ p a' := by
   constructor <;> intro h
   . replace ⟨ a, hp, h ⟩ := h
-    cases a'
-    simp_all only [val, eq_comm]
-    rw [BitVec.toInt_inj] at h
-    simp [h]
-    apply hp
-  . exists a'
+    have ha : a = a' := IScalar.val_eq_imp a a' h
+    subst ha; exact hp
+  . exact ⟨a', h, rfl⟩
 
 @[simp] theorem UScalar.exists_eq_right' {p : UScalar ty → Prop} {a' : UScalar ty} :
   (∃ (a : UScalar ty), p a ∧ a'.val = a.val) ↔ p a' := by
   constructor <;> intro h
   . replace ⟨ a, hp, h ⟩ := h
-    cases a'
-    simp_all only [val]
-    have := @BitVec.toNat_injective ty.numBits
-    have := this h
-    simp [this]
-    apply hp
-  . exists a'
+    have ha : a = a' := UScalar.val_eq_imp a a' h.symm
+    subst ha; exact hp
+  . exact ⟨a', h, rfl⟩
 
 @[simp] theorem IScalar.exists_eq_right' {p : IScalar ty → Prop} {a' : IScalar ty} :
   (∃ (a : IScalar ty), p a ∧ a'.val = a.val) ↔ p a' := by
   constructor <;> intro h
   . replace ⟨ a, hp, h ⟩ := h
-    cases a'
-    simp_all only [val]
-    rw [BitVec.toInt_inj] at h
-    simp [h]
-    apply hp
-  . exists a'
+    have ha : a = a' := IScalar.val_eq_imp a a' h.symm
+    subst ha; exact hp
+  . exact ⟨a', h, rfl⟩
 
 @[simp] theorem UScalar.exists_eq {a' : UScalar ty} : ∃ (a : UScalar ty), a.val = a'.val := by exists a'
 @[simp] theorem UScalar.exists_eq' {a' : UScalar ty} : ∃ (a : UScalar ty), a'.val = a.val := by exists a'

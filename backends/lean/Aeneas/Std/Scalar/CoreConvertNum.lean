@@ -58,55 +58,55 @@ def FromI64Bool.from (b : Bool) : I64 :=
 def FromI128Bool.from (b : Bool) : I128 :=
   if b then 1#i128 else 0#i128
 
-def FromUsizeU8.from (x : U8) : Usize := ⟨ x.bv.setWidth _ ⟩
-def FromUsizeU16.from (x : U16) : Usize := ⟨ x.bv.setWidth _ ⟩
-def FromUsizeU32.from (x : U32) : Usize := ⟨ x.bv.setWidth _ ⟩
-def FromUsizeUsize.from (x : Usize) : Usize := ⟨ x.bv.setWidth _ ⟩
+def FromUsizeU8.from (x : U8) : Usize := UScalar.ofBitVec .Usize (x.bv.setWidth UScalarTy.Usize.numBits)
+def FromUsizeU16.from (x : U16) : Usize := UScalar.ofBitVec .Usize (x.bv.setWidth UScalarTy.Usize.numBits)
+def FromUsizeU32.from (x : U32) : Usize := UScalar.ofBitVec .Usize (x.bv.setWidth UScalarTy.Usize.numBits)
+def FromUsizeUsize.from (x : Usize) : Usize := UScalar.ofBitVec .Usize (x.bv.setWidth UScalarTy.Usize.numBits)
 
-def FromU8U8.from (x : U8) : U8 := ⟨ x.bv.setWidth _ ⟩
+def FromU8U8.from (x : U8) : U8 := UScalar.ofBitVec .U8 (x.bv.setWidth 8)
 
-def FromU16U8.from (x : U8) : U16 := ⟨ x.bv.setWidth _ ⟩
-def FromU16U16.from (x : U16) : U16 := ⟨ x.bv.setWidth _ ⟩
+def FromU16U8.from (x : U8) : U16 := UScalar.ofBitVec .U16 (x.bv.setWidth 16)
+def FromU16U16.from (x : U16) : U16 := UScalar.ofBitVec .U16 (x.bv.setWidth 16)
 
-def FromU32U8.from (x : U8) : U32 := ⟨ x.bv.setWidth _ ⟩
-def FromU32U16.from (x : U16) : U32 := ⟨ x.bv.setWidth _ ⟩
-def FromU32U32.from (x : U32) : U32 := ⟨ x.bv.setWidth _ ⟩
+def FromU32U8.from (x : U8) : U32 := UScalar.ofBitVec .U32 (x.bv.setWidth 32)
+def FromU32U16.from (x : U16) : U32 := UScalar.ofBitVec .U32 (x.bv.setWidth 32)
+def FromU32U32.from (x : U32) : U32 := UScalar.ofBitVec .U32 (x.bv.setWidth 32)
 
-def FromU64U8.from (x : U8) : U64 := ⟨ x.bv.setWidth _ ⟩
-def FromU64U16.from (x : U16) : U64 := ⟨ x.bv.setWidth _ ⟩
-def FromU64U32.from (x : U32) : U64 := ⟨ x.bv.setWidth _ ⟩
-def FromU64U64.from (x : U64) : U64 := ⟨ x.bv.setWidth _ ⟩
+def FromU64U8.from (x : U8) : U64 := UScalar.ofBitVec .U64 (x.bv.setWidth 64)
+def FromU64U16.from (x : U16) : U64 := UScalar.ofBitVec .U64 (x.bv.setWidth 64)
+def FromU64U32.from (x : U32) : U64 := UScalar.ofBitVec .U64 (x.bv.setWidth 64)
+def FromU64U64.from (x : U64) : U64 := UScalar.ofBitVec .U64 (x.bv.setWidth 64)
 
-def FromU128U8.from (x : U8) : U128 := ⟨ x.bv.setWidth _ ⟩
-def FromU128U16.from (x : U16) : U128 := ⟨ x.bv.setWidth _ ⟩
-def FromU128U32.from (x : U32) : U128 := ⟨ x.bv.setWidth _ ⟩
-def FromU128U64.from (x : U64) : U128 := ⟨ x.bv.setWidth _ ⟩
-def FromU128U128.from (x : U128) : U128 := ⟨ x.bv.setWidth _ ⟩
+def FromU128U8.from (x : U8) : U128 := UScalar.ofBitVec .U128 (x.bv.setWidth 128)
+def FromU128U16.from (x : U16) : U128 := UScalar.ofBitVec .U128 (x.bv.setWidth 128)
+def FromU128U32.from (x : U32) : U128 := UScalar.ofBitVec .U128 (x.bv.setWidth 128)
+def FromU128U64.from (x : U64) : U128 := UScalar.ofBitVec .U128 (x.bv.setWidth 128)
+def FromU128U128.from (x : U128) : U128 := UScalar.ofBitVec .U128 (x.bv.setWidth 128)
 
-def FromIsizeI8.from (x : I8) : Isize := ⟨ x.bv.signExtend _ ⟩
-def FromIsizeI16.from (x : I16) : Isize := ⟨ x.bv.signExtend _ ⟩
-def FromIsizeI32.from (x : I32) : Isize := ⟨ x.bv.signExtend _ ⟩
-def FromIsizeIsize.from (x : Isize) : Isize := ⟨ x.bv.signExtend _ ⟩
+def FromIsizeI8.from (x : I8) : Isize := IScalar.ofBitVec .Isize (x.bv.signExtend IScalarTy.Isize.numBits)
+def FromIsizeI16.from (x : I16) : Isize := IScalar.ofBitVec .Isize (x.bv.signExtend IScalarTy.Isize.numBits)
+def FromIsizeI32.from (x : I32) : Isize := IScalar.ofBitVec .Isize (x.bv.signExtend IScalarTy.Isize.numBits)
+def FromIsizeIsize.from (x : Isize) : Isize := IScalar.ofBitVec .Isize (x.bv.signExtend IScalarTy.Isize.numBits)
 
-def FromI8I8.from (x : I8) : I8 := ⟨ x.bv.signExtend _ ⟩
+def FromI8I8.from (x : I8) : I8 := IScalar.ofBitVec .I8 (x.bv.signExtend 8)
 
-def FromI16I8.from (x : I8) : I16 := ⟨ x.bv.signExtend _ ⟩
-def FromI16I16.from (x : I16) : I16 := ⟨ x.bv.signExtend _ ⟩
+def FromI16I8.from (x : I8) : I16 := IScalar.ofBitVec .I16 (x.bv.signExtend 16)
+def FromI16I16.from (x : I16) : I16 := IScalar.ofBitVec .I16 (x.bv.signExtend 16)
 
-def FromI32I8.from (x : I8) : I32 := ⟨ x.bv.signExtend _ ⟩
-def FromI32I16.from (x : I16) : I32 := ⟨ x.bv.signExtend _ ⟩
-def FromI32I32.from (x : I32) : I32 := ⟨ x.bv.signExtend _ ⟩
+def FromI32I8.from (x : I8) : I32 := IScalar.ofBitVec .I32 (x.bv.signExtend 32)
+def FromI32I16.from (x : I16) : I32 := IScalar.ofBitVec .I32 (x.bv.signExtend 32)
+def FromI32I32.from (x : I32) : I32 := IScalar.ofBitVec .I32 (x.bv.signExtend 32)
 
-def FromI64I8.from (x : I8) : I64 := ⟨ x.bv.signExtend _ ⟩
-def FromI64I16.from (x : I16) : I64 := ⟨ x.bv.signExtend _ ⟩
-def FromI64I32.from (x : I32) : I64 := ⟨ x.bv.signExtend _ ⟩
-def FromI64I64.from (x : I64) : I64 := ⟨ x.bv.signExtend _ ⟩
+def FromI64I8.from (x : I8) : I64 := IScalar.ofBitVec .I64 (x.bv.signExtend 64)
+def FromI64I16.from (x : I16) : I64 := IScalar.ofBitVec .I64 (x.bv.signExtend 64)
+def FromI64I32.from (x : I32) : I64 := IScalar.ofBitVec .I64 (x.bv.signExtend 64)
+def FromI64I64.from (x : I64) : I64 := IScalar.ofBitVec .I64 (x.bv.signExtend 64)
 
-def FromI128I8.from (x : I8) : I128 := ⟨ x.bv.signExtend _ ⟩
-def FromI128I16.from (x : I16) : I128 := ⟨ x.bv.signExtend _ ⟩
-def FromI128I32.from (x : I32) : I128 := ⟨ x.bv.signExtend _ ⟩
-def FromI128I64.from (x : I64) : I128 := ⟨ x.bv.signExtend _ ⟩
-def FromI128I128.from (x : I128) : I128 := ⟨ x.bv.signExtend _ ⟩
+def FromI128I8.from (x : I8) : I128 := IScalar.ofBitVec .I128 (x.bv.signExtend 128)
+def FromI128I16.from (x : I16) : I128 := IScalar.ofBitVec .I128 (x.bv.signExtend 128)
+def FromI128I32.from (x : I32) : I128 := IScalar.ofBitVec .I128 (x.bv.signExtend 128)
+def FromI128I64.from (x : I64) : I128 := IScalar.ofBitVec .I128 (x.bv.signExtend 128)
+def FromI128I128.from (x : I128) : I128 := IScalar.ofBitVec .I128 (x.bv.signExtend 128)
 
 private theorem BitVec.setWidth_toNat_le (m : Nat) (x : BitVec n) (h : n ≤ m) :
   (x.setWidth m).toNat = x.toNat := by
@@ -575,48 +575,48 @@ open ScalarElab
 /-!
 # To Little-Endian
 -/
-uscalar_no_usize def core.num.«%S».to_le_bytes (x : «%S») : Array U8 (%Size)#usize := ⟨ x.bv.toLEBytes.map UScalar.mk, by
+uscalar_no_usize def core.num.«%S».to_le_bytes (x : «%S») : Array U8 (%Size)#usize := ⟨ x.bv.toLEBytes.map UInt8.ofBitVec, by
   simp only [List.length_map, UScalar.ofNatCore_val_eq, @BitVec.toLEBytes_length ((%Size) * 8)] ⟩
-iscalar_no_isize def core.num.«%S».to_le_bytes (x : «%S») : Array I8 (%Size)#usize := ⟨ x.bv.toLEBytes.map IScalar.mk, by
+iscalar_no_isize def core.num.«%S».to_le_bytes (x : «%S») : Array I8 (%Size)#usize := ⟨ x.bv.toLEBytes.map Int8.ofBitVec, by
   simp only [List.length_map, UScalar.ofNatCore_val_eq, @BitVec.toLEBytes_length ((%Size) * 8)] ⟩
 
 /-!
 # To Big-Endian
 -/
-uscalar_no_usize def core.num.«%S».to_be_bytes (x : «%S») : Array U8 (%Size)#usize := ⟨ x.bv.toBEBytes.map UScalar.mk, by
+uscalar_no_usize def core.num.«%S».to_be_bytes (x : «%S») : Array U8 (%Size)#usize := ⟨ x.bv.toBEBytes.map UInt8.ofBitVec, by
   simp only [List.length_map, UScalar.ofNatCore_val_eq, @BitVec.toBEBytes_length ((%Size) * 8)] ⟩
-iscalar_no_isize def core.num.«%S».to_be_bytes (x : «%S») : Array I8 (%Size)#usize := ⟨ x.bv.toBEBytes.map IScalar.mk, by
+iscalar_no_isize def core.num.«%S».to_be_bytes (x : «%S») : Array I8 (%Size)#usize := ⟨ x.bv.toBEBytes.map Int8.ofBitVec, by
   simp only [List.length_map, UScalar.ofNatCore_val_eq, @BitVec.toBEBytes_length ((%Size) * 8)] ⟩
 
 /-!
 # From Little-Endian
 -/
 uscalar_no_usize def core.num.«%S».from_le_bytes (a : Array U8 (%Size)#usize) : «%S» :=
-  ⟨ (BitVec.fromLEBytes (List.map U8.bv a.val)).cast (by simp) ⟩
+  UScalar.ofBitVec .«%S» ((BitVec.fromLEBytes (List.map U8.bv a.val)).cast (by simp))
 
 iscalar_no_isize def core.num.«%S».from_le_bytes (a : Array I8 (%Size)#usize) : «%S» :=
-  ⟨ (BitVec.fromLEBytes (List.map I8.bv a.val)).cast (by simp) ⟩
+  IScalar.ofBitVec .«%S» ((BitVec.fromLEBytes (List.map I8.bv a.val)).cast (by simp))
 
 /-!
 # From Big-Endian
 -/
 uscalar_no_usize def core.num.«%S».from_be_bytes (a : Array U8 (%Size)#usize) : «%S» :=
-  ⟨ (BitVec.fromBEBytes (List.map U8.bv a.val)).cast (by simp) ⟩
+  UScalar.ofBitVec .«%S» ((BitVec.fromBEBytes (List.map U8.bv a.val)).cast (by simp))
 
 iscalar_no_isize def core.num.«%S».from_be_bytes (a : Array I8 (%Size)#usize) : «%S» :=
-  ⟨ (BitVec.fromBEBytes (List.map I8.bv a.val)).cast (by simp) ⟩
+  IScalar.ofBitVec .«%S» ((BitVec.fromBEBytes (List.map I8.bv a.val)).cast (by simp))
 
 /-!
 # Progress theorems: To Little-Endian
 -/
 uscalar_no_usize @[step]
 theorem core.num.«%S».to_le_bytes.step_spec (x : «%S») :
-  lift (core.num.«%S».to_le_bytes x) ⦃ y => y.val = x.bv.toLEBytes.map (@UScalar.mk UScalarTy.U8) ⦄ := by
+  lift (core.num.«%S».to_le_bytes x) ⦃ y => y.val = x.bv.toLEBytes.map UInt8.ofBitVec ⦄ := by
   simp only [spec_ok, lift, to_le_bytes, UScalarTy.U8_numBits_eq]
 
 iscalar_no_isize @[step]
 theorem core.num.«%S».to_le_bytes.step_spec (x : «%S») :
-  lift (core.num.«%S».to_le_bytes x) ⦃ y => y.val = x.bv.toLEBytes.map (@IScalar.mk IScalarTy.I8) ⦄ := by
+  lift (core.num.«%S».to_le_bytes x) ⦃ y => y.val = x.bv.toLEBytes.map Int8.ofBitVec ⦄ := by
   simp only [spec_ok, lift, to_le_bytes, IScalarTy.I8_numBits_eq]
 
 /-!
@@ -625,12 +625,12 @@ theorem core.num.«%S».to_le_bytes.step_spec (x : «%S») :
 uscalar_no_usize @[step]
 theorem core.num.«%S».from_le_bytes.step_spec (x : Array U8 (%Size)#usize) :
   lift (core.num.«%S».from_le_bytes x) ⦃ y => y.bv = (BitVec.fromLEBytes (x.val.map U8.bv)).cast (by simp) ⦄ := by
-  simp only [spec_ok, lift, from_le_bytes]
+  simp only [spec_ok, lift, from_le_bytes, UScalar.ofBitVec_bv]
 
 iscalar_no_isize @[step]
 theorem core.num.«%S».from_le_bytes.step_spec (x : Array I8 (%Size)#usize) :
   lift (core.num.«%S».from_le_bytes x) ⦃ y => y.bv = (BitVec.fromLEBytes (x.val.map I8.bv)).cast (by simp) ⦄  := by
-  simp only [spec_ok, lift, from_le_bytes]
+  simp only [spec_ok, lift, from_le_bytes, IScalar.ofBitVec_bv]
 
 end Std
 

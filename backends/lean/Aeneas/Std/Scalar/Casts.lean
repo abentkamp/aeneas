@@ -17,7 +17,7 @@ The reference semantics are here: https://doc.rust-lang.org/reference/expression
 @[step_pure_def]
 def UScalar.cast {src_ty : UScalarTy} (tgt_ty : UScalarTy) (x : UScalar src_ty) : UScalar tgt_ty :=
   -- This truncates the integer if the numBits is smaller
-  ⟨ x.bv.zeroExtend tgt_ty.numBits ⟩
+  UScalar.ofBitVec tgt_ty (x.bv.zeroExtend tgt_ty.numBits)
 
 /- Heterogeneous cast
 
@@ -26,12 +26,12 @@ def UScalar.cast {src_ty : UScalarTy} (tgt_ty : UScalarTy) (x : UScalar src_ty) 
 @[step_pure_def]
 def UScalar.hcast {src_ty : UScalarTy} (tgt_ty : IScalarTy) (x : UScalar src_ty) : IScalar tgt_ty :=
   -- This truncates the integer if the numBits is smaller
-  ⟨ x.bv.zeroExtend tgt_ty.numBits ⟩
+  IScalar.ofBitVec tgt_ty (x.bv.zeroExtend tgt_ty.numBits)
 
 /-- When casting between signed integers, we truncate or **sign**-extend. -/
 @[step_pure_def]
 def IScalar.cast {src_ty : IScalarTy} (tgt_ty : IScalarTy) (x : IScalar src_ty) : IScalar tgt_ty :=
-  ⟨ x.bv.signExtend tgt_ty.numBits ⟩
+  IScalar.ofBitVec tgt_ty (x.bv.signExtend tgt_ty.numBits)
 
 /- Heterogeneous cast
 
@@ -39,7 +39,7 @@ def IScalar.cast {src_ty : IScalarTy} (tgt_ty : IScalarTy) (x : IScalar src_ty) 
 -/
 @[step_pure_def]
 def IScalar.hcast {src_ty : IScalarTy} (tgt_ty : UScalarTy) (x : IScalar src_ty) : UScalar tgt_ty :=
-  ⟨ x.bv.signExtend tgt_ty.numBits ⟩
+  UScalar.ofBitVec tgt_ty (x.bv.signExtend tgt_ty.numBits)
 
 section
     /-! Checking that the semantics of casts are correct by using the examples given by the Rust reference. -/
@@ -95,10 +95,10 @@ section
 end
 
 def UScalar.cast_fromBool (ty : UScalarTy) (x : Bool) : UScalar ty :=
-  if x then ⟨ 1#ty.numBits ⟩ else ⟨ 0#ty.numBits ⟩
+  if x then UScalar.ofBitVec ty 1#ty.numBits else UScalar.ofBitVec ty 0#ty.numBits
 
 def IScalar.cast_fromBool (ty : IScalarTy) (x : Bool) : IScalar ty :=
-  if x then ⟨ 1#ty.numBits ⟩ else ⟨ 0#ty.numBits ⟩
+  if x then IScalar.ofBitVec ty 1#ty.numBits else IScalar.ofBitVec ty 0#ty.numBits
 
 /-!
 # Casts: Theorems
@@ -108,8 +108,8 @@ def IScalar.cast_fromBool (ty : IScalarTy) (x : Bool) : IScalar ty :=
 theorem UScalar.cast_inBounds_spec {src_ty : UScalarTy}
   (tgt_ty : UScalarTy) (x : UScalar src_ty) (h : x.val ≤ UScalar.max tgt_ty) :
   lift (UScalar.cast tgt_ty x) ⦃ y => y.val = x.val ⦄ := by
-  simp only [lift, cast, BitVec.truncate_eq_setWidth, WP.spec_ok, UScalar.val]
-  simp only [max, BitVec.toNat_setWidth, bv_toNat] at *
+  simp only [lift, cast, WP.spec_ok, UScalar.ofBitVec_val]
+  simp only [max, BitVec.truncate_eq_setWidth, BitVec.toNat_setWidth, bv_toNat] at *
   have : 0 < 2^tgt_ty.numBits := by simp
   apply Nat.mod_eq_of_lt; omega
 
@@ -118,9 +118,8 @@ def UScalar.hcast_inBounds_spec {src_ty : UScalarTy}
   (tgt_ty : IScalarTy) (x : UScalar src_ty)
   (h : x.val ≤ IScalar.max tgt_ty) :
   lift (UScalar.hcast tgt_ty x) ⦃ y => y.val = x.val ⦄ := by
-  simp only [lift, hcast, BitVec.truncate_eq_setWidth, WP.spec_ok]
-  simp only [IScalar.val, UScalar.val]
-  simp only [IScalar.max, BitVec.toInt_setWidth, bv_toNat] at *
+  simp only [lift, hcast, WP.spec_ok, IScalar.ofBitVec_val]
+  simp only [IScalar.max, BitVec.truncate_eq_setWidth, BitVec.toInt_setWidth, bv_toNat] at *
   apply Int.bmod_pow2_eq_of_inBounds'
   . apply IScalarTy.numBits_nonzero
   . have : -2 ^ (tgt_ty.numBits - 1) ≤ 0 := by simp
@@ -132,9 +131,8 @@ def IScalar.cast_inBounds_spec {src_ty : IScalarTy}
   (tgt_ty : IScalarTy) (x : IScalar src_ty) (h : IScalar.min tgt_ty ≤ x.val ∧ x.val ≤ IScalar.max tgt_ty) :
   lift (IScalar.cast tgt_ty x) ⦃ y => y.val = x.val ⦄
   := by
-  simp only [lift, cast, BitVec.signExtend, bv_toInt_eq, WP.spec_ok]
-  simp only [IScalar.val]
-  simp only [min, max, bv_toInt_eq, BitVec.toInt_ofInt] at *
+  simp only [lift, cast, WP.spec_ok, IScalar.ofBitVec_val]
+  simp only [min, max, BitVec.signExtend, bv_toInt_eq, BitVec.toInt_ofInt] at *
   apply Int.bmod_pow2_eq_of_inBounds'
   . apply IScalarTy.numBits_nonzero
   . scalar_tac
@@ -144,10 +142,9 @@ def IScalar.cast_inBounds_spec {src_ty : IScalarTy}
 def IScalar.hcast_inBounds_spec {src_ty : IScalarTy}
   (tgt_ty : UScalarTy) (x : IScalar src_ty) (h : 0 ≤ x.val ∧ x.val ≤ UScalar.max tgt_ty) :
   lift (IScalar.hcast tgt_ty x) ⦃ y => y.val = x.val ⦄ := by
-  simp only [lift, hcast, BitVec.signExtend, bv_toInt_eq, WP.spec_ok]
-  simp only [IScalar.val, UScalar.val]
+  simp only [lift, hcast, WP.spec_ok, UScalar.ofBitVec_val]
   simp only [UScalar.max, Nat.ofNat_pos, pow_pos, Nat.cast_pred, Nat.cast_pow, Nat.cast_ofNat,
-    bv_toInt_eq, BitVec.toNat_ofInt, Int.ofNat_toNat] at *
+    BitVec.signExtend, bv_toInt_eq, BitVec.toNat_ofInt, Int.ofNat_toNat] at *
   have : 0 < 2^tgt_ty.numBits := by simp
   have : x.val % 2^tgt_ty.numBits = x.val := by apply Int.emod_eq_of_lt <;> scalar_tac
   simp only [this, sup_eq_left, ge_iff_le]
@@ -155,15 +152,15 @@ def IScalar.hcast_inBounds_spec {src_ty : IScalarTy}
 
 @[simp, step_pure cast_fromBool ty b]
 theorem UScalar.cast_fromBool_val_eq ty (b : Bool) : (UScalar.cast_fromBool ty b).val = b.toNat := by
-  simp only [cast_fromBool]
-  split <;> simp only [val, *] <;> simp
+  simp only [cast_fromBool, UScalar.ofBitVec_val]
+  cases b <;> simp [BitVec.toNat_ofNat]
   have := ty.numBits_nonzero
   omega
 
 @[simp, step_pure cast_fromBool ty b]
 theorem IScalar.cast_fromBool_val_eq ty (b : Bool) :(IScalar.cast_fromBool ty b).val = b.toInt := by
-  simp only [cast_fromBool]
-  split <;> simp only [val, *] <;> simp
+  simp only [cast_fromBool, IScalar.ofBitVec_val]
+  cases b <;> simp [BitVec.toInt_ofNat]
   cases ty <;> simp [BitVec.toInt]
   have := System.Platform.numBits_eq
   cases this <;>
@@ -172,8 +169,8 @@ theorem IScalar.cast_fromBool_val_eq ty (b : Bool) :(IScalar.cast_fromBool ty b)
 
 @[scalar_tac UScalar.cast_fromBool ty b]
 theorem UScalar.cast_fromBool_bound_eq ty (b : Bool) : (UScalar.cast_fromBool ty b).val ≤ 1 := by
-  simp only [cast_fromBool]
-  split <;> simp only [val] <;> simp
+  simp only [cast_fromBool, UScalar.ofBitVec_val]
+  cases b <;> simp [BitVec.toNat_ofNat]
   have := @Nat.mod_eq_of_lt 1 (2^ty.numBits) (by simp [ty.numBits_nonzero])
   rw [this]
 

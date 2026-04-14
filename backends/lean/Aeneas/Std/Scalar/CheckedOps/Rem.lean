@@ -1,4 +1,5 @@
 import Aeneas.Std.Scalar.Ops.Rem
+import Aeneas.Std.Scalar.Ops.CheckedArith
 import Aeneas.Std.Scalar.Elab
 
 namespace Aeneas.Std
@@ -11,13 +12,13 @@ open Result Error Arith ScalarElab WP
 
 /- [core::num::{T}::checked_rem] -/
 def core.num.checked_rem_UScalar {ty} (x y : UScalar ty) : Option (UScalar ty) :=
-  Option.ofResult (UScalar.rem x y)
+  Option.ofResult (x %? y)
 
 uscalar def «%S».checked_rem (x y : «%S») : Option «%S» := core.num.checked_rem_UScalar x y
 
 /- [core::num::{T}::checked_rem] -/
 def core.num.checked_rem_IScalar {ty} (x y : IScalar ty) : Option (IScalar ty) :=
-  Option.ofResult (IScalar.rem x y)
+  Option.ofResult (x %? y)
 
 iscalar def «%S».checked_rem (x y : «%S») : Option «%S» := core.num.checked_rem_IScalar x y
 
@@ -39,7 +40,7 @@ theorem core.num.checked_rem_UScalar_bv_spec {ty} (x y : UScalar ty) :
   . rename_i hnz
     simp
     have hnz' : y.val ≠ 0 := by zify at *; simp_all
-    have : x % y = x.rem y := by rfl
+    have : x %? y = x.rem y := by rfl
     have ⟨_, hz⟩ := spec_imp_exists (UScalar.rem_bv_spec x hnz')
     simp [this, UScalar.rem, hnz] at hz
     simp [hz, hnz']
@@ -67,7 +68,7 @@ theorem core.num.checked_rem_IScalar_bv_spec {ty} (x y : IScalar ty) :
   . rename_i hnz
     simp
     have hnz' : y.val ≠ 0 := by zify at *; simp_all
-    have : x % y = x.rem y := by rfl
+    have : x %? y = x.rem y := by rfl
     have ⟨ _, hz ⟩ := spec_imp_exists (@IScalar.rem_bv_spec _ x y hnz')
     simp [this, IScalar.rem, hnz] at hz
     simp [*]
