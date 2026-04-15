@@ -545,7 +545,7 @@ grind_pattern [agrind_nla] mod_lt => x % y
    to use (it has to be expressed in terms of `x.bv.toNat`). -/
 @[simp, scalar_tac_simps, grind =, agrind =]
 theorem UScalar.sizeOf {ty} (x : UScalar ty) : sizeOf x = x.val + 3 := by
-  cases ty <;> cases x <;> simp [UScalar.val, UScalar.toNat]
+  cases ty <;> cases x <;> simp [UScalar.val, UScalar.toNat]; grind
 
 /-!
 # Nat.testBit

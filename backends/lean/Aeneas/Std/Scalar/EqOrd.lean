@@ -65,19 +65,27 @@ scalar @[reducible] def core.cmp.PartialOrd'S : core.cmp.PartialOrd «%S» «%S�
 scalar @[step_pure_def] def core.cmp.impls.Ord'S.min (x y : «%S») : «%S» := if x < y then x else y
 
 uscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.min_val (x y : «%S») : (min x y).val = Min.min x.val y.val := by
-  sorry
+  by_cases h: x < y
+  · rw [min, if_pos, min_eq_left] <;> grind
+  · rw [min, if_neg, min_eq_right] <;> grind
 
 iscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.min_val (x y : «%S») : (min x y).val = Min.min x.val y.val := by
-  sorry
+  by_cases h: x < y
+  · rw [min, if_pos, min_eq_left] <;> grind
+  · rw [min, if_neg, min_eq_right] <;> grind
 
 /- Name pattern: core::cmp::impls::{core::cmp::Ord<SCALAR>}::max -/
 scalar @[step_pure_def] def core.cmp.impls.Ord'S.max (x y : «%S») : «%S» := if x < y then y else x
 
 uscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.max_val (x y : «%S») : (max x y).val = Max.max x.val y.val := by
-  sorry
+  by_cases h: x < y
+  · rw [max, if_pos, max_eq_right] <;> grind
+  · rw [max, if_neg, max_eq_left] <;> grind
 
 iscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.max_val (x y : «%S») : (max x y).val = Max.max x.val y.val := by
-  sorry
+  by_cases h: x < y
+  · rw [max, if_pos, max_eq_right] <;> grind
+  · rw [max, if_neg, max_eq_left] <;> grind
 
 /- Name pattern: core::cmp::impls::{core::cmp::Ord<SCALAR>}::clamp -/
 def UScalar.clamp {ty} (self min max : UScalar ty) : Result (UScalar ty) := do

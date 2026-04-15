@@ -650,13 +650,13 @@ instance {ty} : LawfulBEq (UScalar ty) := by cases ty <;> exact inferInstance
 instance {ty} : LawfulBEq (IScalar ty) := by cases ty <;> exact inferInstance
 
 instance (ty : UScalarTy) : CoeOut (UScalar ty) Nat where
-  coe := λ v => v.val
+  coe := λ v => v.toNat
 
 instance (ty : IScalarTy) : CoeOut (IScalar ty) Int where
-  coe := λ v => v.val
+  coe := λ v => v.toInt
 
 /- Activate the ↑ notation -/
-attribute [coe] UScalar.val IScalar.val
+attribute [coe] UScalar.toNat IScalar.toInt
 
 theorem UScalar.bound_suffices (ty : UScalarTy) (x : Nat) :
   x ≤ UScalar.cMax ty -> x < 2^ty.numBits
@@ -1022,15 +1022,13 @@ theorem IScalar.min_le_max (ty : IScalarTy) : IScalar.min ty ≤ IScalar.max ty 
 
 
 /-! # Comparisons -/
-instance {ty} : LT (UScalar ty) where
-  lt a b := LT.lt a.val b.val
+instance {ty} : LT (UScalar ty) := by cases ty <;> infer_instance
 
-instance {ty} : LE (UScalar ty) where le a b := LE.le a.val b.val
+instance {ty} : LE (UScalar ty) := by cases ty <;> infer_instance
 
-instance {ty} : LT (IScalar ty) where
-  lt a b := LT.lt a.val b.val
+instance {ty} : LT (IScalar ty) := by cases ty <;> infer_instance
 
-instance {ty} : LE (IScalar ty) where le a b := LE.le a.val b.val
+instance {ty} : LE (IScalar ty) := by cases ty <;> infer_instance
 
 /- Not marking this one with @[simp] on purpose: if we have `x = y` somewhere in the context,
    we may want to use it to substitute `y` with `x` somewhere. -/
@@ -1046,15 +1044,13 @@ theorem UScalar.eq_imp {ty : UScalarTy} (x y : UScalar ty) :
   (↑x : Nat) = ↑y → x = y := (eq_equiv x y).mpr
 
 @[simp, scalar_tac_simps, grind =, agrind =] theorem UScalar.lt_equiv {ty : UScalarTy} (x y : UScalar ty) :
-  x < y ↔ (↑x : Nat) < ↑y := by
-  rw [LT.lt, instLTUScalar]
+  x < y ↔ (↑x : Nat) < ↑y := by cases ty <;> rfl
 
 @[simp] theorem UScalar.lt_imp {ty : UScalarTy} (x y : UScalar ty) :
   (↑x : Nat) < (↑y) → x < y := (lt_equiv x y).mpr
 
 @[simp, scalar_tac_simps, grind =, agrind =] theorem UScalar.le_equiv {ty : UScalarTy} (x y : UScalar ty) :
-  x ≤ y ↔ (↑x : Nat) ≤ ↑y := by
-  rw [LE.le, instLEUScalar]
+  x ≤ y ↔ (↑x : Nat) ≤ ↑y := by cases ty <;> rfl
 
 @[simp] theorem UScalar.le_imp {ty : UScalarTy} (x y : UScalar ty) :
   (↑x : Nat) ≤ ↑y → x ≤ y := (le_equiv x y).mpr
@@ -1076,23 +1072,25 @@ theorem UScalar.eq_imp {ty : UScalarTy} (x y : UScalar ty) :
 theorem IScalar.eq_imp {ty : IScalarTy} (x y : IScalar ty) :
   (↑x : Int) = ↑y → x = y := (eq_equiv x y).mpr
 
+theorem Int128.lt_iff_toInt_lt {x y : Int128} : x < y ↔ x.toInt < y.toInt := sorry
+theorem Int128.le_iff_toInt_le {x y : Int128} : x ≤ y ↔ x.toInt ≤ y.toInt := sorry
+
 @[simp, scalar_tac_simps, grind =, agrind =] theorem IScalar.lt_equiv {ty : IScalarTy} (x y : IScalar ty) :
-  x < y ↔ (↑x : Int) < ↑y := by
-  rw [LT.lt, instLTIScalar]
+  x < y ↔ (↑x : Int) < ↑y := by cases ty <;> apply x.lt_iff_toInt_lt
 
 @[simp, scalar_tac_simps] theorem IScalar.lt_imp {ty : IScalarTy} (x y : IScalar ty) :
   (↑x : Int) < (↑y) → x < y := (lt_equiv x y).mpr
 
 @[simp, scalar_tac_simps, grind =, agrind =] theorem IScalar.le_equiv {ty : IScalarTy} (x y : IScalar ty) :
-  x ≤ y ↔ (↑x : Int) ≤ ↑y := by simp [LE.le]
+  x ≤ y ↔ (↑x : Int) ≤ ↑y := by cases ty <;> apply x.le_iff_toInt_le
 
 @[simp] theorem IScalar.le_imp {ty : IScalarTy} (x y : IScalar ty) :
   (↑x : Int) ≤ ↑y → x ≤ y := (le_equiv x y).mpr
 
-instance UScalar.decLt {ty} (a b : UScalar ty) : Decidable (LT.lt a b) := Nat.decLt ..
-instance UScalar.decLe {ty} (a b : UScalar ty) : Decidable (LE.le a b) := Nat.decLe ..
-instance IScalar.decLt {ty} (a b : IScalar ty) : Decidable (LT.lt a b) := Int.decLt ..
-instance IScalar.decLe {ty} (a b : IScalar ty) : Decidable (LE.le a b) := Int.decLe ..
+instance UScalar.decLt {ty} (a b : UScalar ty) : Decidable (LT.lt a b) := by cases ty <;> infer_instance
+instance UScalar.decLe {ty} (a b : UScalar ty) : Decidable (LE.le a b) := by cases ty <;> infer_instance
+instance IScalar.decLt {ty} (a b : IScalar ty) : Decidable (LT.lt a b) := by cases ty <;> infer_instance
+instance IScalar.decLe {ty} (a b : IScalar ty) : Decidable (LE.le a b) := by cases ty <;> infer_instance
 
 theorem UScalar.eq_of_val_eq {ty} : ∀ {i j : UScalar ty}, Eq i.val j.val → Eq i j := by
   intro i j hEq
@@ -1125,43 +1123,33 @@ instance (ty : IScalarTy) : DecidableEq (IScalar ty) :=
 
 @[simp, scalar_tac_simps]
 theorem UScalar.neq_to_neq_val {ty} :
-  ∀ {i j : UScalar ty}, (¬ i = j) ↔ ¬ i.val = j.val := by
+  ∀ {i j : UScalar ty}, (¬ i = j) ↔ ¬ i.toNat = j.toNat := by
   simp [eq_equiv]
 
 @[simp, scalar_tac_simps]
 theorem IScalar.neq_to_neq_val {ty} :
-  ∀ {i j : IScalar ty}, (¬ i = j) ↔ ¬ i.val = j.val := by
+  ∀ {i j : IScalar ty}, (¬ i = j) ↔ ¬ i.toInt = j.toInt := by
   simp [eq_equiv]
 
 @[simp]
-theorem UScalar.val_not_eq_imp_not_eq (x y : UScalar ty) (h : Nat.not_eq x.val y.val) :
+theorem UScalar.val_not_eq_imp_not_eq (x y : UScalar ty) (h : Nat.not_eq x.toNat y.toNat) :
   ¬ x = y := by
   simp_all; scalar_tac
 
 @[simp]
-theorem IScalar.val_not_eq_imp_not_eq (x y : IScalar ty) (h : Int.not_eq x.val y.val) :
+theorem IScalar.val_not_eq_imp_not_eq (x y : IScalar ty) (h : Int.not_eq x.toInt y.toInt) :
   ¬ x = y := by
   simp_all; scalar_tac
 
 instance (ty: UScalarTy) : Preorder (UScalar ty) where
   le_refl := fun a => by simp
-  le_trans := fun a b c => by
-    intro Hab Hbc
-    exact (le_trans ((UScalar.le_equiv _ _).1 Hab) ((UScalar.le_equiv _ _).1 Hbc))
-  lt_iff_le_not_ge := fun a b => by
-    trans (a: Nat) < (b: Nat); exact (UScalar.lt_equiv _ _)
-    trans (a: Nat) ≤ (b: Nat) ∧ ¬ (b: Nat) ≤ (a: Nat); exact lt_iff_le_not_ge
-    repeat rewrite [← UScalar.le_equiv]; rfl
+  le_trans := fun a b c => by grind
+  lt_iff_le_not_ge := fun a b => by grind
 
 instance (ty: IScalarTy) : Preorder (IScalar ty) where
   le_refl := fun a => by simp
-  le_trans := fun a b c => by
-    intro Hab Hbc
-    exact (le_trans ((IScalar.le_equiv _ _).1 Hab) ((IScalar.le_equiv _ _).1 Hbc))
-  lt_iff_le_not_ge := fun a b => by
-    trans (a: Int) < (b: Int); exact (IScalar.lt_equiv _ _)
-    trans (a: Int) ≤ (b: Int) ∧ ¬ (b: Int) ≤ (a: Int); exact lt_iff_le_not_ge
-    repeat rewrite [← IScalar.le_equiv]; rfl
+  le_trans := fun a b c => by grind
+  lt_iff_le_not_ge := fun a b => by grind
 
 instance (ty: UScalarTy) : PartialOrder (UScalar ty) where
   le_antisymm := fun a b Hab Hba =>
@@ -1171,19 +1159,25 @@ instance (ty: IScalarTy) : PartialOrder (IScalar ty) where
   le_antisymm := fun a b Hab Hba =>
     IScalar.eq_imp _ _ ((@le_antisymm Int _ _ _ ((IScalar.le_equiv a b).1 Hab) ((IScalar.le_equiv b a).1 Hba)))
 
-instance (priority := 50) (ty : UScalarTy) : LinearOrder (UScalar ty) where
+instance (ty : UScalarTy) : LinearOrder (UScalar ty) where
   le_total := fun a b => by
     rcases Nat.le_total (a : Nat) (b : Nat) with h | h
     · exact Or.inl ((UScalar.le_equiv a b).mpr h)
     · exact Or.inr ((UScalar.le_equiv b a).mpr h)
   toDecidableLE := fun a b => inferInstance
 
-instance (priority := 50) (ty : IScalarTy) : LinearOrder (IScalar ty) where
+instance (ty : IScalarTy) : LinearOrder (IScalar ty) where
   le_total := fun a b => by
     rcases le_total (a : Int) (b : Int) with h | h
     · exact Or.inl ((IScalar.le_equiv a b).mpr h)
     · exact Or.inr ((IScalar.le_equiv b a).mpr h)
   toDecidableLE := fun a b => inferInstance
+
+/-! # SizeOf -/
+
+noncomputable instance (ty : IScalarTy) : SizeOf (IScalar ty) := by cases ty <;> infer_instance
+
+noncomputable instance (ty : UScalarTy) : SizeOf (UScalar ty) := by cases ty <;> infer_instance
 
 /-! # Coercion Theorems
 
@@ -1246,7 +1240,7 @@ abbrev I128.bv (x : I128) : BitVec 128 := IScalar.bv x
 abbrev Isize.bv (x : Isize) : BitVec System.Platform.numBits := IScalar.bv x
 
 @[simp, scalar_tac_simps, grind =, agrind =] theorem UScalar.bv_toNat {ty : UScalarTy} (x : UScalar ty) :
-  (UScalar.bv x).toNat  = x.val := by
+  (UScalar.bv x).toNat  = x.toNat := by
   cases ty <;> simp [bv, toBitVec, val, toNat, UInt128.toNat]
 
 @[simp, scalar_tac_simps, grind =, agrind =] theorem U8.bv_toNat (x : U8) : x.bv.toNat = x.val := by apply UScalar.bv_toNat
@@ -1269,7 +1263,7 @@ abbrev Isize.bv (x : Isize) : BitVec System.Platform.numBits := IScalar.bv x
 
 /-- The `val` (natural number) of a scalar constructed from a `BitVec` equals that `BitVec`'s `toNat`. -/
 @[simp] theorem UScalar.ofBitVec_val (ty : UScalarTy) (bv : BitVec ty.numBits) :
-  (UScalar.ofBitVec ty bv).val = bv.toNat := by
+  (UScalar.ofBitVec ty bv).toNat = bv.toNat := by
   rw [← bv_toNat, ofBitVec_bv]
 
 /-- Round-trip: constructing a signed scalar from a `BitVec` and extracting the `BitVec` back gives the original. -/
@@ -1279,8 +1273,8 @@ abbrev Isize.bv (x : Isize) : BitVec System.Platform.numBits := IScalar.bv x
 
 /-- The `val` (integer) of a signed scalar constructed from a `BitVec` equals that `BitVec`'s `toInt`. -/
 @[simp] theorem IScalar.ofBitVec_val (ty : IScalarTy) (bv : BitVec ty.numBits) :
-  (IScalar.ofBitVec ty bv).val = bv.toInt := by
-  rw [← bv_toInt_eq, ofBitVec_bv]
+  (IScalar.ofBitVec ty bv).toInt = bv.toInt := by
+  cases ty <;> rfl
 
 @[simp, scalar_tac_simps, grind =, agrind =] theorem I8.bv_toInt_eq (x : I8) : x.bv.toInt = x.val := by apply IScalar.bv_toInt_eq
 @[simp, scalar_tac_simps, grind =, agrind =] theorem I16.bv_toInt_eq (x : I16) : x.bv.toInt = x.val := by apply IScalar.bv_toInt_eq

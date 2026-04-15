@@ -42,7 +42,16 @@ theorem UScalar.overflowing_add_eq {ty} (x y : UScalar ty) :
              UScalar.max, UScalar.size]
   split <;> rename_i hLt
   · refine ⟨?_, ?_⟩
-    · omega
+    · have : (x.toNat + y.toNat) % 2^ty.numBits =
+             (x.bv.toNat + y.bv.toNat - 2^ty.numBits) % 2^ty.numBits := by
+        rw [Nat.mod_eq_sub_mod]
+        · cases ty <;> grind
+        · grind
+      rw [this]; clear this
+
+      have := @Nat.mod_eq_of_lt (x.bv.toNat + y.bv.toNat - 2^ty.numBits) (2^ty.numBits) (by omega)
+      rw [this]; clear this
+      scalar_tac
     · simp only [decide_eq_true_eq]; omega
   · refine ⟨?_, ?_⟩
     · apply Nat.mod_eq_of_lt; omega
