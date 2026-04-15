@@ -1171,29 +1171,19 @@ instance (ty: IScalarTy) : PartialOrder (IScalar ty) where
   le_antisymm := fun a b Hab Hba =>
     IScalar.eq_imp _ _ ((@le_antisymm Int _ _ _ ((IScalar.le_equiv a b).1 Hab) ((IScalar.le_equiv b a).1 Hba)))
 
-instance UScalarDecidableLE (ty: UScalarTy) : DecidableRel (· ≤ · : UScalar ty -> UScalar ty -> Prop) := by
-  simp [instLEUScalar]
-  -- Lift this to the decidability of the Int version.
-  infer_instance
-
-instance IScalarDecidableLE (ty: IScalarTy) : DecidableRel (· ≤ · : IScalar ty -> IScalar ty -> Prop) := by
-  simp [instLEIScalar]
-  -- Lift this to the decidability of the Int version.
-  infer_instance
-
-instance (ty: UScalarTy) : LinearOrder (UScalar ty) where
+instance (priority := 50) (ty : UScalarTy) : LinearOrder (UScalar ty) where
   le_total := fun a b => by
-    rcases (Nat.le_total a b) with H | H
-    left; exact (UScalar.le_equiv _ _).2 H
-    right; exact (UScalar.le_equiv _ _).2 H
-  toDecidableLE := UScalarDecidableLE ty
+    rcases Nat.le_total (a : Nat) (b : Nat) with h | h
+    · exact Or.inl ((UScalar.le_equiv a b).mpr h)
+    · exact Or.inr ((UScalar.le_equiv b a).mpr h)
+  toDecidableLE := fun a b => inferInstance
 
-instance (ty: IScalarTy) : LinearOrder (IScalar ty) where
+instance (priority := 50) (ty : IScalarTy) : LinearOrder (IScalar ty) where
   le_total := fun a b => by
-    rcases (Int.le_total a b) with H | H
-    left; exact (IScalar.le_equiv _ _).2 H
-    right; exact (IScalar.le_equiv _ _).2 H
-  toDecidableLE := IScalarDecidableLE ty
+    rcases le_total (a : Int) (b : Int) with h | h
+    · exact Or.inl ((IScalar.le_equiv a b).mpr h)
+    · exact Or.inr ((IScalar.le_equiv b a).mpr h)
+  toDecidableLE := fun a b => inferInstance
 
 /-! # Coercion Theorems
 
@@ -1210,8 +1200,17 @@ theorem IScalar.coe_max {ty: IScalarTy} (a b: IScalar ty): ↑(Max.max a b) = (M
   rw[_root_.max_def, _root_.max_def]
   split_ifs <;> simp_all
 
-/-! Max theory -/
--- TODO: do the min theory later on.
+@[simp, norm_cast, scalar_tac_simps, grind =, agrind =]
+theorem UScalar.coe_min {ty: UScalarTy} (a b: UScalar ty): ↑(Min.min a b) = (Min.min (↑a) (↑b): ℕ) := by
+  rw[_root_.min_def, _root_.min_def]
+  split_ifs <;> simp_all
+
+@[simp, norm_cast, scalar_tac_simps, grind =, agrind =]
+theorem IScalar.coe_min {ty: IScalarTy} (a b: IScalar ty): ↑(Min.min a b) = (Min.min (↑a) (↑b): ℤ) := by
+  rw[_root_.min_def, _root_.min_def]
+  split_ifs <;> simp_all
+
+/-! Max/Min theory -/
 
 theorem UScalar.zero_le {ty} (x: UScalar ty): UScalar.ofNat 0 (by simp) ≤ x := by simp
 

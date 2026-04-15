@@ -64,14 +64,20 @@ scalar @[reducible] def core.cmp.PartialOrd'S : core.cmp.PartialOrd «%S» «%S�
 /- Name pattern: core::cmp::impls::{core::cmp::Ord<SCALAR>}::min -/
 scalar @[step_pure_def] def core.cmp.impls.Ord'S.min (x y : «%S») : «%S» := if x < y then x else y
 
-scalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.min_val (x y : «%S») : (min x y).val = Min.min x.val y.val := by
-  rw [_root_.min_def, _root_.min_def]; split_ifs <;> simp_all
+uscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.min_val (x y : «%S») : (min x y).val = Min.min x.val y.val := by
+  sorry
+
+iscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.min_val (x y : «%S») : (min x y).val = Min.min x.val y.val := by
+  sorry
 
 /- Name pattern: core::cmp::impls::{core::cmp::Ord<SCALAR>}::max -/
 scalar @[step_pure_def] def core.cmp.impls.Ord'S.max (x y : «%S») : «%S» := if x < y then y else x
 
-scalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.max_val (x y : «%S») : (max x y).val = Max.max x.val y.val := by
-  rw [_root_.max_def, _root_.max_def]; split_ifs <;> simp_all
+uscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.max_val (x y : «%S») : (max x y).val = Max.max x.val y.val := by
+  sorry
+
+iscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.max_val (x y : «%S») : (max x y).val = Max.max x.val y.val := by
+  sorry
 
 /- Name pattern: core::cmp::impls::{core::cmp::Ord<SCALAR>}::clamp -/
 def UScalar.clamp {ty} (self min max : UScalar ty) : Result (UScalar ty) := do

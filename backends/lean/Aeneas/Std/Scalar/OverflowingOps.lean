@@ -37,9 +37,9 @@ theorem UScalar.overflowing_add_eq {ty} (x y : UScalar ty) :
   := by
   have hx := x.hBounds
   have hy := y.hBounds
-  have hN : 0 < 2 ^ ty.numBits := Nat.pos_pow_of_pos _ (by norm_num)
+  have hN : 0 < 2 ^ ty.numBits := by simp
   simp only [overflowing_add, UScalar.ofBitVec_val, BitVec.toNat_ofNat,
-             UScalar.max_def, UScalar.size_def]
+             UScalar.max, UScalar.size]
   split <;> rename_i hLt
   · refine ⟨?_, ?_⟩
     · omega
