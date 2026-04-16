@@ -20,6 +20,6 @@ def BitVec.leadingZeros {w : Nat} (x : BitVec w) : Nat :=
 #assert BitVec.leadingZeros 255#32 = 24
 
 scalar @[step_pure_def] def core.num.«%S».leading_zeros (x : «%S») : U32 :=
-  UScalar.ofBitVec .U32 (BitVec.ofNat 32 (BitVec.leadingZeros x.bv))
+  UScalar.ofBitVec .U32 (BitVec.ofNat 32 (BitVec.leadingZeros x.toBitVec))
 
 end Aeneas.Std
