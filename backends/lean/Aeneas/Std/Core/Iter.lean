@@ -245,7 +245,7 @@ def core.iter.range.IteratorRange.step_by
    {A : Type} (_StepInst : core.iter.range.Step A) :
   core.ops.range.Range A → Usize → Result (adapters.step_by.StepBy (ops.range.Range A)) :=
   λ range step_by =>
-    if step_by.val = 0 then .fail .panic
+    if step_by.toNat = 0 then .fail .panic
     else .ok ⟨ range, step_by ⟩
 
 @[rust_fun

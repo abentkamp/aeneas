@@ -23,11 +23,11 @@ attribute [-simp] List.getElem!_eq_getElem?_getD
 attribute [bvify, simp_scalar_safe] BitVec.zero_eq
 attribute [bvify, simp_scalar_safe] BitVec.instInhabited
 
-def BitVec.toArray {n} (bv: BitVec n) : Array Bool := Array.finRange n |>.map (bv[·])
+def BitVec.toArray {n} (toBitVec: BitVec n) : Array Bool := Array.finRange n |>.map (bv[·])
 def BitVec.ofFn {n} (f: Fin n → Bool) : BitVec n := (BitVec.ofBoolListLE <| List.ofFn f).cast (by simp)
-def BitVec.set {n} (i: Fin n) (b: Bool) (bv: BitVec n) : BitVec n := bv ^^^ (((bv[i] ^^ b).toNat : BitVec n) <<< i.val)
+def BitVec.set {n} (i: Fin n) (b: Bool) (toBitVec: BitVec n) : BitVec n := bv ^^^ (((bv[i] ^^ b).toNat : BitVec n) <<< i.val)
 
-def BitVec.toByteArray {n} (bv: BitVec n) : ByteArray :=
+def BitVec.toByteArray {n} (toBitVec: BitVec n) : ByteArray :=
   let paddedLen := (n + 7)/8
   let bv' := bv.setWidth (paddedLen*8)
   ByteArray.mk <| Array.finRange paddedLen
@@ -60,7 +60,7 @@ theorem BitVec.ext {n} {bv1 bv2 : BitVec n}
       _ ≤ 2 ^i := Nat.pow_le_pow_of_le Nat.one_lt_two (Nat.le_of_not_gt h)
     simp [Nat.testBit_lt_two_pow this]
 
-theorem BitVec.getElem_set {n} {bv: BitVec n} {b: Bool} {i: Fin n} {j: Nat}
+theorem BitVec.getElem_set {n} {toBitVec: BitVec n} {b: Bool} {i: Fin n} {j: Nat}
 :  {j_lt: j < n}
 → (bv.set i b)[j] = if i = j then b else bv[j]
 := by
@@ -83,7 +83,7 @@ theorem BitVec.getElem_set {n} {bv: BitVec n} {b: Bool} {i: Fin n} {j: Nat}
       simp only [h, decide_false, Bool.not_false, Bool.true_and]
       cases bv[i] <;> cases b <;> simp [(by simp; omega: decide (j - i = 0) = false)]
 
-@[simp] theorem BitVec.cast_set {n m} (h: n = m) (bv: BitVec n) (i: Nat) (b: Bool) (i_idx: i < n)
+@[simp] theorem BitVec.cast_set {n m} (h: n = m) (toBitVec: BitVec n) (i: Nat) (b: Bool) (i_idx: i < n)
 : (bv.set ⟨i, i_idx⟩ b).cast h = (bv.cast h).set ⟨i, h ▸ i_idx⟩ b
 := by subst h; ext; rw [cast_eq, cast_eq]
 
@@ -605,21 +605,21 @@ theorem BitVec.xor_mod_two_pow_iff_true' {n : Nat} (a b : BitVec n) (k : Nat) :
   simp only [BitVec.xor_mod_two_pow]
 
 @[simp, simp_lists_safe, simp_scalar_safe]
-theorem BitVec.ofNat_shiftRight_toNat {n m} (bv : BitVec n) (i : Nat) :
+theorem BitVec.ofNat_shiftRight_toNat {n m} (toBitVec : BitVec n) (i : Nat) :
   (BitVec.ofNat m (bv.toNat >>> i)) = BitVec.setWidth m (bv >>> i) := by
   natify; simp
 
 @[simp, simp_lists_safe, simp_scalar_safe]
-theorem BitVec.cast_shiftRight_toNat {n m} (bv : BitVec n) (i : Nat) :
+theorem BitVec.cast_shiftRight_toNat {n m} (toBitVec : BitVec n) (i : Nat) :
   ((bv.toNat >>> i) : BitVec m) = BitVec.setWidth m (bv >>> i) := by
   natify; simp
 
 @[simp, simp_lists_safe, simp_scalar_safe]
-theorem BitVec.ofNat_shiftLeft_toNat {n m} (bv : BitVec n) (i : Nat) (h : m ≤ n) :
+theorem BitVec.ofNat_shiftLeft_toNat {n m} (toBitVec : BitVec n) (i : Nat) (h : m ≤ n) :
   (BitVec.ofNat m (bv.toNat <<< i)) = BitVec.setWidth m (bv <<< i) := by
   natify; simp; simp_scalar
 
 @[simp, simp_lists_safe, simp_scalar_safe]
-theorem BitVec.cast_shiftLeft_toNat {n m} (bv : BitVec n) (i : Nat) (h : m ≤ n) :
+theorem BitVec.cast_shiftLeft_toNat {n m} (toBitVec : BitVec n) (i : Nat) (h : m ≤ n) :
   ((bv.toNat <<< i) : BitVec m) = BitVec.setWidth m (bv <<< i) := by
   natify; simp; simp_scalar

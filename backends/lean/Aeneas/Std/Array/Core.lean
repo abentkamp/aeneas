@@ -9,11 +9,11 @@ open Result WP
 /-!
 # Notations for `List`
 -/
-instance {α : Type u} : GetElem (List α) Usize α (fun l i => i.val < l.length) where
-  getElem l i h := getElem l i.val h
+instance {α : Type u} : GetElem (List α) Usize α (fun l i => i.toNat < l.length) where
+  getElem l i h := getElem l i.toNat h
 
 instance {α : Type u} : GetElem? (List α) Usize α (fun l i => i < l.length) where
-  getElem? l i := getElem? l i.val
+  getElem? l i := getElem? l i.toNat
 
 /-
 # Theorems
@@ -41,7 +41,7 @@ def List.clone (clone : α → Result α) (l : List α) : Result ({ l' : List α
 
 @[step]
 def List.clone_spec {clone : α → Result α} {l : List α} (h : ∀ x ∈ l, clone x = ok x) :
-  List.clone clone l ⦃ l' => l'.val = l ∧ l'.val.length = l.length ⦄ := by
+  List.clone clone l ⦃ l' => l'.toNat = l ∧ l'.toNat.length = l.length ⦄ := by
   simp only [List.clone]
   have := List.mapM_clone_eq h
   split <;> simp_all
