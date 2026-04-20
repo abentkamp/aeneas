@@ -45,19 +45,11 @@ def Slice.new (α : Type u) : Slice α := ⟨ [], by simp ⟩
 
 @[rust_fun "core::slice::{[@T]}::len" -canFail -lift]
 abbrev Slice.len {α : Type u} (v : Slice α) : Usize :=
-  Usize.ofNatCore v.val.length (by
-    have h1 : v.val.length ≤ Usize.max := v.property
-    have h2 := Usize.max_lt_pow
-    show v.val.length < 2^UScalarTy.Usize.numBits
-    simp only [UScalarTy.numBits]; omega)
+  Usize.ofNatCore v.val.length (by scalar_tac)
 
 @[simp, scalar_tac_simps]
 theorem Slice.len_val {α : Type u} (v : Slice α) : (Slice.len v).toNat = v.length :=
-  Usize.ofNatCore_toNat_eq (by
-    have h1 : v.val.length ≤ Usize.max := v.property
-    have h2 := Usize.max_lt_pow
-    show v.val.length < 2^UScalarTy.Usize.numBits
-    simp only [UScalarTy.numBits]; omega)
+  Usize.ofNatCore_toNat_eq (by scalar_tac)
 
 @[reducible] instance {α : Type u} : GetElem (Slice α) Nat α (fun a i => i < a.val.length) where
   getElem a i h := getElem a.val i h
