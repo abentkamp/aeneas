@@ -104,10 +104,9 @@ partial def elabSpecial (ty : String) (bw size : Syntax) (stx : Syntax) : Comman
 def elabCommand (tysBws : List (String × Syntax × Syntax)) (cmd : TSyntax `command) : CommandElabM Unit := do
   let elabOne (tyBw : String × Syntax × Syntax) : CommandElabM Unit := do
     let (ty, bw, size) := tyBw
-    ---let cmd0 := cmd
     let cmd ← elabSpecial ty bw size cmd
     trace[ScalarElab] "Final declaration for {ty}:\n{cmd}"
-    let cmd ← liftMacroM (expandNamespacedDeclaration cmd)
+    let cmd ← try liftMacroM (expandNamespacedDeclaration cmd) catch _ => pure cmd
     Command.elabCommand cmd
   for tyBw in tysBws do
     elabOne tyBw

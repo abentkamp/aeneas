@@ -77,19 +77,19 @@ theorem U128.toBitVec_maxVal_and (x : U128) : 3402823669209384634633746074317682
 
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
 theorem U8.toNat_and_maxVal (x : U8) : x.toNat &&& 255 = x.toNat := by
-  have h := congrArg UScalar.toNat (U8.and_maxVal x); simp only [UScalar.toNat_and] at h; exact h
+  have h := congrArg UScalar.toNat (U8.and_maxVal x); simp only [U8.toNat_and] at h; exact h
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
 theorem U16.toNat_and_maxVal (x : U16) : x.toNat &&& 65535 = x.toNat := by
-  have h := congrArg UScalar.toNat (U16.and_maxVal x); simp only [UScalar.toNat_and] at h; exact h
+  have h := congrArg UScalar.toNat (U16.and_maxVal x); simp only [U16.toNat_and] at h; exact h
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
 theorem U32.toNat_and_maxVal (x : U32) : x.toNat &&& 4294967295 = x.toNat := by
-  have h := congrArg UScalar.toNat (U32.and_maxVal x); simp only [UScalar.toNat_and] at h; exact h
+  have h := congrArg UScalar.toNat (U32.and_maxVal x); simp only [U32.toNat_and] at h; exact h
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
 theorem U64.toNat_and_maxVal (x : U64) : x.toNat &&& 18446744073709551615 = x.toNat := by
-  have h := congrArg UScalar.toNat (U64.and_maxVal x); simp only [UScalar.toNat_and] at h; exact h
+  have h := congrArg UScalar.toNat (U64.and_maxVal x); simp only [U64.toNat_and] at h; exact h
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
 theorem U128.toNat_and_maxVal (x : U128) : x.toNat &&& 340282366920938463463374607431768211455 = x.toNat := by
-  have h := congrArg UScalar.toNat (U128.and_maxVal x); simp only [UScalar.toNat_and] at h; exact h
+  have h := congrArg UScalar.toNat (U128.and_maxVal x); simp only [U128.toNat_and] at h; exact h
 
 -- ============================================================================
 -- maxVal &&& x.toNat = x.toNat  (Nat level)
@@ -97,19 +97,19 @@ theorem U128.toNat_and_maxVal (x : U128) : x.toNat &&& 3402823669209384634633746
 
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
 theorem U8.maxVal_and_toNat (x : U8) : 255 &&& x.toNat = x.toNat := by
-  have h := congrArg UScalar.toNat (U8.maxVal_and x); simp only [UScalar.toNat_and] at h; exact h
+  have h := congrArg UScalar.toNat (U8.maxVal_and x); simp only [U8.toNat_and] at h; exact h
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
 theorem U16.maxVal_and_toNat (x : U16) : 65535 &&& x.toNat = x.toNat := by
-  have h := congrArg UScalar.toNat (U16.maxVal_and x); simp only [UScalar.toNat_and] at h; exact h
+  have h := congrArg UScalar.toNat (U16.maxVal_and x); simp only [U16.toNat_and] at h; exact h
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
 theorem U32.maxVal_and_toNat (x : U32) : 4294967295 &&& x.toNat = x.toNat := by
-  have h := congrArg UScalar.toNat (U32.maxVal_and x); simp only [UScalar.toNat_and] at h; exact h
+  have h := congrArg UScalar.toNat (U32.maxVal_and x); simp only [U32.toNat_and] at h; exact h
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
 theorem U64.maxVal_and_toNat (x : U64) : 18446744073709551615 &&& x.toNat = x.toNat := by
-  have h := congrArg UScalar.toNat (U64.maxVal_and x); simp only [UScalar.toNat_and] at h; exact h
+  have h := congrArg UScalar.toNat (U64.maxVal_and x); simp only [U64.toNat_and] at h; exact h
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
 theorem U128.maxVal_and_toNat (x : U128) : 340282366920938463463374607431768211455 &&& x.toNat = x.toNat := by
-  have h := congrArg UScalar.toNat (U128.maxVal_and x); simp only [UScalar.toNat_and] at h; exact h
+  have h := congrArg UScalar.toNat (U128.maxVal_and x); simp only [U128.toNat_and] at h; exact h
 
 -- ============================================================================
 -- x.toBitVec % (2^n)#n = x.toBitVec  (BitVec level)

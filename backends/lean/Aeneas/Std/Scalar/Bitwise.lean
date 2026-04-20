@@ -169,124 +169,112 @@ instance {ty} : Complement (IScalar ty) where
 ## Bit shifts
 -/
 
-theorem UScalar.ShiftRight_spec {ty0 ty1} (x : UScalar ty0) (y : UScalar ty1)
-  (hy : y.toNat < ty0.numBits) :
-  (x >>>? y) ⦃ z =>
-    z.toNat = x.toNat >>> y.toNat ∧
-    z.toBitVec = x.toBitVec >>> y.toNat ⦄
-  := by
-  simp only [spec_ok, ResultShiftRight.shiftRight, shiftRight_UScalar, shiftRight, hy, reduceIte]
-  simp only [BitVec.ushiftRight_eq, toNat]
-  simp only [BitVec.toNat_ushiftRight, toBitVec_toNat, and_true]
+open Lean in
+set_option hygiene false in
+run_cmd do
+  for ty in [`U8, `U16, `U32, `U64, `U128, `Usize] do
+    Lean.Elab.Command.elabCommand (← `(
+      uscalar @[step] theorem $(mkIdent s!"«%S».ShiftRight_{ty.toString}_spec".toName) (x : «%S») (y : $(mkIdent ty))
+        (hy : y.toNat < %BitWidth) :
+        (x >>>? y) ⦃ z =>
+        z.toNat = x.toNat >>> y.toNat ∧
+        z.toBitVec = x.toBitVec >>> y.toNat ⦄
+        := by
+        simp only [spec_ok, ResultShiftRight.shiftRight, UScalar.shiftRight_UScalar,
+          UScalar.shiftRight, hy, reduceIte, «%S».size, numBits, UScalarTy.numBits]
+        simp only [BitVec.ushiftRight_eq, UScalar.toNat]
+        simp only [BitVec.toNat_ushiftRight, toBitVec_toNat, and_true]
+    ))
 
-uscalar @[step] theorem «%S».ShiftRight_spec {ty1} (x : «%S») (y : UScalar ty1) (hy : y.toNat < %BitWidth) :
-  (x >>>? y) ⦃ z => z.toNat = x.toNat >>> y.toNat ∧ z.toBitVec = x.toBitVec >>> y.toNat ⦄
-  := by apply UScalar.ShiftRight_spec; simp [*]
+open Lean in
+set_option hygiene false in
+run_cmd do
+  for ty in [`I8, `I16, `I32, `I64, `I128, `Isize] do
+    Lean.Elab.Command.elabCommand (← `(
+      uscalar @[step] theorem $(mkIdent s!"«%S».ShiftRight_{ty.toString}_spec".toName) (x : «%S») (y : $(mkIdent ty))
+        (_hy0 : 0 ≤ y.toNat) (hy1 : y.toNat < %BitWidth) :
+        (x >>>? y) ⦃ z =>
+        z.toNat = x.toNat >>> y.toNat ∧
+        z.toBitVec = x.toBitVec >>> y.toNat ⦄
+        := by
+        simp only [spec_ok, ResultShiftRight.shiftRight, UScalar.shiftRight_IScalar,
+          UScalar.shiftRight, hy1, reduceIte, «%S».size, numBits, UScalarTy.numBits]
+        simp only [BitVec.ushiftRight_eq, UScalar.toNat, Nat.instShiftRight]
+        simp only [IScalar.toNat, BitVec.toNat_ushiftRight, toBitVec_toNat, and_self]
+    ))
 
-theorem UScalar.ShiftRight_IScalar_spec {ty0 ty1} (x : UScalar ty0) (y : IScalar ty1)
-  (_hy0 : 0 ≤ y.toNat) (hy1 : y.toNat < ty0.numBits) :
-  (x >>>? y) ⦃ z => z.toNat = x.toNat >>> y.toNat ∧ z.toBitVec = x.toBitVec >>> y.toNat ⦄
-  := by
-  have hy1 : y.toNat < ty0.numBits := by scalar_tac
-  simp only [spec_ok, ResultShiftRight.shiftRight, shiftRight_IScalar, shiftRight, hy1, reduceIte]
-  simp only [BitVec.ushiftRight_eq, toNat, Nat.instShiftRight]
-  simp only [IScalar.toNat, BitVec.toNat_ushiftRight, toBitVec_toNat, and_self]
+open Lean in
+set_option hygiene false in
+run_cmd do
+  for ty in [`U8, `U16, `U32, `U64, `U128, `Usize] do
+    Lean.Elab.Command.elabCommand (← `(
+      uscalar @[step] theorem $(mkIdent s!"«%S».ShiftLeft_{ty.toString}_spec".toName) (x : «%S») (y : $(mkIdent ty))
+        (hy : y.toNat < %BitWidth) :
+        (x <<<? y) ⦃ z =>
+        z.toNat = (x.toNat <<< y.toNat) % «%S».size ∧
+        z.toBitVec = x.toBitVec <<< y.toNat ⦄
+        := by
+        simp only [spec_ok, ResultShiftLeft.shiftLeft, UScalar.shiftLeft_UScalar, UScalar.shiftLeft, hy, reduceIte,
+          «%S».size, numBits, UScalarTy.numBits]
+        simp only [BitVec.shiftLeft_eq, UScalar.toNat, UScalarTy.numBits]
+        simp only [toBitVec_toNat, BitVec.toNat_shiftLeft, and_self]
+    ))
 
-uscalar @[step] theorem «%S».ShiftRight_IScalar_spec {ty1} (x : «%S») (y : IScalar ty1) (hy0 : 0 ≤ y.toNat) (hy : y.toNat < %BitWidth) :
-  (x >>>? y) ⦃ z => z.toNat = x.toNat >>> y.toNat ∧ z.toBitVec = x.toBitVec >>> y.toNat ⦄
-  := by apply UScalar.ShiftRight_IScalar_spec <;> simp [*]
-
-theorem UScalar.ShiftLeft_spec {ty0 ty1} (x : UScalar ty0) (y : UScalar ty1) (size : Nat)
-  (hy : y.toNat < ty0.numBits) (hsize : size = UScalar.size ty0) :
-  (x <<<? y) ⦃ z =>
-  z.toNat = (x.toNat <<< y.toNat) % size ∧
-  z.toBitVec = x.toBitVec <<< y.toNat ⦄
-  := by
-  simp only [spec_ok, ResultShiftLeft.shiftLeft, shiftLeft_UScalar, shiftLeft, hy, reduceIte, hsize, UScalar.size]
-  simp only [BitVec.shiftLeft_eq, toNat]
-  simp only [toBitVec_toNat, BitVec.toNat_shiftLeft, and_self]
-
-uscalar @[step] theorem «%S».ShiftLeft_spec {ty1} (x : «%S») (y : UScalar ty1) (hy : y.toNat < %BitWidth) :
-  (x <<<? y) ⦃ z => z.toNat = (x.toNat <<< y.toNat) % «%S».size ∧ z.toBitVec = x.toBitVec <<< y.toNat ⦄
-  := by apply UScalar.ShiftLeft_spec <;> simp [*]
-
-theorem UScalar.ShiftLeft_IScalar_spec {ty0 ty1} (x : UScalar ty0) (y : IScalar ty1) (size : Nat)
-  (_hy0 : 0 ≤ y.toNat) (hy1 : y.toNat < ty0.numBits) (hsize : size = UScalar.size ty0) :
-  (x <<<? y) ⦃ z =>
-  z.toNat = (x.toNat <<< y.toNat) % size ∧
-  z.toBitVec = x.toBitVec <<< y.toNat ⦄
-  := by
-  have hy1 : y.toNat < ty0.numBits := by scalar_tac
-  simp only [spec_ok, ResultShiftLeft.shiftLeft, shiftLeft_IScalar, shiftLeft, hy1, reduceIte, hsize,
-    UScalar.size]
-  simp only [BitVec.shiftLeft_eq, toNat]
-  simp only [IScalar.toNat, BitVec.toNat_shiftLeft, toBitVec_toNat, and_self]
-
-uscalar @[step] theorem «%S».ShiftLeft_IScalar_spec {ty1} (x : «%S») (y : IScalar ty1) (hy0 : 0 ≤ y.toNat) (hy : y.toNat < %BitWidth) :
-  (x <<<? y) ⦃ z => z.toNat = (x.toNat <<< y.toNat) % «%S».size ∧ z.toBitVec = x.toBitVec <<< y.toNat ⦄
-  := by apply UScalar.ShiftLeft_IScalar_spec <;> simp [*]
+open Lean in
+set_option hygiene false in
+run_cmd do
+  for ty in [`I8, `I16, `I32, `I64, `I128, `Isize] do
+    Lean.Elab.Command.elabCommand (← `(
+      uscalar @[step] theorem $(mkIdent s!"«%S».ShiftLeft_{ty.toString}_spec".toName) (x : «%S») (y : $(mkIdent ty))
+        (_hy0 : 0 ≤ y.toNat) (hy1 : y.toNat < %BitWidth) :
+        (x <<<? y) ⦃ z =>
+        z.toNat = (x.toNat <<< y.toNat) % «%S».size ∧
+        z.toBitVec = x.toBitVec <<< y.toNat ⦄
+        := by
+        simp only [spec_ok, ResultShiftLeft.shiftLeft, UScalar.shiftLeft_IScalar, UScalar.shiftLeft, hy1, reduceIte,
+          «%S».size, numBits, UScalarTy.numBits]
+        simp only [BitVec.shiftLeft_eq, UScalar.toNat, UScalarTy.numBits]
+        simp only [IScalar.toNat, BitVec.toNat_shiftLeft, toBitVec_toNat, and_self]
+    ))
 
 /-!
 ## Bitwise And, Or
 -/
 
-@[step]
-theorem UScalar.and_spec {ty} (x y : UScalar ty) :
+uscalar @[step] theorem «%S».and_spec (x y : «%S») :
   lift (x &&& y) ⦃ z => z.toNat = (x &&& y).toNat ∧ z.toBitVec = x.toBitVec &&& y.toBitVec ⦄ := by
-  simp [lift]
-  rfl
+  simp [lift]; rfl
 
-@[step]
-theorem UScalar.or_spec {ty} (x y : UScalar ty) :
+uscalar @[step] theorem «%S».or_spec (x y : «%S») :
   lift (x ||| y) ⦃ z => z.toNat = (x ||| y).toNat ∧ z.toBitVec = x.toBitVec ||| y.toBitVec ⦄ := by
-  simp [lift]
-  rfl
+  simp [lift]; rfl
 
-@[step]
-theorem UScalar.xor_spec {ty} (x y : UScalar ty) :
+uscalar @[step] theorem «%S».xor_spec (x y : «%S») :
   lift (x ^^^ y) ⦃ z => z.toNat = (x ^^^ y).toNat ∧ z.toBitVec = x.toBitVec ^^^ y.toBitVec ⦄ := by
-  simp [lift]
-  rfl
+  simp [lift]; rfl
 
-@[step]
-theorem IScalar.and_spec {ty} (x y : IScalar ty) :
+iscalar @[step] theorem «%S».and_spec (x y : «%S») :
   lift (x &&& y) ⦃ z => z.toInt = (x &&& y).toInt ∧ z.toBitVec = x.toBitVec &&& y.toBitVec ⦄ := by
-  simp [lift]
-  rfl
+  simp [lift]; rfl
 
-@[step]
-theorem IScalar.or_spec {ty} (x y : IScalar ty) :
+iscalar @[step] theorem «%S».or_spec (x y : «%S») :
   lift (x ||| y) ⦃ z => z.toInt = (x ||| y).toInt ∧ z.toBitVec = x.toBitVec ||| y.toBitVec ⦄ := by
-  simp [lift]
-  rfl
+  simp [lift]; rfl
 
-@[step]
-theorem IScalar.xor_spec {ty} (x y : IScalar ty) :
+iscalar @[step] theorem «%S».xor_spec (x y : «%S») :
   lift (x ^^^ y) ⦃ z => z.toInt = (x ^^^ y).toInt ∧ z.toBitVec = x.toBitVec ^^^ y.toBitVec ⦄ := by
-  simp [lift]
-  rfl
+  simp [lift]; rfl
 
-@[step]
-theorem UScalar.not_spec {ty} (x : UScalar ty) :
-  lift (~~~x) ⦃ z => z = ~~~x ⦄ := by
-  simp [lift]
+scalar @[step] theorem «%S».not_spec (x : «%S») :
+  lift (~~~x) ⦃ z => z = ~~~x ⦄ := by simp [lift]
 
-@[step]
-theorem IScalar.not_spec {ty} (x : IScalar ty) :
-  lift (~~~x) ⦃ z => z = ~~~x ⦄ := by
-  simp [lift]
+scalar @[simp, bvify, grind =, agrind =] theorem «%S».toBitVec_and (x y : «%S») : (x &&& y).toBitVec = x.toBitVec &&& y.toBitVec := by rfl
+scalar @[simp, bvify, grind =, agrind =] theorem «%S».toBitVec_or (x y : «%S») : (x ||| y).toBitVec = x.toBitVec ||| y.toBitVec := by rfl
+scalar @[simp, bvify, grind =, agrind =] theorem «%S».toBitVec_xor (x y : «%S») : (x ^^^ y).toBitVec = x.toBitVec ^^^ y.toBitVec := by rfl
+scalar @[simp, bvify, grind =, agrind =] theorem «%S».toBitVec_not (x : «%S») : (~~~x).toBitVec = ~~~x.toBitVec := by rfl
 
-@[simp, bvify, grind =, agrind =] theorem UScalar.toBitVec_and {ty} (x y : UScalar ty) : (x &&& y).toBitVec = x.toBitVec &&& y.toBitVec := by rfl
-@[simp, bvify, grind =, agrind =] theorem UScalar.toBitVec_or {ty} (x y : UScalar ty) : (x ||| y).toBitVec = x.toBitVec ||| y.toBitVec := by rfl
-@[simp, bvify, grind =, agrind =] theorem UScalar.toBitVec_xor {ty} (x y : UScalar ty) : (x ^^^ y).toBitVec = x.toBitVec ^^^ y.toBitVec := by rfl
-@[simp, bvify, grind =, agrind =] theorem UScalar.toBitVec_not {ty} (x : UScalar ty) : (~~~x).toBitVec = ~~~x.toBitVec := by rfl
-@[simp, bvify, grind =, agrind =] theorem IScalar.toBitVec_and {ty} (x y : IScalar ty) : (x &&& y).toBitVec = x.toBitVec &&& y.toBitVec := by rfl
-@[simp, bvify, grind =, agrind =] theorem IScalar.toBitVec_or {ty} (x y : IScalar ty) : (x ||| y).toBitVec = x.toBitVec ||| y.toBitVec := by rfl
-@[simp, bvify, grind =, agrind =] theorem IScalar.toBitVec_xor {ty} (x y : IScalar ty) : (x ^^^ y).toBitVec = x.toBitVec ^^^ y.toBitVec := by rfl
-@[simp, bvify, grind =, agrind =] theorem IScalar.toBitVec_not {ty} (x : IScalar ty) : (~~~x).toBitVec = ~~~x.toBitVec := by rfl
-
-@[simp, scalar_tac_simps, grind =, agrind =] theorem UScalar.toNat_and {ty} (x y : UScalar ty) : (x &&& y).toNat = x.toNat &&& y.toNat := by rfl
-@[simp, scalar_tac_simps, grind =, agrind =] theorem UScalar.toNat_or {ty} (x y : UScalar ty) : (x ||| y).toNat = x.toNat ||| y.toNat := by rfl
-@[simp, scalar_tac_simps, grind =, agrind =] theorem UScalar.toNat_xor {ty} (x y : UScalar ty) : (x ^^^ y).toNat = x.toNat ^^^ y.toNat := by rfl
+uscalar @[simp, scalar_tac_simps, grind =, agrind =] theorem «%S».toNat_and (x y : «%S») : (x &&& y).toNat = x.toNat &&& y.toNat := by rfl
+uscalar @[simp, scalar_tac_simps, grind =, agrind =] theorem «%S».toNat_or (x y : «%S») : (x ||| y).toNat = x.toNat ||| y.toNat := by rfl
+uscalar @[simp, scalar_tac_simps, grind =, agrind =] theorem «%S».toNat_xor (x y : «%S») : (x ^^^ y).toNat = x.toNat ^^^ y.toNat := by rfl
 
 end Aeneas.Std

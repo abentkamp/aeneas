@@ -17,7 +17,7 @@ This tactic is adapted from `zify`.
 namespace Aeneas.Bvify
 
 open Lean Lean.Meta Lean.Parser.Tactic Lean.Elab.Tactic
-open Arith Std
+open Arith Std ScalarElab
 
 structure Config where
   nonLin : Bool := true -- We use the non linear lemmas by default
@@ -249,8 +249,8 @@ Simplification lemmas about `setWidth`
 -/
 attribute [bvify] BitVec.setWidth_eq
 
-@[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem UScalar.BitVec_ofNat_setWidth (x : UScalar ty) : BitVec.ofNat n x.toNat = x.toBitVec.setWidth n := by
+uscalar @[simp, simp_scalar_safe, bvify, grind =, agrind =]
+theorem «%S».BitVec_ofNat_setWidth (x : «%S») : BitVec.ofNat n x.toNat = x.toBitVec.setWidth n := by
   simp only [UScalar.toNat, BitVec.toNat_eq]; simp
 
 syntax (name := bvify_saturate) "bvify_saturate" colGe term : tactic
@@ -262,11 +262,9 @@ Some theorems which automatically lift comparisons between machine scalars, with
 attribute [bvify] UScalar.eq_equiv_toBitVec_eq IScalar.eq_equiv_toBitVec_eq
                         gt_iff_lt ge_iff_le true_and and_true
 
-@[bvify]
-theorem UScalar.lt_equiv_toBitVec_lt {ty : UScalarTy} (x y : UScalar ty) : x < y ↔ x.toBitVec < y.toBitVec := by rfl
+uscalar @[bvify] theorem «%S».lt_equiv_toBitVec_lt (x y : «%S») : x < y ↔ x.toBitVec < y.toBitVec := by rfl
 
-@[bvify]
-theorem UScalar.le_equiv_toBitVec_le {ty : UScalarTy} (x y : UScalar ty) : x ≤ y ↔ x.toBitVec ≤ y.toBitVec := by rfl
+uscalar @[bvify] theorem «%S».le_equiv_toBitVec_le (x y : «%S») : x ≤ y ↔ x.toBitVec ≤ y.toBitVec := by rfl
 
 def bvifyAddSimpThms (n : Expr) : TacticM (Array FVarId) := do
   let addThm (thName : Name) : TacticM FVarId := do

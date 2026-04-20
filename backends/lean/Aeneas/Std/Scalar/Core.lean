@@ -7,6 +7,7 @@ import Aeneas.Tactic.Conv.Bvify.Init
 import Aeneas.Data.Nat
 import Aeneas.Data.Int
 import Aeneas.Tactic.Simp.SimpLists.Init
+import Aeneas.Std.Scalar.Elab
 
 namespace Aeneas
 

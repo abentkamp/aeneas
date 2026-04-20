@@ -236,7 +236,7 @@ end Std
 
 namespace ScalarTac
 
-open Std
+open Std ScalarElab
 
 attribute [scalar_tac_simps] Prod.mk.injEq gt_iff_lt
 
@@ -244,15 +244,14 @@ attribute [scalar_tac_simps]
   -- Int.subNatNat is very annoying - TODO: there is probably something more general thing to do
   Int.subNatNat_eq_coe
 
-@[scalar_tac x.toNat]
-theorem UScalar.bounds {ty : UScalarTy} (x : UScalar ty) :
-  x.toNat ≤ UScalar.max ty := by
-  simp [UScalar.max]
+uscalar @[scalar_tac x.toNat]
+theorem «%S».bounds (x : «%S») : x.toNat ≤ «%S».max := by
+  simp only [«%S».max, «%S».numBits]
   have := x.hBounds
   omega
 
-grind_pattern UScalar.bounds => UScalar.toNat x
-grind_pattern [agrind] UScalar.bounds => UScalar.toNat x
+uscalar grind_pattern «%S».bounds => UScalar.toNat x
+uscalar grind_pattern [agrind] «%S».bounds => UScalar.toNat x
 
 @[scalar_tac x.toInt]
 theorem IScalar.bounds {ty : IScalarTy} (x : IScalar ty) :
@@ -540,11 +539,10 @@ grind_pattern [agrind_nla] mod_lt => x % y
 /-!
 # Size
 -/
-
 /- Remark: we're omitting a similar theorem for `IScalar` because the theorem is a bit cumbersome
    to use (it has to be expressed in terms of `x.toBitVec.toNat`). -/
-@[simp, scalar_tac_simps, grind =, agrind =]
-theorem UScalar.sizeOf {ty} (x : UScalar ty) : sizeOf x = x.toNat + 3 := by
+uscalar @[simp, scalar_tac_simps, grind =, agrind =]
+theorem «%S».sizeOf (x : «%S») : sizeOf x = x.toNat + 3 := by
   cases x; simp only [UScalar.mk.sizeOf_spec, BitVec.sizeOf, Fin.sizeOf, BitVec.val_toFin]
   unfold UScalar.toNat
   simp only
