@@ -89,7 +89,7 @@ theorem IScalar.rem_toBitVec_spec {ty} (x : IScalar ty) {y : IScalar ty} (hzero 
   simp only [BitVec.toInt_srem, toBitVec_toInt_eq, and_true]
 
 
-uscalar theorem «%S».rem_bv_spec (x : «%S») {y : «%S»} (hnz : y.toInt ≠ 0) :
+uscalar theorem «%S».rem_bv_spec (x : «%S») {y : «%S»} (hnz : y.toNat ≠ 0) :
   x % y ⦃ z => (↑z : Nat) = ↑x % ↑y ∧ z.toBitVec = x.toBitVec % y.toBitVec ⦄ :=
   UScalar.rem_toBitVec_spec x hnz
 
@@ -105,7 +105,7 @@ Theorems with a specification which only uses integers
 theorem UScalar.rem_spec {ty} (x : UScalar ty) {y : UScalar ty} (hzero : y.toNat ≠ 0) :
   x % y ⦃ z => (↑z : Nat) = ↑x % ↑y ⦄ := by
   apply spec_mono
-  · apply rem_bv_spec x hzero
+  · apply UScalar.rem_toBitVec_spec x hzero
   · intros x' h
     exact h.1
 
@@ -113,11 +113,11 @@ theorem UScalar.rem_spec {ty} (x : UScalar ty) {y : UScalar ty} (hzero : y.toNat
 theorem IScalar.rem_spec {ty} (x : IScalar ty) {y : IScalar ty} (hzero : y.toInt ≠ 0) :
   x % y ⦃ z => (↑z : Int) = Int.tmod ↑x ↑y ⦄ := by
   apply spec_mono
-  · apply rem_bv_spec x hzero
+  · apply IScalar.rem_toBitVec_spec x hzero
   · intros x' h
     exact h.1
 
-uscalar @[step] theorem «%S».rem_spec (x : «%S») {y : «%S»} (hnz : y.toInt ≠ 0) :
+uscalar @[step] theorem «%S».rem_spec (x : «%S») {y : «%S»} (hnz : y.toNat ≠ 0) :
   x % y ⦃ z => (↑z : Nat) = ↑x % ↑y ⦄ :=
   UScalar.rem_spec x hnz
 

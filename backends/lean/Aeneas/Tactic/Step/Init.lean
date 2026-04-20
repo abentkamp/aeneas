@@ -371,11 +371,11 @@ namespace Test
   structure U8 where
     val : Nat
 
-  def overflowing_add (x y : U8) : U8 × Bool := (⟨ x.toNat + y.toNat ⟩, x.toNat + y.toNat > 255)
+  def overflowing_add (x y : U8) : U8 × Bool := (⟨ x.val + y.val ⟩, x.val + y.val > 255)
 
   theorem overflowing_add_eq (x y : U8) :
     let z := overflowing_add x y
-    if x.toNat + y.toNat > 255 then z.snd = true
+    if x.val + y.val > 255 then z.snd = true
     else z.snd = false
     :=
     by simp [overflowing_add]
@@ -619,7 +619,7 @@ info: Aeneas.Step.Test.pos_triple_is_pos'.step_spec :
 
   /--
 info: Aeneas.Step.Test.overflowing_add_eq.step_spec (x y : U8) :
-  Std.lift (overflowing_add x y) ⦃ x.0 x.1 => if x.toNat + y.toNat > 255 then x.1 = true else x.1 = false ⦄
+  Std.lift (overflowing_add x y) ⦃ x.0 x.1 => if x.val + y.val > 255 then x.1 = true else x.1 = false ⦄
   -/
   #guard_msgs in
   #check overflowing_add_eq.step_spec
@@ -917,7 +917,7 @@ info: Aeneas.Step.Test.overflowing_add.step_spec (x y : U8) :
   #guard_msgs in
   #check overflowing_add.step_spec
 
-  def wrapping_add (x y : U8) : U8 × Bool := (⟨ x.toNat + y.toNat ⟩, x.toNat + y.toNat ≥ 256)
+  def wrapping_add (x y : U8) : U8 × Bool := (⟨ x.val + y.val ⟩, x.val + y.val ≥ 256)
   #step_pure_def wrapping_add (wrapping_add x y = (b, z))
 
   /--

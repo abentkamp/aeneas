@@ -18,16 +18,16 @@ attribute [-simp] List.getElem!_eq_getElem?_getD
 
 @[step_pure_def]
 def Array.to_slice {α : Type u} {n : Usize} (v : Array α n) : Slice α :=
-  ⟨ v.toNat, by scalar_tac ⟩
+  ⟨ v.val, by scalar_tac ⟩
 
 def Array.from_slice {α : Type u} {n : Usize} (a : Array α n) (s : Slice α) : Array α n :=
-  if h: s.toNat.length = n.toNat then
-    ⟨ s.toNat, by simp [*] ⟩
+  if h: s.val.length = n.toNat then
+    ⟨ s.val, by simp [*] ⟩
   else a -- Unreachable case
 
 @[simp]
-theorem Array.from_slice_val {α : Type u} {n : Usize} (a : Array α n) (ns : Slice α) (h : ns.toNat.length = n.toNat) :
-  (from_slice a ns).toNat = ns.toNat
+theorem Array.from_slice_val {α : Type u} {n : Usize} (a : Array α n) (ns : Slice α) (h : ns.val.length = n.toNat) :
+  (from_slice a ns).val = ns.val
   := by simp [from_slice, *]
 
 @[step_pure_def]
@@ -37,31 +37,31 @@ def Array.to_slice_mut {α : Type u} {n : Usize} (a : Array α n) :
 
 def Array.subslice {α : Type u} {n : Usize} (a : Array α n) (r : Range Usize) : Result (Slice α) :=
   -- TODO: not completely sure here
-  if r.start.toNat < r.end.toNat ∧ r.end.toNat ≤ a.toNat.length then
-    ok ⟨ a.toNat.slice r.start.toNat r.end.toNat,
+  if r.start.toNat < r.end.toNat ∧ r.end.toNat ≤ a.val.length then
+    ok ⟨ a.val.slice r.start.toNat r.end.toNat,
           by
-            have := a.toNat.slice_length_le r.start.toNat r.end.toNat
+            have := a.val.slice_length_le r.start.toNat r.end.toNat
             scalar_tac ⟩
   else
     fail panic
 
 @[step]
 theorem Array.subslice_spec {α : Type u} {n : Usize} [Inhabited α] (a : Array α n) (r : Range Usize)
-  (h0 : r.start.toNat < r.end.toNat) (h1 : r.end.toNat ≤ a.toNat.length) :
+  (h0 : r.start.toNat < r.end.toNat) (h1 : r.end.toNat ≤ a.val.length) :
   subslice a r ⦃ s =>
-  s.toNat = a.toNat.slice r.start.toNat r.end.toNat ∧
-  (∀ i, i + r.start.toNat < r.end.toNat → s.toNat[i]! = a.toNat[r.start.toNat + i]!) ⦄
+  s.val = a.val.slice r.start.toNat r.end.toNat ∧
+  (∀ i, i + r.start.toNat < r.end.toNat → s.val[i]! = a.val[r.start.toNat + i]!) ⦄
   := by
   simp only [subslice, true_and, h0, h1, ↓reduceIte, spec_ok, true_and]
   intro i _
-  have := List.getElem!_slice r.start.toNat r.end.toNat i a.toNat (by scalar_tac)
+  have := List.getElem!_slice r.start.toNat r.end.toNat i a.val (by scalar_tac)
   simp only [this]
 
 
 def Array.update_subslice {α : Type u} {n : Usize} (a : Array α n) (r : Range Usize) (s : Slice α) : Result (Array α n) :=
   -- TODO: not completely sure here
-  if h: r.start.toNat < r.end.toNat ∧ r.end.toNat ≤ a.length ∧ s.toNat.length = r.end.toNat - r.start.toNat then
-    ok ⟨ a.toNat.setSlice! r.start s.toNat, by scalar_tac ⟩
+  if h: r.start.toNat < r.end.toNat ∧ r.end.toNat ≤ a.length ∧ s.val.length = r.end.toNat - r.start.toNat then
+    ok ⟨ a.val.setSlice! r.start s.val, by scalar_tac ⟩
   else
     fail panic
 
@@ -116,7 +116,7 @@ def core.ops.index.IndexMutArray {T I Output : Type} {N : Usize}
 def core.array.TryFromSliceError := Unit
 
 @[simp, simp_lists_safe, grind =, agrind =]
-theorem Array.val_to_slice {α} {n} (a : Array α n) : a.to_slice.toNat = a.toNat := by
+theorem Array.val_to_slice {α} {n} (a : Array α n) : a.to_slice.val = a.val := by
   simp only [Array.to_slice]
 
 @[simp, simp_lists_safe, simp_scalar_safe, scalar_tac a.to_slice]
@@ -132,7 +132,7 @@ def core.array.equality.PartialEqArray.eq
   {T : Type} {U : Type} {N : Usize} (partialEqInst : core.cmp.PartialEq T U)
   (a0 : Array T N) (a1 : Array U N) : Result Bool := do
   if a0.length = a1.length then
-    List.allM (fun (x, y) => partialEqInst.eq x y) (List.zip a0.toNat a1.toNat)
+    List.allM (fun (x, y) => partialEqInst.eq x y) (List.zip a0.val a1.val)
   else .ok false
 
 @[rust_fun "core::array::equality::{core::cmp::PartialEq<[@T; @N], [@U; @N]>}::ne"]
@@ -140,7 +140,7 @@ def core.array.equality.PartialEqArray.ne
   {T : Type} {U : Type} {N : Usize} (partialEqInst : core.cmp.PartialEq T U)
   (a0 : Array T N) (a1 : Array U N) : Result Bool := do
   if a0.length = a1.length then
-    List.anyM (fun (x, y) => partialEqInst.ne x y) (List.zip a0.toNat a1.toNat)
+    List.anyM (fun (x, y) => partialEqInst.ne x y) (List.zip a0.val a1.val)
   else .ok true
 
 @[rust_fun "core::array::{core::fmt::Debug<core::array::TryFromSliceError>}::fmt"]
@@ -162,7 +162,7 @@ def core.array.TryFromArrayCopySlice.try_from
   {T : Type} (N : Usize) (copyInst : core.marker.Copy T) (s : Slice T) :
   Result (core.result.Result (Array T N) core.array.TryFromSliceError) := do
   if h0: s.length = N then
-    match h1: List.mapM copyInst.cloneInst.clone s.toNat with
+    match h1: List.mapM copyInst.cloneInst.clone s.val with
     | ok s =>
       ok (.Ok ⟨s, by have := List.mapM_Result_length h1; scalar_tac ⟩)
     | fail e => fail e
@@ -173,7 +173,7 @@ def core.array.TryFromArrayCopySlice.try_from
 def core.array.TryFromSharedArraySlice.try_from
   {T : Type} (N : Usize) (s : Slice T) :
   Result (core.result.Result (Array T N) core.array.TryFromSliceError) := do
-  if h: s.len = N then .ok (.Ok ⟨s.toNat, by scalar_tac⟩)
+  if h: s.len = N then .ok (.Ok ⟨s.val, by scalar_tac⟩)
   else .ok (.Err ())
 
 @[reducible, rust_trait_impl
@@ -194,10 +194,10 @@ def core.array.TryFromMutArraySlice.try_from
     let back (a : core.result.Result (Array T N) core.array.TryFromSliceError) : Slice T :=
       match a with
       | .Ok a =>
-        if a.length = s.length then ⟨ a.toNat, by scalar_tac ⟩
+        if a.length = s.length then ⟨ a.val, by scalar_tac ⟩
         else s
       | _ => s
-    ok ((.Ok ⟨ s.toNat, by scalar_tac⟩, back))
+    ok ((.Ok ⟨ s.val, by scalar_tac⟩, back))
   else ok ((.Err (), fun _ => s))
 
 @[simp, rust_fun "core::array::{core::fmt::Debug<[@T; @N]>}::fmt"]
@@ -209,16 +209,16 @@ def core.array.DebugArray.fmt
 
 @[rust_fun "core::array::{[@T; @N]}::as_slice"]
 def core.array.Array.as_slice {T : Type} {N : Usize} (a : Array T N) : Result (Slice T) :=
-  ok (⟨ a.toNat, by scalar_tac ⟩)
+  ok (⟨ a.val, by scalar_tac ⟩)
 
 @[rust_fun "core::array::{[@T; @N]}::as_mut_slice"]
 def core.array.Array.as_mut_slice
   {T : Type} {N : Usize} (a : Array T N) :
   Result (Slice T × (Slice T → Array T N)) :=
   let back (s : Slice T) : Array T N :=
-    if h: s.length = N then ⟨ s.toNat, by scalar_tac ⟩
+    if h: s.length = N then ⟨ s.val, by scalar_tac ⟩
     else a
-  ok (⟨ a.toNat, by scalar_tac ⟩, back)
+  ok (⟨ a.val, by scalar_tac ⟩, back)
 
 @[simp, step_simps]
 theorem Array.index_SliceIndexRangeUsizeSlice {T : Type} {N : Usize}
@@ -243,9 +243,9 @@ theorem Array.index_mut_SliceIndexRangeToUsizeSlice {T : Type} {N : Usize}
     core.array.Array.index_mut (core.ops.index.IndexMutSlice
       (core.slice.index.SliceIndexRangeToUsizeSlice T)) a r
     ⦃ (s, back) =>
-      s.toNat = a.toNat.slice 0 r.end ∧
+      s.val = a.val.slice 0 r.end ∧
       s.length = r.end.toNat ∧
-      ∀ s', (back s').toNat = a.toNat.setSlice! 0 s'.toNat ⦄ := by
+      ∀ s', (back s').val = a.val.setSlice! 0 s'.val ⦄ := by
   simp only [core.array.Array.index_mut, core.ops.index.IndexMutSlice,
     core.slice.index.Slice.index_mut]
   have hts : a.to_slice.length = N := by simp [Array.to_slice, Slice.length]
@@ -272,9 +272,9 @@ theorem Array.index_mut_SliceIndexRangeFromUsizeSlice {T : Type} {N : Usize}
     core.array.Array.index_mut (core.ops.index.IndexMutSlice
       (core.slice.index.SliceIndexRangeFromUsizeSlice T)) a r
     ⦃ (s, back) =>
-      s.toNat = a.toNat.drop r.start ∧
+      s.val = a.val.drop r.start ∧
       s.length = N.toNat - r.start.toNat ∧
-      ∀ s', (back s').toNat = a.toNat.setSlice! r.start.toNat s'.toNat ⦄ := by
+      ∀ s', (back s').val = a.val.setSlice! r.start.toNat s'.val ⦄ := by
   simp only [core.array.Array.index_mut, core.ops.index.IndexMutSlice,
     core.slice.index.Slice.index_mut]
   have hts : a.to_slice.length = N := by simp [Array.to_slice, Slice.length]

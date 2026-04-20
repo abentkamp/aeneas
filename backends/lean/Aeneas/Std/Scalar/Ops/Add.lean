@@ -94,7 +94,7 @@ theorem IScalar.add_toBitVec_spec {ty}  {x y : IScalar ty}
   split at h <;> simp_all [min, max]
   omega
 
-uscalar theorem «%S».add_bv_spec {x y : «%S»} (hmax : x.toInt + y.toInt ≤ «%S».max) :
+uscalar theorem «%S».add_bv_spec {x y : «%S»} (hmax : x.toNat + y.toNat ≤ «%S».max) :
   x + y ⦃ z => (↑z : Nat) = ↑x + ↑y ∧ z.toBitVec = x.toBitVec + y.toBitVec ⦄ :=
   UScalar.add_toBitVec_spec (by scalar_tac)
 
@@ -129,7 +129,7 @@ theorem IScalar.add_spec {ty} {x y : IScalar ty}
   split at h <;> simp_all [min, max]
   omega
 
-uscalar @[step] theorem «%S».add_spec {x y : «%S»} (hmax : x.toInt + y.toInt ≤ «%S».max) :
+uscalar @[step] theorem «%S».add_spec {x y : «%S»} (hmax : x.toNat + y.toNat ≤ «%S».max) :
   x + y ⦃ z => (↑z : Nat) = ↑x + ↑y ⦄ :=
   UScalar.add_spec (by scalar_tac)
 

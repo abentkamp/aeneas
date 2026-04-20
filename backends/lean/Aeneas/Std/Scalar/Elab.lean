@@ -90,9 +90,9 @@ partial def elabSpecial (ty : String) (bw size : Syntax) (stx : Syntax) : Comman
     trace[ScalarElabSubst] "elabSpecial: node: {stx}"
     let args ← args.mapM (elabSpecial ty bw size)
     pure (.node info kind args)
-  | .atom info toNat =>
+  | .atom info val =>
     trace[ScalarElabSubst] "elabSpecial: atom: {val}"
-    if toNat == "%BitWidth" then
+    if val == "%BitWidth" then
       trace[ScalarElabSubst] "elabSpecial: replaced `%BitWidth`"
       pure bw
     else pure (.atom info val)

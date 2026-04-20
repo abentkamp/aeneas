@@ -918,10 +918,10 @@ theorem UScalar.toNat_eq_of_eq {ty} {i j : UScalar ty} (h : Eq i j) : Eq i.toNat
 theorem IScalar.toInt_eq_of_eq {ty} {i j : IScalar ty} (h : Eq i j) : Eq i.toInt j.toInt := h ▸ rfl
 
 theorem UScalar.ne_of_toNat_ne {ty} {i j : UScalar ty} (h : Not (Eq i.toNat j.toNat)) : Not (Eq i j) :=
-  fun h' => absurd (val_eq_of_eq h') h
+  fun h' => absurd (UScalar.toNat_eq_of_eq h') h
 
 theorem IScalar.ne_of_toInt_ne {ty} {i j : IScalar ty} (h : Not (Eq i.toInt j.toInt)) : Not (Eq i j) :=
-  fun h' => absurd (val_eq_of_eq h') h
+  fun h' => absurd (IScalar.toInt_eq_of_eq h') h
 
 instance (ty : UScalarTy) : DecidableEq (UScalar ty) :=
   fun i j =>
@@ -1134,7 +1134,7 @@ theorem UScalar.Nat_cast_BitVec_toNat (x : UScalar ty) : Nat.cast x.toNat = x.to
 
 @[simp, bvify]
 theorem IScalar.Nat_cast_BitVec_toInt (x : IScalar ty) : Int.cast x.toInt = x.toBitVec := by
-  simp only [Int.cast, IntCast.intCast, BitVec_ofInt_val]
+  simp only [Int.cast, IntCast.intCast, IScalar.BitVec_ofInt_toInt]
 
 @[simp, bvify] theorem I8.Nat_cast_BitVec_toInt (x : I8) : Int.cast x.toInt = x.toBitVec := IScalar.Nat_cast_BitVec_toInt x
 @[simp, bvify] theorem I16.Nat_cast_BitVec_toInt (x : I16) : Int.cast x.toInt = x.toBitVec := IScalar.Nat_cast_BitVec_toInt x

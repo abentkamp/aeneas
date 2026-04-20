@@ -117,7 +117,7 @@ theorem UScalar.cast_inBounds_spec {src_ty : UScalarTy}
 def UScalar.hcast_inBounds_spec {src_ty : UScalarTy}
   (tgt_ty : IScalarTy) (x : UScalar src_ty)
   (h : x.toNat ≤ IScalar.max tgt_ty) :
-  lift (UScalar.hcast tgt_ty x) ⦃ y => y.toNat = x.toNat ⦄ := by
+  lift (UScalar.hcast tgt_ty x) ⦃ y => y.toInt = x.toNat ⦄ := by
   simp only [lift, hcast, BitVec.truncate_eq_setWidth, WP.spec_ok]
   simp only [IScalar.toInt, UScalar.toNat]
   simp only [IScalar.max, BitVec.toInt_setWidth, toBitVec_toNat] at *
@@ -143,7 +143,7 @@ def IScalar.cast_inBounds_spec {src_ty : IScalarTy}
 /-- This theorem allows us not to use bit-vectors when reasoning about casts, if there are no overflows -/
 def IScalar.hcast_inBounds_spec {src_ty : IScalarTy}
   (tgt_ty : UScalarTy) (x : IScalar src_ty) (h : 0 ≤ x.toInt ∧ x.toInt ≤ UScalar.max tgt_ty) :
-  lift (IScalar.hcast tgt_ty x) ⦃ y => y.toInt = x.toInt ⦄ := by
+  lift (IScalar.hcast tgt_ty x) ⦃ y => y.toNat = x.toInt ⦄ := by
   simp only [lift, hcast, BitVec.signExtend, toBitVec_toInt_eq, WP.spec_ok]
   simp only [IScalar.toInt, UScalar.toNat]
   simp only [UScalar.max, Nat.ofNat_pos, pow_pos, Nat.cast_pred, Nat.cast_pow, Nat.cast_ofNat,

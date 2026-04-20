@@ -349,7 +349,7 @@ example (x y : U8) (h : x.toNat < y.toNat) : x.toBitVec < y.toBitVec := by
 
 example (x y : U8) (h : x.toNat < y.toNat) : x.toBitVec < y.toBitVec := by
   bvify 8 at *
-  toBitVec_decide
+  bv_decide
 
 example (x : U8) (h : x.toNat < 32) : x.toBitVec < 32#8 := by
   bvify 8 at h
@@ -401,7 +401,7 @@ example
   (c.toNat : ZMod 32) = (a.toNat : ZMod 32) + (b.toNat : ZMod 32) := by
   bvify 32 at *
   extract_goal1
-  toBitVec_decide
+  bv_decide
 
 example
   (a : U32)
@@ -424,7 +424,7 @@ example
   := by
   bvify 32 at *
   simp_all only
-  toBitVec_decide
+  bv_decide
 
 example
   (a : U32)
@@ -445,7 +445,7 @@ example
   := by
   bvify 32 at *
   simp_all only
-  toBitVec_decide
+  bv_decide
 
 example
   (x : U16) (_ : x.toNat < 3329)
@@ -453,7 +453,7 @@ example
   y.toNat = x.toNat
   := by
   bvify 32 at *
-  toBitVec_decide
+  bv_decide
 
 example
   (x : U32) (_ : x.toNat < 3329)
@@ -461,11 +461,11 @@ example
   y.toNat = x.toNat
   := by
   bvify 16 at *
-  toBitVec_decide
+  bv_decide
 
 example (x : U64) : x.toNat >>> 31 < 2^33 := by
   bvify 64
-  toBitVec_decide
+  bv_decide
 
 /--
 info: example
@@ -484,6 +484,6 @@ example (x a b : U32) (h : x.toNat = a.toNat + b.toNat) : (x.toNat : ZMod 3329) 
   simp [h]
 
 example (byte : U8) : 8 ∣ (byte &&& 16#u8).toNat := by
-  bvify 8; toBitVec_decide
+  bvify 8; bv_decide
 
 end Aeneas.Bvify

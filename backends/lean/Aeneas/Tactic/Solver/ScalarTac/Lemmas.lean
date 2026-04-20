@@ -244,7 +244,7 @@ attribute [scalar_tac_simps]
   -- Int.subNatNat is very annoying - TODO: there is probably something more general thing to do
   Int.subNatNat_eq_coe
 
-@[scalar_tac x.toInt]
+@[scalar_tac x.toNat]
 theorem UScalar.bounds {ty : UScalarTy} (x : UScalar ty) :
   x.toNat ≤ UScalar.max ty := by
   simp [UScalar.max]
@@ -254,7 +254,7 @@ theorem UScalar.bounds {ty : UScalarTy} (x : UScalar ty) :
 grind_pattern UScalar.bounds => UScalar.toNat x
 grind_pattern [agrind] UScalar.bounds => UScalar.toNat x
 
-@[scalar_tac x.toNat]
+@[scalar_tac x.toInt]
 theorem IScalar.bounds {ty : IScalarTy} (x : IScalar ty) :
   IScalar.min ty ≤ x.toInt ∧ x.toInt ≤ IScalar.max ty := by
   simp [IScalar.max, IScalar.min]
@@ -340,15 +340,15 @@ end
 /-!
 # ZMod
 -/
-@[scalar_tac x.toInt]
-theorem ZMod.val_lt_or {n} (x : ZMod n) : x.toInt < n ∨ n = 0 := by
+@[scalar_tac x.val]
+theorem ZMod.val_lt_or {n} (x : ZMod n) : x.val < n ∨ n = 0 := by
   by_cases hn : n = 0
   . simp [*]
   . have := @ZMod.val_lt n (by constructor; omega) x
     omega
 
 @[simp_scalar_safe]
-theorem ZMod.val_lt_iff {n} (x : ZMod n) : x.toInt < n ↔ n ≠ 0 := by
+theorem ZMod.val_lt_iff {n} (x : ZMod n) : x.val < n ↔ n ≠ 0 := by
  scalar_tac
 
 attribute [simp_scalar_safe] ZMod.val_natCast ZMod.val_intCast
@@ -379,18 +379,18 @@ attribute [scalar_tac_simps] Set.Mem
 /-!
 # Subtypes
 -/
-@[scalar_tac x.toInt]
-theorem subtype_property {α : Sort u} (p : α → Prop) (x : Subtype p) : p x.toInt := by
+@[scalar_tac x.val]
+theorem subtype_property {α : Sort u} (p : α → Prop) (x : Subtype p) : p x.val := by
   cases x; trivial
 
 @[scalar_tac_simps]
-theorem nat_subset_le_iff (p : ℕ → Prop) (x y : {n : ℕ // p n}) : x ≤ y ↔ x.toInt ≤ y.toInt := by rfl
+theorem nat_subset_le_iff (p : ℕ → Prop) (x y : {n : ℕ // p n}) : x ≤ y ↔ x.val ≤ y.val := by rfl
 
 @[scalar_tac_simps]
-theorem nat_subset_lt_iff (p : ℕ → Prop) (x y : {n : ℕ // p n}) : x < y ↔ x.toInt < y.toInt := by rfl
+theorem nat_subset_lt_iff (p : ℕ → Prop) (x y : {n : ℕ // p n}) : x < y ↔ x.val < y.val := by rfl
 
 @[scalar_tac_simps]
-theorem nat_subset_eq_iff (p : ℕ → Prop) (x y : {n : ℕ // p n}) : x = y ↔ x.toInt = y.toInt := by
+theorem nat_subset_eq_iff (p : ℕ → Prop) (x y : {n : ℕ // p n}) : x = y ↔ x.val = y.val := by
   cases x; cases y; simp
 
 /-!

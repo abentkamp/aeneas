@@ -142,7 +142,7 @@ def core.iter.traits.iterator.IteratorChunksExact (T : Type) :
 def core.slice.Slice.chunks_exact {T : Type} (s : Slice T) (chunk_size : Std.Usize) :
   Result (core.slice.iter.ChunksExact T) :=
   if chunk_size.toNat > 0 && s.len % chunk_size.toNat = 0 then
-    ok ⟨ List.map (fun s => ⟨ s, by sorry ⟩) (s.toNat.toChunks chunk_size.toNat) ⟩
+    ok ⟨ List.map (fun s => ⟨ s, by sorry ⟩) (s.val.toChunks chunk_size.toNat) ⟩
   else fail .panic
 
 

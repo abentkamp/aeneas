@@ -49,4 +49,4 @@ example (limb0 limb1 : Nat) (h0 : limb0 ≤ 2 ^ 64 - 1) (h1 : limb1 ≤ 2 ^ 64 -
   bvify 64 at *
   simp only [BitVec.shiftLeft_eq', BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod, Nat.cast_ofNat,
     BitVec.ofNat_eq_ofNat]
-  toBitVec_decide
+  bv_decide

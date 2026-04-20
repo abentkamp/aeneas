@@ -1192,7 +1192,7 @@ below, `map` is a ghost variable as it does not appear in the arguments of `hash
 theorem hashmap_insert_spec {k v : Type} [BEq k] [Hashable k]
   (hmap : HashMap k v) (key : k) (val : v) (map : k → Option v)
   (hInv : HashMap.inv hmap map) :
-    HashMap.insert hmap key toNat ⦃ (newMap : HashMap k v) =>
+    HashMap.insert hmap key val ⦃ (newMap : HashMap k v) =>
     ... ⦄
 ```
 When encoutering ghost variables, `step` will try to instantiate them by looking
@@ -1422,9 +1422,9 @@ info: example
     scalar_tac
 
   example {ty} {x y : IScalar ty}
-    (hmin : IScalar.min ty ≤ x.toNat + y.toNat)
-    (hmax : x.toNat + y.toNat ≤ IScalar.max ty) :
-    x + y ⦃ z => z.toNat = x.toNat + y.toNat ⦄ := by
+    (hmin : IScalar.min ty ≤ x.toInt + y.toInt)
+    (hmax : x.toInt + y.toInt ≤ IScalar.max ty) :
+    x + y ⦃ z => z.toInt = x.toInt + y.toInt ⦄ := by
     step as ⟨ z, h1 ⟩
     scalar_tac
 
@@ -1435,9 +1435,9 @@ info: example
     scalar_tac
 
   example {ty} {x y : IScalar ty}
-    (hmin : IScalar.min ty ≤ x.toNat + y.toNat)
-    (hmax : x.toNat + y.toNat ≤ IScalar.max ty) :
-    x + y ⦃ z => z.toNat = x.toNat + y.toNat ⦄ := by
+    (hmin : IScalar.min ty ≤ x.toInt + y.toInt)
+    (hmax : x.toInt + y.toInt ≤ IScalar.max ty) :
+    x + y ⦃ z => z.toInt = x.toInt + y.toInt ⦄ := by
     step? as ⟨ z, h1 ⟩ says step with IScalar.add_spec as ⟨ z, h1 ⟩
     scalar_tac
 
@@ -1448,9 +1448,9 @@ info: example
     scalar_tac
 
   example {ty} {x y : IScalar ty}
-    (hmin : IScalar.min ty ≤ x.toNat + y.toNat)
-    (hmax : x.toNat + y.toNat ≤ IScalar.max ty) :
-    x + y ⦃ z => z.toNat = x.toNat + y.toNat ⦄ := by
+    (hmin : IScalar.min ty ≤ x.toInt + y.toInt)
+    (hmax : x.toInt + y.toInt ≤ IScalar.max ty) :
+    x + y ⦃ z => z.toInt = x.toInt + y.toInt ⦄ := by
     step with IScalar.add_spec as ⟨ z ⟩
     scalar_tac
 
@@ -1477,13 +1477,13 @@ info: example
      `α : Type u` where u is quantified, while here we use `α : Type 0` -/
   example {α : Type} (v: Vec α) (i: Usize) (x : α)
     (hbounds : i.toNat < v.length) :
-    v.update i x ⦃ nv => nv.toNat = v.toNat.set i.toNat x ⦄ := by
+    v.update i x ⦃ nv => nv.val = v.val.set i.toNat x ⦄ := by
     step
     simp [*]
 
   example {α : Type} (v: Vec α) (i: Usize) (x : α)
     (hbounds : i.toNat < v.length) :
-    v.update i x ⦃ nv => nv.toNat = v.toNat.set i.toNat x ⦄ := by
+    v.update i x ⦃ nv => nv.val = v.val.set i.toNat x ⦄ := by
     step? says step with Vec.update_spec
     simp [*]
 
@@ -1521,9 +1521,9 @@ info: example
     scalar_tac
 
   example {ty} {x y : IScalar ty}
-    (hmin : IScalar.min ty ≤ x.toNat + y.toNat)
-    (hmax : x.toNat + y.toNat ≤ IScalar.max ty) :
-    False ∨ x + y ⦃ z => z.toNat = x.toNat + y.toNat ⦄ := by
+    (hmin : IScalar.min ty ≤ x.toInt + y.toInt)
+    (hmax : x.toInt + y.toInt ≤ IScalar.max ty) :
+    False ∨ x + y ⦃ z => z.toInt = x.toInt + y.toInt ⦄ := by
     right
     step? as ⟨ z, h1 ⟩ says step with IScalar.add_spec as ⟨ z, h1 ⟩
     scalar_tac
@@ -1779,7 +1779,7 @@ z_post : ↑z = ↑x + ↑y
 
     def nttLayer (a : Array U16 256#usize) (_k : Usize) (_len : Usize) : Std.Result (Array U16 256#usize) := ok a
 
-    def toPoly (a : Array U16 256#usize) : List U16 := a.toNat
+    def toPoly (a : Array U16 256#usize) : List U16 := a.val
 
     def Spec.nttLayer (a : List U16) (_ : Nat) (len : Nat) (_ : Nat) (_ : 0 < len) : List U16 := a
 

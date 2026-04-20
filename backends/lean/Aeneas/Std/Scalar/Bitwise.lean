@@ -56,11 +56,11 @@ def IScalar.shiftRight {ty : IScalarTy} (x : IScalar ty) (s : Nat) :
 
 def IScalar.shiftLeft_UScalar {ty tys} (x : IScalar ty) (s : UScalar tys) :
   Result (IScalar ty) :=
-  x.shiftLeft s.toInt
+  x.shiftLeft s.toNat
 
 def IScalar.shiftRight_UScalar {ty tys} (x : IScalar ty) (s : UScalar tys) :
   Result (IScalar ty) :=
-  x.shiftRight s.toInt
+  x.shiftRight s.toNat
 
 def IScalar.shiftLeft_IScalar {ty tys} (x : IScalar ty) (s : IScalar tys) :
   Result (IScalar ty) :=

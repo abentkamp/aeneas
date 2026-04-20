@@ -249,31 +249,31 @@ theorem UScalar.ofNatCore_toBitVec_lt_equiv {ty} (x y : Nat) (hx) (hy) :
   simp [size]; apply Int.bmod_pow2_eq_of_inBounds' <;> scalar_tac
 
 @[simp, scalar_tac_simps] theorem I8.toInt_mod_size_eq' (x : I8) : Int.bmod x.toInt 256 = x.toInt := by
-  have := val_mod_size_eq x; simp [size, numBits] at this; assumption
+  have := toInt_mod_size_eq x; simp [size, numBits] at this; assumption
 
 @[simp, scalar_tac_simps] theorem I16.toInt_mod_size_eq (x : I16) : Int.bmod x.toInt I16.size = x.toInt := by
   simp [size]; apply Int.bmod_pow2_eq_of_inBounds' <;> scalar_tac
 
 @[simp, scalar_tac_simps] theorem I16.toInt_mod_size_eq' (x : I16) : Int.bmod x.toInt 65536 = x.toInt := by
-  have := val_mod_size_eq x; simp [size, numBits] at this; assumption
+  have := toInt_mod_size_eq x; simp [size, numBits] at this; assumption
 
 @[simp, scalar_tac_simps] theorem I32.toInt_mod_size_eq (x : I32) : Int.bmod x.toInt I32.size = x.toInt := by
   simp [size]; apply Int.bmod_pow2_eq_of_inBounds' <;> scalar_tac
 
 @[simp, scalar_tac_simps] theorem I32.toInt_mod_size_eq' (x : I32) : Int.bmod x.toInt 4294967296 = x.toInt := by
-  have := val_mod_size_eq x; simp [size, numBits] at this; assumption
+  have := toInt_mod_size_eq x; simp [size, numBits] at this; assumption
 
 @[simp, scalar_tac_simps] theorem I64.toInt_mod_size_eq (x : I64) : Int.bmod x.toInt I64.size = x.toInt := by
   simp [size]; apply Int.bmod_pow2_eq_of_inBounds' <;> scalar_tac
 
 @[simp, scalar_tac_simps] theorem I64.toInt_mod_size_eq' (x : I64) : Int.bmod x.toInt 18446744073709551616 = x.toInt := by
-  have := val_mod_size_eq x; simp [size, numBits] at this; assumption
+  have := toInt_mod_size_eq x; simp [size, numBits] at this; assumption
 
 @[simp, scalar_tac_simps] theorem I128.toInt_mod_size_eq (x : I128) : Int.bmod x.toInt I128.size = x.toInt := by
   simp [size]; apply Int.bmod_pow2_eq_of_inBounds' <;> scalar_tac
 
 @[simp, scalar_tac_simps] theorem I128.toInt_mod_size_eq' (x : I128) : Int.bmod x.toInt 340282366920938463463374607431768211456 = x.toInt := by
-  have := val_mod_size_eq x; simp [size, numBits] at this; assumption
+  have := toInt_mod_size_eq x; simp [size, numBits] at this; assumption
 
 @[simp, scalar_tac_simps] theorem Isize.toInt_mod_size_eq (x : Isize) : Int.bmod x.toInt Isize.size = x.toInt := by
   simp [size]; apply Int.bmod_pow2_eq_of_inBounds' <;> try scalar_tac

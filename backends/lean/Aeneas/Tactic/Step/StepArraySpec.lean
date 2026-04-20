@@ -51,7 +51,7 @@ theorem Array.index_usize_const_spec {α} [Inhabited α]
   (p : Usize → α → Bool) (p' : Usize → α → Prop)
   (a : Std.Array α n)
   (hp : ∀ i x, p i x ↔ p' i x)
-  (hPred : Std.Array.allIdx p a.toNat)
+  (hPred : Std.Array.allIdx p a.val)
   (i : Usize) (h : i.toNat < n.toNat) (hn : n.toNat ≤ U32.max) :
   Array.index_usize a i ⦃ v => p' i v ⦄ := by
   let rec aux (l : List α) (i : Nat) (hi : i + l.length = n)
@@ -87,7 +87,7 @@ theorem Array.index_usize_const_spec {α} [Inhabited α]
         have : i + 1 + (j - 1) = i + j := by omega
         simp [this] at hind
         simp [hind]
-  have hi := aux a.toNat 0 (by scalar_tac) (by simp) hPred i (by scalar_tac) (by scalar_tac)
+  have hi := aux a.val 0 (by scalar_tac) (by simp) hPred i (by scalar_tac) (by scalar_tac)
   simp at hi
   step as ⟨ x, hx ⟩
   grind

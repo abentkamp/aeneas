@@ -119,8 +119,8 @@ theorem IScalar.sub_toBitVec_spec {ty} {x y : IScalar ty}
   split at h <;> simp_all [min, max]
   omega
 
-uscalar theorem «%S».sub_bv_spec {x y : «%S»} (h : y.toInt ≤ x.toInt) :
-  x - y ⦃ z => z.toInt = x.toInt - y.toInt ∧ y.toInt ≤ x.toInt ∧ z.toBitVec = x.toBitVec - y.toBitVec ⦄ :=
+uscalar theorem «%S».sub_bv_spec {x y : «%S»} (h : y.toNat ≤ x.toNat) :
+  x - y ⦃ z => z.toNat = x.toNat - y.toNat ∧ y.toNat ≤ x.toNat ∧ z.toBitVec = x.toBitVec - y.toBitVec ⦄ :=
   UScalar.sub_toBitVec_spec h
 
 iscalar theorem «%S».sub_bv_spec {x y : «%S»}
@@ -151,8 +151,8 @@ theorem IScalar.sub_spec {ty} {x y : IScalar ty}
   split at h <;> simp_all [min, max]
   omega
 
-uscalar @[step] theorem «%S».sub_spec {x y : «%S»} (h : y.toInt ≤ x.toInt) :
-  x - y ⦃ z => z.toInt = x.toInt - y.toInt ∧ y.toInt ≤ x.toInt ⦄ :=
+uscalar @[step] theorem «%S».sub_spec {x y : «%S»} (h : y.toNat ≤ x.toNat) :
+  x - y ⦃ z => z.toNat = x.toNat - y.toNat ∧ y.toNat ≤ x.toNat ⦄ :=
   UScalar.sub_spec h
 
 iscalar @[step] theorem «%S».sub_spec {x y : «%S»}

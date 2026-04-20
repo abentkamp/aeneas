@@ -120,7 +120,7 @@ theorem IScalar.mul_toBitVec_spec {ty} {x y : IScalar ty}
   have := mul_equiv x y
   split at this <;> simp_all
 
-uscalar theorem «%S».mul_bv_spec {x y : «%S»} (hmax : x.toInt * y.toInt ≤ «%S».max) :
+uscalar theorem «%S».mul_bv_spec {x y : «%S»} (hmax : x.toNat * y.toNat ≤ «%S».max) :
   x * y ⦃ z => (↑z : Nat) = ↑x * ↑y ∧ z.toBitVec = x.toBitVec * y.toBitVec ⦄ :=
   UScalar.mul_toBitVec_spec (by scalar_tac)
 
@@ -138,7 +138,7 @@ theorem UScalar.mul_spec {ty} {x y : UScalar ty}
   (hmax : ↑x * ↑y ≤ UScalar.max ty) :
   x * y ⦃ z => (↑z : Nat) = ↑x * ↑y ⦄ := by
   apply spec_mono
-  apply mul_bv_spec hmax
+  apply UScalar.mul_toBitVec_spec hmax
   grind
 
 /-- Generic theorem - shouldn't be used much -/
@@ -147,10 +147,10 @@ theorem IScalar.mul_spec {ty} {x y : IScalar ty}
   (hmax : ↑x * ↑y ≤ IScalar.max ty) :
   x * y ⦃ z => (↑z : Int) = ↑x * ↑y ⦄ := by
   apply spec_mono
-  apply @mul_bv_spec ty x y (by scalar_tac) (by scalar_tac)
+  apply @IScalar.mul_toBitVec_spec ty x y (by scalar_tac) (by scalar_tac)
   grind
 
-uscalar @[step] theorem «%S».mul_spec {x y : «%S»} (hmax : x.toInt * y.toInt ≤ «%S».max) :
+uscalar @[step] theorem «%S».mul_spec {x y : «%S»} (hmax : x.toNat * y.toNat ≤ «%S».max) :
   x * y ⦃ z => (↑z : Nat) = ↑x * ↑y ⦄ :=
   UScalar.mul_spec (by scalar_tac)
 

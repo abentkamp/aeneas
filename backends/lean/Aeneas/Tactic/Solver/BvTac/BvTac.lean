@@ -127,34 +127,34 @@ elab "toBitVec_tac" config:Parser.Tactic.optConfig n:(colGt term)? : tactic =>
 -/
 open Std
 
-example (x y : U8) (h : x.val ≤ y.val) : x.toBitVec ≤ y.toBitVec := by
+example (x y : U8) (h : x.toNat ≤ y.toNat) : x.toBitVec ≤ y.toBitVec := by
   toBitVec_tac
 
-example (x : U32) (h : x.val < 3329) : x.toBitVec % 3329#32 = x.toBitVec := by
+example (x : U32) (h : x.toNat < 3329) : x.toBitVec % 3329#32 = x.toBitVec := by
   toBitVec_tac
 
 /- Checking parsing -/
-example (x : U32) (h : x.val < 3329) : x.toBitVec % 3329#32 = x.toBitVec ∧ True := by
+example (x : U32) (h : x.toNat < 3329) : x.toBitVec % 3329#32 = x.toBitVec ∧ True := by
   constructor
   toBitVec_tac
   simp
 
 /- Checking parsing -/
-example (x : U32) (h : x.val < 3329) : x.toBitVec % 3329#32 = x.toBitVec ∧ True := by
+example (x : U32) (h : x.toNat < 3329) : x.toBitVec % 3329#32 = x.toBitVec ∧ True := by
   constructor
   toBitVec_tac 32
   simp
 
 /- Checking parsing -/
-example (x : U32) (h : x.val < 3329) : x.toBitVec % 3329#32 = x.toBitVec ∧ True := by
+example (x : U32) (h : x.toNat < 3329) : x.toBitVec % 3329#32 = x.toBitVec ∧ True := by
   constructor
   toBitVec_tac 32; simp
 
 example
   (a : U32)
   (b : U32)
-  (ha : a.val < 3329)
-  (hb : b.val < 3329)
+  (ha : a.toNat < 3329)
+  (hb : b.toNat < 3329)
   (c1 : U32)
   (_ : c1.toBitVec = a.toBitVec + b.toBitVec)
   (c2 : U32)
@@ -169,8 +169,8 @@ example
 example
   (a : U32)
   (b : U32)
-  (ha : a.val < 3329)
-  (hb : b.val < 3329)
+  (ha : a.toNat < 3329)
+  (hb : b.toNat < 3329)
   (c1 : U32)
   (_ : c1.toBitVec = a.toBitVec + b.toBitVec)
   (c2 : U32)
@@ -232,7 +232,7 @@ example
 example
   (a : U32)
   (b : U32)
-  (h : a.val < 3329 ∧ b.val < 3329 ∨ a.val < 6658 ∧ b.val = 3329)
+  (h : a.toNat < 3329 ∧ b.toNat < 3329 ∨ a.toNat < 6658 ∧ b.toNat = 3329)
   (c1 : U32)
   (hc1 : c1 = core.num.U32.wrapping_sub a b)
   (c2 : U32)
@@ -244,17 +244,17 @@ example
 example
   (a : U32)
   (b : U32)
-  (h : a.val < 3329 ∧ b.val < 3329 ∨ a.val < 6658 ∧ b.val = 3329)
+  (h : a.toNat < 3329 ∧ b.toNat < 3329 ∨ a.toNat < 6658 ∧ b.toNat = 3329)
   (c1 : U32)
   (hc1 : c1 = core.num.U32.wrapping_sub a b)
   (c2 : U32)
   (hc2 : c2.toBitVec = c1.toBitVec >>> 16)
   (c3 : U32)
-  (hc3_1 : c3.val = (3329#u32 &&& c2).val)
+  (hc3_1 : c3.toNat = (3329#u32 &&& c2).toNat)
   (_ : c3.toBitVec = 3329#32 &&& c2.toBitVec)
   (c4 : U32)
   (hc3 : c4 = core.num.U32.wrapping_add c1 c3) :
-  (c4.val : ZMod 3329) = (a.val : ZMod 3329) - (b.val : ZMod 3329) ∧ c4.val < 3329
+  (c4.toNat : ZMod 3329) = (a.toNat : ZMod 3329) - (b.toNat : ZMod 3329) ∧ c4.toNat < 3329
   := by
   toBitVec_tac 32
 
