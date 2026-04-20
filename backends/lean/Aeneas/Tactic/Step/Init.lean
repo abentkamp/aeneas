@@ -273,10 +273,13 @@ private def generateMvcgenSpec (stx : Syntax) (attrKind : AttributeKind) (thName
   let some decl := env.findAsync? thName
     | throwError "Could not find theorem {thName}"
   let sig := decl.sig.get
-  let ty ← normalizeLetBindings sig.type
+  -- Specialise all universe level parameters to 0 so that spec_to_triple {α : Type} applies.
+  -- The generated mvcgen_spec is a valid Type-0 instance of the original theorem.
+  let zeroLevels := List.replicate sig.levelParams.length Level.zero
+  let ty ← normalizeLetBindings (sig.type.instantiateLevelParams sig.levelParams zeroLevels)
   forallTelescope ty fun fvars _ => do
-    -- Apply the original theorem to all fvars to get: spec (f args) Q
-    let thConst := Lean.mkConst thName (sig.levelParams.map mkLevelParam)
+    -- Apply the original theorem (at universe 0) to all fvars to get: spec (f args) Q
+    let thConst := Lean.mkConst thName zeroLevels
     let thApp := mkAppN thConst fvars
     -- Wrap with spec_to_triple to produce: Triple (f args) ⌜True⌝ post⟨...⟩
     let proof ← mkAppM ``Aeneas.Std.WP.spec_to_triple #[thApp]
@@ -287,7 +290,7 @@ private def generateMvcgenSpec (stx : Syntax) (attrKind : AttributeKind) (thName
     let mvcgenSpecName := Name.str thName "mvcgen_spec"
     let auxDecl : TheoremVal := {
       name        := mvcgenSpecName
-      levelParams := sig.levelParams
+      levelParams := []    -- all level params have been fixed to 0
       type        := thmTy
       value       := proofTerm
     }
