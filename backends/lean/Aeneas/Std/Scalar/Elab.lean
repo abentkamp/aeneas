@@ -96,10 +96,10 @@ partial def elabSpecial (ty : String) (bw size : Syntax) (stx : Syntax) : Comman
       trace[ScalarElabSubst] "elabSpecial: replaced `%BitWidth`"
       pure bw
     else pure (.atom info val)
-  | .ident info rawVal toNat preresolved =>
+  | .ident info rawVal val preresolved =>
     trace[ScalarElabSubst] "elabSpecial: ident: {stx}"
-    let toNat ← elabSpecialName ty toNat
-    pure (.ident info rawVal toNat preresolved)
+    let val ← elabSpecialName ty val
+    pure (.ident info rawVal val preresolved)
 
 def elabCommand (tysBws : List (String × Syntax × Syntax)) (cmd : TSyntax `command) : CommandElabM Unit := do
   let elabOne (tyBw : String × Syntax × Syntax) : CommandElabM Unit := do
