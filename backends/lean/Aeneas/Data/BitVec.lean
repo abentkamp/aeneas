@@ -23,13 +23,13 @@ attribute [-simp] List.getElem!_eq_getElem?_getD
 attribute [bvify, simp_scalar_safe] BitVec.zero_eq
 attribute [bvify, simp_scalar_safe] BitVec.instInhabited
 
-def BitVec.toArray {n} (toBitVec: BitVec n) : Array Bool := Array.finRange n |>.map (toBitVec[·])
+def BitVec.toArray {n} (bv: BitVec n) : Array Bool := Array.finRange n |>.map (bv[·])
 def BitVec.ofFn {n} (f: Fin n → Bool) : BitVec n := (BitVec.ofBoolListLE <| List.ofFn f).cast (by simp)
-def BitVec.set {n} (i: Fin n) (b: Bool) (toBitVec: BitVec n) : BitVec n := toBitVec ^^^ (((toBitVec[i] ^^ b).toNat : BitVec n) <<< i.val)
+def BitVec.set {n} (i: Fin n) (b: Bool) (bv: BitVec n) : BitVec n := bv ^^^ (((bv[i] ^^ b).toNat : BitVec n) <<< i.val)
 
-def BitVec.toByteArray {n} (toBitVec: BitVec n) : ByteArray :=
+def BitVec.toByteArray {n} (bv: BitVec n) : ByteArray :=
   let paddedLen := (n + 7)/8
-  let bv' := toBitVec.setWidth (paddedLen*8)
+  let bv' := bv.setWidth (paddedLen*8)
   ByteArray.mk <| Array.finRange paddedLen
     |>.map fun i =>
       let x := List.finRange 8 |>.map (fun o =>
