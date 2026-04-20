@@ -9,9 +9,9 @@ open Result Error ScalarElab
 # Wrapping Sub
 -/
 
-def UScalar.wrapping_sub {ty} (x y : UScalar ty) : UScalar ty := UScalar.ofBitVec ty (x.toBitVec - y.toBitVec)
+def UScalar.wrapping_sub {ty} (x y : UScalar ty) : UScalar ty := UScalar.ofBitVec ty (UScalar.toBitVec x - UScalar.toBitVec y)
 
-def IScalar.wrapping_sub {ty} (x y : IScalar ty) : IScalar ty := IScalar.ofBitVec ty (x.toBitVec - y.toBitVec)
+def IScalar.wrapping_sub {ty} (x y : IScalar ty) : IScalar ty := IScalar.ofBitVec ty (IScalar.toBitVec x - IScalar.toBitVec y)
 
 uscalar @[step_pure_def]
 def «%S».wrapping_sub : «%S» → «%S» → «%S» := @UScalar.wrapping_sub UScalarTy.«%S»
@@ -27,29 +27,29 @@ def core.num.«%S».wrapping_sub : «%S» → «%S» → «%S» := @UScalar.wrap
 iscalar @[step_pure_def]
 def core.num.«%S».wrapping_sub : «%S» → «%S» → «%S»  := @IScalar.wrapping_sub IScalarTy.«%S»
 
-@[simp, bvify] theorem UScalar.wrapping_sub_toBitVec_eq {ty} (x y : UScalar ty) :
-  (wrapping_sub x y).toBitVec = x.toBitVec - y.toBitVec := by
+@[simp, bvify] theorem UScalar.wrapping_sub_bv_eq {ty} (x y : UScalar ty) :
+  (wrapping_sub x y).toBitVec = UScalar.toBitVec x - UScalar.toBitVec y := by
   simp only [wrapping_sub, UScalar.ofBitVec_toBitVec]
 
-uscalar @[simp, bvify, grind =, agrind =] theorem «%S».wrapping_sub_toBitVec_eq (x y : «%S») :
+uscalar @[simp, bvify, grind =, agrind =] theorem «%S».wrapping_sub_bv_eq (x y : «%S») :
   («%S».wrapping_sub x y).toBitVec = x.toBitVec - y.toBitVec :=
-  UScalar.wrapping_sub_toBitVec_eq x y
+  UScalar.wrapping_sub_bv_eq x y
 
-uscalar @[simp, bvify, grind =, agrind =] theorem core.num.«%S».wrapping_sub_toBitVec_eq (x y : «%S») :
+uscalar @[simp, bvify, grind =, agrind =] theorem core.num.«%S».wrapping_sub_bv_eq (x y : «%S») :
   (core.num.«%S».wrapping_sub x y).toBitVec = x.toBitVec - y.toBitVec :=
-  UScalar.wrapping_sub_toBitVec_eq x y
+  UScalar.wrapping_sub_bv_eq x y
 
-@[simp, bvify] theorem IScalar.wrapping_sub_toBitVec_eq {ty} (x y : IScalar ty) :
-  (wrapping_sub x y).toBitVec = x.toBitVec - y.toBitVec := by
+@[simp, bvify] theorem IScalar.wrapping_sub_bv_eq {ty} (x y : IScalar ty) :
+  (wrapping_sub x y).toBitVec = IScalar.toBitVec x - IScalar.toBitVec y := by
   simp only [wrapping_sub, IScalar.ofBitVec_toBitVec]
 
-iscalar @[simp, bvify, grind =, agrind =] theorem «%S».wrapping_sub_toBitVec_eq (x y : «%S») :
+iscalar @[simp, bvify, grind =, agrind =] theorem «%S».wrapping_sub_bv_eq (x y : «%S») :
   («%S».wrapping_sub x y).toBitVec = x.toBitVec - y.toBitVec :=
-  IScalar.wrapping_sub_toBitVec_eq x y
+  IScalar.wrapping_sub_bv_eq x y
 
-iscalar @[simp, bvify, grind =, agrind =] theorem core.num.«%S».wrapping_sub_toBitVec_eq (x y : «%S») :
+iscalar @[simp, bvify, grind =, agrind =] theorem core.num.«%S».wrapping_sub_bv_eq (x y : «%S») :
   (core.num.«%S».wrapping_sub x y).toBitVec = x.toBitVec - y.toBitVec :=
-  IScalar.wrapping_sub_toBitVec_eq x y
+  IScalar.wrapping_sub_bv_eq x y
 
 @[simp] theorem UScalar.wrapping_sub_toNat_eq {ty} (x y : UScalar ty) :
   (wrapping_sub x y).toNat = (x.toNat + (UScalar.size ty - y.toNat)) % UScalar.size ty := by

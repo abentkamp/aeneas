@@ -43,13 +43,13 @@ theorem UScalar.overflowing_add_eq {ty} (x y : UScalar ty) :
   split <;> rename_i hLt
   · refine ⟨?_, ?_⟩
     · have : (x.toNat + y.toNat) % 2^ty.numBits =
-             (x.toBitVec.toNat + y.toBitVec.toNat - 2^ty.numBits) % 2^ty.numBits := by
+             ((UScalar.toBitVec x).toNat + (UScalar.toBitVec y).toNat - 2^ty.numBits) % 2^ty.numBits := by
         rw [Nat.mod_eq_sub_mod]
         · cases ty <;> grind
         · grind
       rw [this]; clear this
 
-      have := @Nat.mod_eq_of_lt (x.toBitVec.toNat + y.toBitVec.toNat - 2^ty.numBits) (2^ty.numBits) (by omega)
+      have := @Nat.mod_eq_of_lt ((UScalar.toBitVec x).toNat + (UScalar.toBitVec y).toNat - 2^ty.numBits) (2^ty.numBits) (by omega)
       rw [this]; clear this
       scalar_tac
     · simp only [decide_eq_true_eq]; omega

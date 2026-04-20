@@ -29,51 +29,27 @@ scalar @[reducible] def core.cmp.Eq'S : core.cmp.Eq «%S» := {
 
 /- [core::cmp::impls::{core::cmp::PartialOrd<u8> for u8}::partial_cmp]:
    Name pattern: core::cmp::impls::{core::cmp::PartialOrd<u8, u8>}::partial_cmp -/
-uscalar def core.cmp.impls.PartialOrd'S.partial_cmp (x y : «%S») : Option Ordering := some (compare x.toNat y.toNat)
+scalar def core.cmp.impls.PartialOrd'S.partial_cmp (x y : «%S») : Option Ordering := some (compare x y)
 
 /- [core::cmp::impls::{core::cmp::Ord for u8}::cmp]:
    Name pattern: core::cmp::impls::{core::cmp::Ord<u8>}::cmp -/
-uscalar @[simp] abbrev core.cmp.impls.Ord'S.cmp (x y : «%S») : Ordering := compare x.toNat y.toNat
+scalar @[simp] abbrev core.cmp.impls.Ord'S.cmp (x y : «%S») : Ordering := compare x y
 
 /- [core::cmp::impls::{core::cmp::PartialOrd<u8> for u8}::lt]:
    Name pattern: core::cmp::impls::{core::cmp::PartialOrd<u8, u8>}::lt -/
-uscalar def core.cmp.impls.PartialOrd'S.lt (x y : «%S») : Bool := x.toNat < y.toNat
+scalar def core.cmp.impls.PartialOrd'S.lt (x y : «%S») : Bool := x < y
 
 /- [core::cmp::impls::{core::cmp::PartialOrd<u8> for u8}::le]:
    Name pattern: core::cmp::impls::{core::cmp::PartialOrd<u8, u8>}::le -/
-uscalar def core.cmp.impls.PartialOrd'S.le (x y : «%S») : Bool := x.toNat ≤ y.toNat
+scalar def core.cmp.impls.PartialOrd'S.le (x y : «%S») : Bool := x ≤ y
 
 /- [core::cmp::impls::{core::cmp::PartialOrd<u8> for u8}::gt]:
    Name pattern: core::cmp::impls::{core::cmp::PartialOrd<u8, u8>}::gt -/
-uscalar def core.cmp.impls.PartialOrd'S.gt (x y : «%S») : Bool := x.toNat > y.toNat
+scalar def core.cmp.impls.PartialOrd'S.gt (x y : «%S») : Bool := x > y
 
 /- [core::cmp::impls::{core::cmp::PartialOrd<u8> for u8}::ge]:
    Name pattern: core::cmp::impls::{core::cmp::PartialOrd<u8, u8>}::ge -/
-uscalar def core.cmp.impls.PartialOrd'S.ge (x y : «%S») : Bool := x.toNat ≥ y.toNat
-
-/- [core::cmp::impls::{core::cmp::PartialOrd<i8> for i8}::partial_cmp]:
-   Name pattern: core::cmp::impls::{core::cmp::PartialOrd<i8, i8>}::partial_cmp -/
-iscalar def core.cmp.impls.PartialOrd'S.partial_cmp (x y : «%S») : Option Ordering := some (compare x.toInt y.toInt)
-
-/- [core::cmp::impls::{core::cmp::Ord for i8}::cmp]:
-   Name pattern: core::cmp::impls::{core::cmp::Ord<i8>}::cmp -/
-iscalar @[simp] abbrev core.cmp.impls.Ord'S.cmp (x y : «%S») : Ordering := compare x.toInt y.toInt
-
-/- [core::cmp::impls::{core::cmp::PartialOrd<i8> for i8}::lt]:
-   Name pattern: core::cmp::impls::{core::cmp::PartialOrd<i8, i8>}::lt -/
-iscalar def core.cmp.impls.PartialOrd'S.lt (x y : «%S») : Bool := x.toInt < y.toInt
-
-/- [core::cmp::impls::{core::cmp::PartialOrd<i8> for i8}::le]:
-   Name pattern: core::cmp::impls::{core::cmp::PartialOrd<i8, i8>}::le -/
-iscalar def core.cmp.impls.PartialOrd'S.le (x y : «%S») : Bool := x.toInt ≤ y.toInt
-
-/- [core::cmp::impls::{core::cmp::PartialOrd<i8> for i8}::gt]:
-   Name pattern: core::cmp::impls::{core::cmp::PartialOrd<i8, i8>}::gt -/
-iscalar def core.cmp.impls.PartialOrd'S.gt (x y : «%S») : Bool := x.toInt > y.toInt
-
-/- [core::cmp::impls::{core::cmp::PartialOrd<i8> for i8}::ge]:
-   Name pattern: core::cmp::impls::{core::cmp::PartialOrd<i8, i8>}::ge -/
-iscalar def core.cmp.impls.PartialOrd'S.ge (x y : «%S») : Bool := x.toInt ≥ y.toInt
+scalar def core.cmp.impls.PartialOrd'S.ge (x y : «%S») : Bool := x ≥ y
 
 /- Trait implementation: [core::cmp::impls::{core::cmp::PartialOrd<u8> for u8}]
    Name pattern: core::cmp::PartialOrd<u8, u8> -/

@@ -40,10 +40,10 @@ class HCheckedRem (α : Type u) (β : Type v) (γ : outParam (Type w)) where
   hCheckedRem : α → β → γ
 
 -- Notations use the same precedence levels as standard arithmetic.
-notation:65 a " +? " b => HCheckedAdd.hCheckedAdd a b
-notation:65 a " -? " b => HCheckedSub.hCheckedSub a b
-notation:70 a " *? " b => HCheckedMul.hCheckedMul a b
-notation:70 a " /? " b => HCheckedDiv.hCheckedDiv a b
-notation:70 a " %? " b => HCheckedRem.hCheckedRem a b
+notation:65 a " +? " b:66 => HCheckedAdd.hCheckedAdd a b
+notation:65 a " -? " b:66 => HCheckedSub.hCheckedSub a b
+notation:70 a " *? " b:71 => HCheckedMul.hCheckedMul a b
+notation:70 a " /? " b:71 => HCheckedDiv.hCheckedDiv a b
+notation:70 a " %? " b:71 => HCheckedRem.hCheckedRem a b
 
 end Aeneas.Std

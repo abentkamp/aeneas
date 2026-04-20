@@ -105,7 +105,7 @@ theorem Int.bmod_pow2_IScalarTy_numBits_minus_one (ty : IScalarTy) :
   rw [Int.bmod]
   /- Just doing a case disjunction on the number of bits because
      those proofs are annoying -/
-  cases ty <;> simp
+  cases ty <;> simp [IScalarTy.numBits]
   have := System.Platform.numBits_eq
   cases this <;> simp [*]
 
