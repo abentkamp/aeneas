@@ -23,7 +23,7 @@ partial def getn : TacticM Expr := do
   let mgoal ← getMainGoal
   let goalTy ← instantiateMVars (← mgoal.getType)
   let raiseError : TacticM Expr :=
-    throwError "Could not infer the bitwidth to use by from the goal, please provide it explicitly with the syntax: `toBitVec_tac n`"
+    throwError "Could not infer the bitwidth to use by from the goal, please provide it explicitly with the syntax: `bv_tac n`"
   let fromBitVecTy (ty : Expr) : TacticM Expr :=
     ty.consumeMData.withApp fun f args => do
     trace[BvTac] "fromBitVecTy: {f}, {args}"
@@ -76,37 +76,37 @@ partial def bvTacPreprocess (config : Config) (n : Option Expr): TacticM Unit :=
   -- The simpAll may have solved the goal, so we need to be careful
   Utils.allGoals do trace[BvTac] "Goal after `simp_all`: {← getMainGoal}"
 
-elab "toBitVec_tac_preprocess" config:Parser.Tactic.optConfig n:(colGt term)? : tactic => do
+elab "bv_tac_preprocess" config:Parser.Tactic.optConfig n:(colGt term)? : tactic => do
   bvTacPreprocess (← elabConfig config) (← optElabTerm n)
 
 open Lean.Elab.Tactic.BVDecide.Frontend Lean.Elab in
-/-- `toBitVec_tac n` solves goals about bit-vectors.
+/-- `bv_tac n` solves goals about bit-vectors.
 
-**Usage**: `toBitVec_tac n` where `n` is the bitwidth to use for the bit-vectors.
+**Usage**: `bv_tac n` where `n` is the bitwidth to use for the bit-vectors.
 The bitwidth `n` can sometimes be inferred automatically from the goal in which case
 it can be omitted.
 
 **Preprocessing**:
-`toBitVec_tac` first preprocesses the goal (essentially by using `bvify`) to lift inequalities
+`bv_tac` first preprocesses the goal (essentially by using `bvify`) to lift inequalities
 so that they use bit-vectors rather than `ℕ` or `ℤ`, before calling `toBitVec_decide`.
 This can sometimes fail as lifting those inequalities requires solving arithmetic proof
-obligations. For this reason, when `toBitVec_tac` fails, we advise looking carefully at the goal
+obligations. For this reason, when `bv_tac` fails, we advise looking carefully at the goal
 to check if all the expected inequalities have been lifted to bit-vectors. If some could not
 be lifted, one can try lifting them manually - see the documentation of `bvify` for some tips
 and tricks.
 
 **Debugging**:
-Calling `toBitVec_tac n` is (roughly) equivalent to: `toBitVec_tac_preprocess n; toBitVec_decide`,
+Calling `bv_tac n` is (roughly) equivalent to: `bv_tac_preprocess n; toBitVec_decide`,
 which is itself roughly equivalent to: `bvify n at *; simp_all only; toBitVec_decide`.
 
-Note that it often happens that `toBitVec_tac` fails because `bvify` could not
+Note that it often happens that `bv_tac` fails because `bvify` could not
 lift some assumptions to the subset `toBitVec_decide` can reason about. For this
-reason, it is often useful to inspect the goal after calling `bvify` (or `toBitVec_tac_preprocess`).
+reason, it is often useful to inspect the goal after calling `bvify` (or `bv_tac_preprocess`).
 Typically problematic terms are applications of `BitVec.ofNat` to complex expressions
 (for instance, `toBitVec_decide` can generally not reason about `BitVec.ofNat n (a + b)`, which we
 want to simplify to `BitVec.ofNat n a + BitVec.ofNat n b`).
 -/
-elab "toBitVec_tac" config:Parser.Tactic.optConfig n:(colGt term)? : tactic =>
+elab "bv_tac" config:Parser.Tactic.optConfig n:(colGt term)? : tactic =>
   withMainContext do
   Tactic.focus do
   -- Preprocess
@@ -128,27 +128,27 @@ elab "toBitVec_tac" config:Parser.Tactic.optConfig n:(colGt term)? : tactic =>
 open Std
 
 example (x y : U8) (h : x.toNat ≤ y.toNat) : x.toBitVec ≤ y.toBitVec := by
-  toBitVec_tac
+  bv_tac
 
 example (x : U32) (h : x.toNat < 3329) : x.toBitVec % 3329#32 = x.toBitVec := by
-  toBitVec_tac
+  bv_tac
 
 /- Checking parsing -/
 example (x : U32) (h : x.toNat < 3329) : x.toBitVec % 3329#32 = x.toBitVec ∧ True := by
   constructor
-  toBitVec_tac
+  bv_tac
   simp
 
 /- Checking parsing -/
 example (x : U32) (h : x.toNat < 3329) : x.toBitVec % 3329#32 = x.toBitVec ∧ True := by
   constructor
-  toBitVec_tac 32
+  bv_tac 32
   simp
 
 /- Checking parsing -/
 example (x : U32) (h : x.toNat < 3329) : x.toBitVec % 3329#32 = x.toBitVec ∧ True := by
   constructor
-  toBitVec_tac 32; simp
+  bv_tac 32; simp
 
 example
   (a : U32)
@@ -164,7 +164,7 @@ example
   (_ : ¬c3 = 0#u32) :
   c3 = 65535#u32
   := by
-  toBitVec_tac
+  bv_tac
 
 example
   (a : U32)
@@ -179,7 +179,7 @@ example
   (_ : c3.toBitVec = c2.toBitVec >>> 16#i32.toNat) :
   (c1.toBitVec - 3329#32 + (3329#32 &&& c3.toBitVec)) % 3329#32 = (a.toBitVec + b.toBitVec) % 3329#32
   := by
-  toBitVec_tac
+  bv_tac
 
 example
   (a : U32)
@@ -192,7 +192,7 @@ example
   (_ : ¬c2 = 0#u32) :
   c2 = 65535#u32
   := by
-  toBitVec_tac
+  bv_tac
 
 example
   (a : U32)
@@ -211,7 +211,7 @@ example
   (hc3 : c4 = core.num.U32.wrapping_add c1 c3) :
   c4.toBitVec % 3329#32 = (a.toBitVec + 3329#32 - b.toBitVec) % 3329#32 ∧ c4.toBitVec < 3329#32
   := by
-  toBitVec_tac
+  bv_tac
 
 example
   (a : U32)
@@ -227,7 +227,7 @@ example
   (hc3 : c3.toBitVec = c2.toBitVec >>> 16)
   (h : ¬c3 = 0#u32) :
   c3 = 65535#u32
-  := by toBitVec_tac
+  := by bv_tac
 
 example
   (a : U32)
@@ -239,7 +239,7 @@ example
   (hc2 : c2.toBitVec = c1.toBitVec >>> 16) :
   (decide (c2 = 0#u32) || decide (c2 = 65535#u32)) = true
   := by
-  toBitVec_tac
+  bv_tac
 
 example
   (a : U32)
@@ -256,6 +256,6 @@ example
   (hc3 : c4 = core.num.U32.wrapping_add c1 c3) :
   (c4.toNat : ZMod 3329) = (a.toNat : ZMod 3329) - (b.toNat : ZMod 3329) ∧ c4.toNat < 3329
   := by
-  toBitVec_tac 32
+  bv_tac 32
 
 end Aeneas.BvTac

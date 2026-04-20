@@ -16,60 +16,60 @@ open Aeneas.Std
 -- ============================================================================
 
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U8.and_maxVal (x : U8) : x &&& 255#u8 = x := by toBitVec_tac 8
+theorem U8.and_maxVal (x : U8) : x &&& 255#u8 = x := by bv_tac 8
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U16.and_maxVal (x : U16) : x &&& 65535#u16 = x := by toBitVec_tac 16
+theorem U16.and_maxVal (x : U16) : x &&& 65535#u16 = x := by bv_tac 16
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U32.and_maxVal (x : U32) : x &&& 4294967295#u32 = x := by toBitVec_tac 32
+theorem U32.and_maxVal (x : U32) : x &&& 4294967295#u32 = x := by bv_tac 32
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U64.and_maxVal (x : U64) : x &&& 18446744073709551615#u64 = x := by toBitVec_tac 64
+theorem U64.and_maxVal (x : U64) : x &&& 18446744073709551615#u64 = x := by bv_tac 64
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U128.and_maxVal (x : U128) : x &&& 340282366920938463463374607431768211455#u128 = x := by toBitVec_tac 128
+theorem U128.and_maxVal (x : U128) : x &&& 340282366920938463463374607431768211455#u128 = x := by bv_tac 128
 
 -- ============================================================================
 -- maxVal &&& x = x  (scalar level)
 -- ============================================================================
 
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U8.maxVal_and (x : U8) : 255#u8 &&& x = x := by toBitVec_tac 8
+theorem U8.maxVal_and (x : U8) : 255#u8 &&& x = x := by bv_tac 8
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U16.maxVal_and (x : U16) : 65535#u16 &&& x = x := by toBitVec_tac 16
+theorem U16.maxVal_and (x : U16) : 65535#u16 &&& x = x := by bv_tac 16
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U32.maxVal_and (x : U32) : 4294967295#u32 &&& x = x := by toBitVec_tac 32
+theorem U32.maxVal_and (x : U32) : 4294967295#u32 &&& x = x := by bv_tac 32
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U64.maxVal_and (x : U64) : 18446744073709551615#u64 &&& x = x := by toBitVec_tac 64
+theorem U64.maxVal_and (x : U64) : 18446744073709551615#u64 &&& x = x := by bv_tac 64
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U128.maxVal_and (x : U128) : 340282366920938463463374607431768211455#u128 &&& x = x := by toBitVec_tac 128
+theorem U128.maxVal_and (x : U128) : 340282366920938463463374607431768211455#u128 &&& x = x := by bv_tac 128
 
 -- ============================================================================
 -- x.toBitVec &&& maxVal = x.toBitVec  (BitVec level)
 -- ============================================================================
 
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U8.toBitVec_and_maxVal (x : U8) : x.toBitVec &&& 255#8 = x.toBitVec := by toBitVec_tac 8
+theorem U8.toBitVec_and_maxVal (x : U8) : x.toBitVec &&& 255#8 = x.toBitVec := by bv_tac 8
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U16.toBitVec_and_maxVal (x : U16) : x.toBitVec &&& 65535#16 = x.toBitVec := by toBitVec_tac 16
+theorem U16.toBitVec_and_maxVal (x : U16) : x.toBitVec &&& 65535#16 = x.toBitVec := by bv_tac 16
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U32.toBitVec_and_maxVal (x : U32) : x.toBitVec &&& 4294967295#32 = x.toBitVec := by toBitVec_tac 32
+theorem U32.toBitVec_and_maxVal (x : U32) : x.toBitVec &&& 4294967295#32 = x.toBitVec := by bv_tac 32
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U64.toBitVec_and_maxVal (x : U64) : x.toBitVec &&& 18446744073709551615#64 = x.toBitVec := by toBitVec_tac 64
+theorem U64.toBitVec_and_maxVal (x : U64) : x.toBitVec &&& 18446744073709551615#64 = x.toBitVec := by bv_tac 64
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U128.toBitVec_and_maxVal (x : U128) : x.toBitVec &&& 340282366920938463463374607431768211455#128 = x.toBitVec := by toBitVec_tac 128
+theorem U128.toBitVec_and_maxVal (x : U128) : x.toBitVec &&& 340282366920938463463374607431768211455#128 = x.toBitVec := by bv_tac 128
 
 -- ============================================================================
 -- maxVal &&& x.toBitVec = x.toBitVec  (BitVec level)
 -- ============================================================================
 
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U8.toBitVec_maxVal_and (x : U8) : 255#8 &&& x.toBitVec = x.toBitVec := by toBitVec_tac 8
+theorem U8.toBitVec_maxVal_and (x : U8) : 255#8 &&& x.toBitVec = x.toBitVec := by bv_tac 8
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U16.toBitVec_maxVal_and (x : U16) : 65535#16 &&& x.toBitVec = x.toBitVec := by toBitVec_tac 16
+theorem U16.toBitVec_maxVal_and (x : U16) : 65535#16 &&& x.toBitVec = x.toBitVec := by bv_tac 16
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U32.toBitVec_maxVal_and (x : U32) : 4294967295#32 &&& x.toBitVec = x.toBitVec := by toBitVec_tac 32
+theorem U32.toBitVec_maxVal_and (x : U32) : 4294967295#32 &&& x.toBitVec = x.toBitVec := by bv_tac 32
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U64.toBitVec_maxVal_and (x : U64) : 18446744073709551615#64 &&& x.toBitVec = x.toBitVec := by toBitVec_tac 64
+theorem U64.toBitVec_maxVal_and (x : U64) : 18446744073709551615#64 &&& x.toBitVec = x.toBitVec := by bv_tac 64
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U128.toBitVec_maxVal_and (x : U128) : 340282366920938463463374607431768211455#128 &&& x.toBitVec = x.toBitVec := by toBitVec_tac 128
+theorem U128.toBitVec_maxVal_and (x : U128) : 340282366920938463463374607431768211455#128 &&& x.toBitVec = x.toBitVec := by bv_tac 128
 
 -- ============================================================================
 -- x.toNat &&& maxVal = x.toNat  (Nat level)
@@ -116,15 +116,15 @@ theorem U128.maxVal_and_toNat (x : U128) : 3402823669209384634633746074317682114
 -- ============================================================================
 
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U8.toBitVec_mod_size (x : U8) : x.toBitVec % 256#8 = x.toBitVec := by toBitVec_tac 8
+theorem U8.toBitVec_mod_size (x : U8) : x.toBitVec % 256#8 = x.toBitVec := by bv_tac 8
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U16.toBitVec_mod_size (x : U16) : x.toBitVec % 65536#16 = x.toBitVec := by toBitVec_tac 16
+theorem U16.toBitVec_mod_size (x : U16) : x.toBitVec % 65536#16 = x.toBitVec := by bv_tac 16
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U32.toBitVec_mod_size (x : U32) : x.toBitVec % 4294967296#32 = x.toBitVec := by toBitVec_tac 32
+theorem U32.toBitVec_mod_size (x : U32) : x.toBitVec % 4294967296#32 = x.toBitVec := by bv_tac 32
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U64.toBitVec_mod_size (x : U64) : x.toBitVec % 18446744073709551616#64 = x.toBitVec := by toBitVec_tac 64
+theorem U64.toBitVec_mod_size (x : U64) : x.toBitVec % 18446744073709551616#64 = x.toBitVec := by bv_tac 64
 @[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem U128.toBitVec_mod_size (x : U128) : x.toBitVec % 340282366920938463463374607431768211456#128 = x.toBitVec := by toBitVec_tac 128
+theorem U128.toBitVec_mod_size (x : U128) : x.toBitVec % 340282366920938463463374607431768211456#128 = x.toBitVec := by bv_tac 128
 
 -- ============================================================================
 -- x.toNat % (2^n) = x.toNat  (Nat level)
@@ -200,15 +200,15 @@ theorem U128.zero_or (x : U128) : 0#u128 ||| x = x := by rw [UScalar.eq_equiv_to
 -- ============================================================================
 
 @[simp, simp_scalar_safe, grind =, agrind =]
-theorem U8.xor_eq_zero_iff (a b : U8) : a ^^^ b = 0#u8 ↔ a = b := by toBitVec_tac 8
+theorem U8.xor_eq_zero_iff (a b : U8) : a ^^^ b = 0#u8 ↔ a = b := by bv_tac 8
 @[simp, simp_scalar_safe, grind =, agrind =]
-theorem U16.xor_eq_zero_iff (a b : U16) : a ^^^ b = 0#u16 ↔ a = b := by toBitVec_tac 16
+theorem U16.xor_eq_zero_iff (a b : U16) : a ^^^ b = 0#u16 ↔ a = b := by bv_tac 16
 @[simp, simp_scalar_safe, grind =, agrind =]
-theorem U32.xor_eq_zero_iff (a b : U32) : a ^^^ b = 0#u32 ↔ a = b := by toBitVec_tac 32
+theorem U32.xor_eq_zero_iff (a b : U32) : a ^^^ b = 0#u32 ↔ a = b := by bv_tac 32
 @[simp, simp_scalar_safe, grind =, agrind =]
-theorem U64.xor_eq_zero_iff (a b : U64) : a ^^^ b = 0#u64 ↔ a = b := by toBitVec_tac 64
+theorem U64.xor_eq_zero_iff (a b : U64) : a ^^^ b = 0#u64 ↔ a = b := by bv_tac 64
 @[simp, simp_scalar_safe, grind =, agrind =]
-theorem U128.xor_eq_zero_iff (a b : U128) : a ^^^ b = 0#u128 ↔ a = b := by toBitVec_tac 128
+theorem U128.xor_eq_zero_iff (a b : U128) : a ^^^ b = 0#u128 ↔ a = b := by bv_tac 128
 
 -- ============================================================================
 -- a ||| b = 0 ↔ a = 0 ∧ b = 0  (scalar level)
