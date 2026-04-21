@@ -10,16 +10,12 @@ open Result Error Arith ScalarElab
 -/
 
 /- [core::num::{T}::checked_mul] -/
-def core.num.checked_mul_UScalar {ty} (x y : UScalar ty) : Option (UScalar ty) :=
-  Option.ofResult (UScalar.mul x y)
-
-uscalar def «%S».checked_mul (x y : «%S») : Option «%S» := core.num.checked_mul_UScalar x y
+uscalar def «%S».checked_mul (x y : «%S») : Option «%S» :=
+  Option.ofResult (x *? y)
 
 /- [core::num::{T}::checked_mul] -/
-def core.num.checked_mul_IScalar {ty} (x y : IScalar ty) : Option (IScalar ty) :=
-  Option.ofResult (IScalar.mul x y)
-
-iscalar def «%S».checked_mul (x y : «%S») : Option «%S» := core.num.checked_mul_IScalar x y
+iscalar def «%S».checked_mul (x y : «%S») : Option «%S» :=
+  Option.ofResult (x *? y)
 
 /-!
 # Checked Mul: Theorems
@@ -28,41 +24,24 @@ iscalar def «%S».checked_mul (x y : «%S») : Option «%S» := core.num.checke
 /-!
 Unsigned checked mul
 -/
-theorem core.num.checked_mul_UScalar_bv_spec {ty} (x y : UScalar ty) :
-  match core.num.checked_mul_UScalar x y with
-  | some z => x.toNat * y.toNat ≤ UScalar.max ty ∧ z.toNat = x.toNat * y.toNat ∧ z.toBitVec = x.toBitVec * y.toBitVec
-  | none => UScalar.max ty < x.toNat * y.toNat := by
-  have h := UScalar.mul_equiv x y
-  simp [checked_mul_UScalar]
-  cases hEq : UScalar.mul x y <;> simp_all [Option.ofResult]
-
 uscalar @[step_pure «%S».checked_mul x y]
 theorem «%S».checked_mul_bv_spec (x y : «%S») :
   match «%S».checked_mul x y with
   | some z => x.toNat * y.toNat ≤ «%S».max ∧ z.toNat = x.toNat * y.toNat ∧ z.toBitVec = x.toBitVec * y.toBitVec
   | none => «%S».max < x.toNat * y.toNat := by
-  have := core.num.checked_mul_UScalar_bv_spec x y
-  simp_all only [«%S».checked_mul, UScalar.max, «%S».toBitVec, «%S».max, «%S».numBits]
-  cases h: core.num.checked_mul_UScalar x y <;> simp_all only [and_self]
+  simp_all [checked_mul, Option.ofResult]; grind [mul_equiv]
 
 /-!
 Signed checked mul
 -/
-theorem core.num.checked_mul_IScalar_bv_spec {ty} (x y : IScalar ty) :
-  match core.num.checked_mul_IScalar x y with
-  | some z => IScalar.min ty ≤ x.toInt * y.toInt ∧ x.toInt * y.toInt ≤ IScalar.max ty ∧ z.toInt = x.toInt * y.toInt ∧ z.toBitVec = x.toBitVec * y.toBitVec
-  | none => ¬ (IScalar.min ty ≤ x.toInt * y.toInt ∧ x.toInt * y.toInt ≤ IScalar.max ty) := by
-  have h := IScalar.mul_equiv x y
-  simp [checked_mul_IScalar]
-  cases hEq : IScalar.mul x y <;> simp_all [Option.ofResult]
-
 iscalar @[step_pure «%S».checked_mul x y]
 theorem «%S».checked_mul_bv_spec (x y : «%S») :
-  match core.num.checked_mul_IScalar x y with
+  match «%S».checked_mul x y with
   | some z => «%S».min ≤ x.toInt * y.toInt ∧ x.toInt * y.toInt ≤ «%S».max ∧ z.toInt = x.toInt * y.toInt ∧ z.toBitVec = x.toBitVec * y.toBitVec
   | none => ¬ («%S».min ≤ x.toInt * y.toInt ∧ x.toInt * y.toInt ≤ «%S».max) := by
-  have := core.num.checked_mul_IScalar_bv_spec x y
-  simp_all only [IScalar.min, IScalar.max, «%S».toBitVec, «%S».min, «%S».max, «%S».numBits]
-  cases h: core.num.checked_mul_IScalar x y <;> simp_all only [not_false_eq_true, and_self]
+  have h := mul_equiv x y
+  have hMul : x *? y = mul x y := by rfl
+  rw [hMul] at h
+  cases hEq : mul x y <;> simp_all [Option.ofResult, checked_mul, min, max]
 
 end Aeneas.Std
