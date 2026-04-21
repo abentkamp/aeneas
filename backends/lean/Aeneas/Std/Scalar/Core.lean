@@ -23,7 +23,7 @@ Because they tend to behave quite differently, we have two classes of machine in
 signed integers, and another for unsigned integers. Inside of each class, we factor out definitions.
 -/
 
-open Result Error
+open Result Error ScalarElab
 
 /-- Kinds of unsigned integers -/
 inductive UScalarTy where
@@ -76,6 +76,20 @@ structure IScalar (ty : IScalarTy) where
 deriving Repr, BEq, DecidableEq
 
 def IScalar.toInt {ty} (x : IScalar ty) : ℤ := x.toBitVec.toInt
+
+/-! The scalar types. -/
+abbrev  Usize := UScalar .Usize
+abbrev  U8    := UScalar .U8
+abbrev  U16   := UScalar .U16
+abbrev  U32   := UScalar .U32
+abbrev  U64   := UScalar .U64
+abbrev  U128  := UScalar .U128
+abbrev  Isize := IScalar .Isize
+abbrev  I8    := IScalar .I8
+abbrev  I16   := IScalar .I16
+abbrev  I32   := IScalar .I32
+abbrev  I64   := IScalar .I64
+abbrev  I128  := IScalar .I128
 
 /-!
 # Bounds, Size
@@ -513,6 +527,15 @@ def IScalar.ofIntCore {ty : IScalarTy} (x : Int) (_ : -2^(ty.numBits-1) ≤ x �
     apply Int.emod_lt_of_pos; simp
   { toBitVec := ⟨ x', h ⟩ }
 
+iscalar def «%S».ofIntCore (x : Int) (_ : -2^(%BitWidth-1) ≤ x ∧ x < 2^(%BitWidth - 1)) : «%S» :=
+  -- TODO: we should leave `x` unchanged if it is positive, so that expressions like `(1#isize).toInt` can reduce to `1`
+  let x' := (x % 2^%BitWidth).toNat
+  have h : x' < 2^%BitWidth := by
+    zify
+    simp +zetaDelta only [Int.ofNat_toNat, sup_lt_iff, Nat.ofNat_pos, pow_pos, and_true]
+    apply Int.emod_lt_of_pos; simp
+  { toBitVec := ⟨ x', h ⟩ }
+
 @[reducible] def UScalar.ofNat {ty : UScalarTy} (x : Nat)
   (hInBounds : x ≤ UScalar.cMax ty := by decide) : UScalar ty :=
   UScalar.ofNatCore x (UScalar.bound_suffices ty x hInBounds)
@@ -524,14 +547,23 @@ def IScalar.ofIntCore {ty : IScalarTy} (x : Int) (_ : -2^(ty.numBits-1) ≤ x �
 @[simp] abbrev UScalar.inBounds (ty : UScalarTy) (x : Nat) : Prop :=
   x < 2^ty.numBits
 
+uscalar @[simp] abbrev «%S».inBounds (x : Nat) : Prop :=
+  x < 2^%BitWidth
+
 @[simp] abbrev IScalar.inBounds (ty : IScalarTy) (x : Int) : Prop :=
   - 2^(ty.numBits - 1) ≤ x ∧ x < 2^(ty.numBits - 1)
+
+iscalar @[simp] abbrev «%S».inBounds (x : Int) : Prop :=
+  - 2^(%BitWidth - 1) ≤ x ∧ x < 2^(%BitWidth - 1)
 
 @[simp] abbrev UScalar.check_bounds (ty : UScalarTy) (x : Nat) : Bool :=
   x < 2^ty.numBits
 
 @[simp] abbrev IScalar.check_bounds (ty : IScalarTy) (x : Int) : Bool :=
   -2^(ty.numBits - 1) ≤ x ∧ x < 2^(ty.numBits - 1)
+
+iscalar @[simp] abbrev «%S».check_bounds (x : Int) : Bool :=
+  - 2^(%BitWidth - 1) ≤ x ∧ x < 2^(%BitWidth - 1)
 
 theorem UScalar.check_bounds_imp_inBounds {ty : UScalarTy} {x : Nat}
   (h: UScalar.check_bounds ty x) :
@@ -549,8 +581,19 @@ theorem IScalar.check_bounds_imp_inBounds {ty : IScalarTy} {x : Int}
   IScalar.inBounds ty x := by
   simp at *; apply h
 
+iscalar theorem «%S».check_bounds_imp_inBounds {x : Int}
+  (h: «%S».check_bounds x) :
+  «%S».inBounds x := by
+  simp at *; apply h
+
 theorem IScalar.check_bounds_eq_inBounds (ty : IScalarTy) (x : Int) :
   IScalar.check_bounds ty x ↔ IScalar.inBounds ty x := by
+  constructor <;> intro h
+  . apply (check_bounds_imp_inBounds h)
+  . simp_all
+
+iscalar theorem «%S».check_bounds_eq_inBounds (x : Int) :
+  «%S».check_bounds x ↔ «%S».inBounds x := by
   constructor <;> intro h
   . apply (check_bounds_imp_inBounds h)
   . simp_all
@@ -570,6 +613,14 @@ def IScalar.tryMkOpt (ty : IScalarTy) (x : Int) : Option (IScalar ty) :=
 
 def IScalar.tryMk (ty : IScalarTy) (x : Int) : Result (IScalar ty) :=
   Result.ofOption (tryMkOpt ty x) integerOverflow
+
+iscalar def «%S».tryMkOpt (x : Int) : Option «%S» :=
+  if h:check_bounds x then
+    some (IScalar.ofIntCore x (IScalar.check_bounds_imp_inBounds h))
+  else none
+
+iscalar def «%S».tryMk (x : Int) : Result «%S» :=
+  Result.ofOption (tryMkOpt x) integerOverflow
 
 theorem UScalar.tryMkOpt_eq (ty : UScalarTy) (x : Nat) :
   match tryMkOpt ty x with
@@ -602,6 +653,17 @@ theorem IScalar.tryMkOpt_eq (ty : IScalarTy) (x : Int) :
   simp [Int.bmod] <;> split <;> (try omega) <;>
   cases h: System.Platform.numBits_eq <;> simp_all <;> omega
 
+iscalar theorem «%S».tryMkOpt_eq (x : Int) :
+  match tryMkOpt x with
+  | some y => y.toInt = x ∧ inBounds x
+  | none => ¬ (inBounds x) := by
+  simp [tryMkOpt, IScalar.ofIntCore]
+  have h := check_bounds_eq_inBounds x
+  split_ifs <;> simp_all
+  simp [IScalar.toInt] at *
+  simp [Int.bmod]; split <;> (try omega) <;>
+  cases h: System.Platform.numBits_eq <;> simp_all <;> omega
+
 theorem IScalar.tryMk_eq (ty : IScalarTy) (x : Int) :
   match tryMk ty x with
   | ok y => y.toInt = x ∧ inBounds ty x
@@ -611,26 +673,21 @@ theorem IScalar.tryMk_eq (ty : IScalarTy) (x : Int) :
   simp [tryMk]
   cases h : tryMkOpt ty x <;> simp_all
 
+iscalar theorem «%S».tryMk_eq (x : Int) :
+  match «%S».tryMk x with
+  | ok y => y.toInt = x ∧ inBounds x
+  | fail _ => ¬ (inBounds x)
+  | _ => False := by
+  have := tryMkOpt_eq x
+  simp [tryMk]
+  cases h : tryMkOpt x <;> simp_all
+
 @[simp] theorem UScalar.zero_in_cbounds {ty : UScalarTy} : 0 < 2^ty.numBits := by
   simp
 
 @[simp] theorem IScalar.zero_in_cbounds {ty : IScalarTy} :
   -2^(ty.numBits - 1) ≤ 0 ∧ 0 < 2^(ty.numBits - 1) := by
   cases ty <;> simp
-
-/-! The scalar types. -/
-abbrev  Usize := UScalar .Usize
-abbrev  U8    := UScalar .U8
-abbrev  U16   := UScalar .U16
-abbrev  U32   := UScalar .U32
-abbrev  U64   := UScalar .U64
-abbrev  U128  := UScalar .U128
-abbrev  Isize := IScalar .Isize
-abbrev  I8    := IScalar .I8
-abbrev  I16   := IScalar .I16
-abbrev  I32   := IScalar .I32
-abbrev  I64   := IScalar .I64
-abbrev  I128  := IScalar .I128
 
 /-!  ofNatCore -/
 -- TODO: typeclass?
@@ -640,14 +697,6 @@ def U16.ofNatCore   := @UScalar.ofNatCore .U16
 def U32.ofNatCore   := @UScalar.ofNatCore .U32
 def U64.ofNatCore   := @UScalar.ofNatCore .U64
 def U128.ofNatCore  := @UScalar.ofNatCore .U128
-
-/-!  ofIntCore -/
-def Isize.ofIntCore := @IScalar.ofIntCore .Isize
-def I8.ofIntCore    := @IScalar.ofIntCore .I8
-def I16.ofIntCore   := @IScalar.ofIntCore .I16
-def I32.ofIntCore   := @IScalar.ofIntCore .I32
-def I64.ofIntCore   := @IScalar.ofIntCore .I64
-def I128.ofIntCore  := @IScalar.ofIntCore .I128
 
 /-!  ofNat -/
 -- TODO: typeclass?
@@ -706,27 +755,27 @@ theorem IScalar.ofInt_toInt_eq {ty : IScalarTy} (h : - 2^(ty.numBits - 1) ≤ x 
 
 @[simp, scalar_tac_simps, grind =, agrind =]
 theorem I8.ofInt_toInt_eq (h : -2^(IScalarTy.I8.numBits-1) ≤ x ∧ x < 2^(IScalarTy.I8.numBits-1)) : (I8.ofIntCore x h).toInt = x := by
-  apply IScalar.ofInt_toInt_eq
+  apply IScalar.ofInt_toInt_eq h
 
 @[simp, scalar_tac_simps, grind =, agrind =]
 theorem I16.ofInt_toInt_eq (h : -2^(IScalarTy.I16.numBits-1) ≤ x ∧ x < 2^(IScalarTy.I16.numBits-1)) : (I16.ofIntCore x h).toInt = x := by
-  apply IScalar.ofInt_toInt_eq
+  apply IScalar.ofInt_toInt_eq h
 
 @[simp, scalar_tac_simps, grind =, agrind =]
 theorem I32.ofInt_toInt_eq (h : -2^(IScalarTy.I32.numBits-1) ≤ x ∧ x < 2^(IScalarTy.I32.numBits-1)) : (I32.ofIntCore x h).toInt = x := by
-  apply IScalar.ofInt_toInt_eq
+  apply IScalar.ofInt_toInt_eq h
 
 @[simp, scalar_tac_simps, grind =, agrind =]
 theorem I64.ofInt_toInt_eq (h : -2^(IScalarTy.I64.numBits-1) ≤ x ∧ x < 2^(IScalarTy.I64.numBits-1)) : (I64.ofIntCore x h).toInt = x := by
-  apply IScalar.ofInt_toInt_eq
+  apply IScalar.ofInt_toInt_eq h
 
 @[simp, scalar_tac_simps, grind =, agrind =]
 theorem I128.ofInt_toInt_eq (h : -2^(IScalarTy.I128.numBits-1) ≤ x ∧ x < 2^(IScalarTy.I128.numBits-1)) : (I128.ofIntCore x h).toInt = x := by
-  apply IScalar.ofInt_toInt_eq
+  apply IScalar.ofInt_toInt_eq h
 
 @[simp, scalar_tac_simps, grind =, agrind =]
 theorem Isize.ofInt_toInt_eq (h : -2^(IScalarTy.Isize.numBits-1) ≤ x ∧ x < 2^(IScalarTy.Isize.numBits-1)) : (Isize.ofIntCore x h).toInt = x := by
-  apply IScalar.ofInt_toInt_eq
+  apply IScalar.ofInt_toInt_eq h
 
 theorem UScalar.eq_equiv_toBitVec_eq {ty : UScalarTy} (x y : UScalar ty) :
   x = y ↔ x.toBitVec = y.toBitVec := by

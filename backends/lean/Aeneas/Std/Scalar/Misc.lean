@@ -4,7 +4,7 @@ import Mathlib.Data.BitVec
 
 namespace Aeneas.Std
 
-open Result Error Arith
+open Result Error Arith ScalarElab
 
 /-- Important theorem to reason with `Int.bmod` in the proofs about `IScalar` -/
 theorem bmod_pow_numBits_eq_of_lt (ty : IScalarTy) (x : Int)
@@ -13,6 +13,15 @@ theorem bmod_pow_numBits_eq_of_lt (ty : IScalarTy) (x : Int)
   have := ty.numBits_nonzero
   have hEq : ty.numBits - 1 + 1 = ty.numBits := by omega
   have := Int.bmod_pow2_eq_of_inBounds (ty.numBits-1) x (by omega) (by omega)
+  simp [hEq] at this
+  apply this
+
+iscalar theorem «%S».bmod_pow_numBits_eq_of_lt (x : Int)
+  (h0 : - 2 ^ (%BitWidth-1) ≤ x) (h1 : x < 2 ^ (%BitWidth -1)) :
+  Int.bmod x (2^%BitWidth) = x := by
+  have := System.Platform.numBits_pos
+  have hEq : %BitWidth - 1 + 1 = %BitWidth := by omega
+  have := Int.bmod_pow2_eq_of_inBounds (%BitWidth-1) x (by omega) (by omega)
   simp [hEq] at this
   apply this
 

@@ -185,12 +185,14 @@ grind_pattern [agrind] Isize.cMax_bound'' => Isize.maxAbbrevPow'
 @[scalar_tac_simps] theorem U32.size_eq   : U32.size = 4294967296 := by simp_scalar_consts
 @[scalar_tac_simps] theorem U64.size_eq   : U64.size = 18446744073709551616 := by simp_scalar_consts
 @[scalar_tac_simps] theorem U128.size_eq  : U128.size = 340282366920938463463374607431768211456 := by simp_scalar_consts
+@[scalar_tac_simps] theorem Usize.size_eq : Usize.size = 2 ^ System.Platform.numBits := by simp_scalar_consts
 
 @[scalar_tac_simps] theorem I8.size_eq    : I8.size = 256 := by simp_scalar_consts
 @[scalar_tac_simps] theorem I16.size_eq   : I16.size = 65536 := by simp_scalar_consts
 @[scalar_tac_simps] theorem I32.size_eq   : I32.size = 4294967296 := by simp_scalar_consts
 @[scalar_tac_simps] theorem I64.size_eq   : I64.size = 18446744073709551616 := by simp_scalar_consts
 @[scalar_tac_simps] theorem I128.size_eq  : I128.size = 340282366920938463463374607431768211456 := by simp_scalar_consts
+@[scalar_tac_simps] theorem Isize.size_eq : Isize.size = 2 ^ System.Platform.numBits := by simp_scalar_consts
 
 @[scalar_tac_simps] theorem UScalar.size_U8_eq    : UScalar.size .U8 = 256 := by simp_scalar_consts
 @[scalar_tac_simps] theorem UScalar.size_U16_eq   : U16.size = 65536 := by simp_scalar_consts
