@@ -11,8 +11,6 @@ open Result Error Arith ScalarElab
 /-!
 # Negation: Definitions
 -/
-@[step_pure_def]
-def IScalar.neg {ty : IScalarTy} (x : IScalar ty) : Result (IScalar ty) := IScalar.tryMk ty (- x.toInt)
 
 iscalar @[step_pure_def] def «%S».neg (x : «%S») : Result («%S») := tryMk (- x.toInt)
 

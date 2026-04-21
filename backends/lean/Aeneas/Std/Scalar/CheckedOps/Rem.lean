@@ -33,12 +33,9 @@ theorem «%S».checked_rem_bv_spec (x y : «%S») :
   split_ifs
   . zify at *; simp_all
   . rename_i hnz
+    simp only [hnz, not_false_eq_true]
+    simp only [UScalar.toNat]
     simp
-    have hnz' : y.toNat ≠ 0 := by zify at *; simp_all
-    have : x %? y = UScalar.rem x y := by rfl
-    have ⟨_, hz⟩ := spec_imp_exists (UScalar.rem_toBitVec_spec x hnz')
-    simp [this, UScalar.rem, hnz] at hz
-    simp [hz, hnz']
 
 /-!
 Signed checked rem
@@ -52,11 +49,8 @@ theorem «%S».checked_rem_bv_spec (x y : «%S») :
   split_ifs
   . zify at *; simp_all
   . rename_i hnz
-    simp
-    have hnz' : y.toInt ≠ 0 := by zify at *; simp_all
-    have : x %? y = IScalar.rem x y := by rfl
-    have ⟨_, hz⟩ := spec_imp_exists (@IScalar.rem_toBitVec_spec _ x y hnz')
-    simp [this, IScalar.rem, hnz] at hz
-    simp [*]
+    simp only [hnz, not_false_eq_true]
+    simp only [IScalar.toInt]
+    simp only [BitVec.toInt_srem, toBitVec_toInt_eq, and_true]
 
 end Aeneas.Std

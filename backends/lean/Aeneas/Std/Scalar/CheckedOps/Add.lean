@@ -29,10 +29,10 @@ theorem «%S».checked_add_bv_spec (x y : «%S») :
   match «%S».checked_add x y with
   | some z => x.toNat + y.toNat ≤ «%S».max ∧ z.toNat = x.toNat + y.toNat ∧ z.toBitVec = x.toBitVec + y.toBitVec
   | none => «%S».max < x.toNat + y.toNat := by
-  have h := UScalar.add_equiv x y
-  have hAdd : x +? y = UScalar.add x y := by rfl
+  have h := add_equiv x y
+  have hAdd : x +? y = add x y := by rfl
   rw [hAdd] at h
-  cases hEq : UScalar.add x y
+  cases hEq : add x y
     <;> simp_all [Option.ofResult, checked_add, max] <;>
   scalar_tac
 

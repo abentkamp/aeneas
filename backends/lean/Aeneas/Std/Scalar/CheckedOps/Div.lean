@@ -33,12 +33,8 @@ theorem «%S».checked_div_bv_spec (x y : «%S») :
   split_ifs
   . zify at *; simp_all
   . rename_i hnz
-    simp
     have hnz' : y.toNat ≠ 0 := by zify at *; simp_all
-    have ⟨z, hz⟩ := UScalar.div_toBitVec_spec x hnz'
-    have : x /? y = UScalar.div x y := by rfl
-    simp [this, UScalar.div, hnz] at hz
-    simp [hz, hnz']
+    exact ⟨by grind, by simp; rfl⟩
 
 /-!
 Signed checked div

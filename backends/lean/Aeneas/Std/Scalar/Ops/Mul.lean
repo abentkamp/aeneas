@@ -13,23 +13,11 @@ open Result Error Arith ScalarElab WP
 # Multiplication: Definitions
 -/
 
-def UScalar.mul {ty : UScalarTy} (x y : UScalar ty) : Result (UScalar ty) :=
-  UScalar.tryMk ty (x.toNat * y.toNat)
-
-def IScalar.mul {ty : IScalarTy} (x y : IScalar ty) : Result (IScalar ty) :=
-  IScalar.tryMk ty (x.toInt * y.toInt)
-
 uscalar def «%S».mul (x y : «%S») : Result «%S» :=
   tryMk (x.toNat * y.toNat)
 
 iscalar def «%S».mul (x y : «%S») : Result «%S» :=
   tryMk (x.toInt * y.toInt)
-
-def UScalar.try_mul {ty : UScalarTy} (x y : UScalar ty) : Option (UScalar ty) :=
-  Option.ofResult (mul x y)
-
-def IScalar.try_mul {ty : IScalarTy} (x y : IScalar ty) : Option (IScalar ty) :=
-  Option.ofResult (mul x y)
 
 scalar def «%S».try_mul (x y : «%S») : Option «%S» :=
   Option.ofResult (mul x y)
@@ -38,12 +26,6 @@ class ResultMul (α : Type u) where
   mul : α → α → Result α
 
 infixl:71 " *? " => ResultMul.mul
-
-instance {ty} : ResultMul (UScalar ty) where
-  mul x y := UScalar.mul x y
-
-instance {ty} : ResultMul (IScalar ty) where
-  mul x y := IScalar.mul x y
 
 scalar instance : ResultMul «%S» where
   mul x y := «%S».mul x y
@@ -55,27 +37,6 @@ scalar instance : ResultMul «%S» where
 /-!
 Theorems with a specification which use integers and bit-vectors
 -/
-
-theorem UScalar.mul_equiv {ty} (x y : UScalar ty) :
-  match mul x y with
-  | ok z => x.toNat * y.toNat ≤ UScalar.max ty ∧ (↑z : Nat) = ↑x * ↑y ∧ z.toBitVec = x.toBitVec * y.toBitVec
-  | fail _ => UScalar.max ty < x.toNat * y.toNat
-  | .div => False := by
-  simp only [mul]
-  have := tryMk_eq ty (x.toNat * y.toNat)
-  split <;> simp_all only [inBounds, true_and, not_lt, gt_iff_lt]
-  simp_all only [tryMk, ofOption, tryMkOpt, check_bounds, decide_true, dite_true, ok.injEq]
-  rename_i hEq; simp only [← hEq, ofNatCore, toNat]
-  split_conjs
-  . simp only [toBitVec_toNat, max]; omega
-  . zify at this; zify; simp only [toBitVec_toNat, BitVec.toNat_ofFin, Nat.cast_mul, BitVec.toNat_mul,
-    Int.natCast_emod, Nat.cast_pow, Nat.cast_ofNat] at *
-    rw [Int.emod_eq_of_lt]
-    . apply Int.pos_mul_pos_is_pos <;> simp
-    . simp only [this]
-  . have : 0 < 2^ty.numBits := by simp
-    simp only [max, gt_iff_lt]
-    omega
 
 uscalar theorem «%S».mul_equiv (x y : «%S») :
   match x *? y with
@@ -99,43 +60,6 @@ uscalar theorem «%S».mul_equiv (x y : «%S») :
   . have : 0 < 2^%BitWidth := by simp
     simp only [max, gt_iff_lt]
     scalar_tac
-
-theorem IScalar.mul_equiv {ty} (x y : IScalar ty) :
-  match mul x y with
-  | ok z => IScalar.min ty ≤ x.toInt * y.toInt ∧ x.toInt * y.toInt ≤ IScalar.max ty ∧ z.toInt = x.toInt * y.toInt ∧ z.toBitVec = x.toBitVec * y.toBitVec
-  | fail _ => ¬(IScalar.min ty ≤ x.toInt * y.toInt ∧ x.toInt * y.toInt ≤ IScalar.max ty)
-  | .div => False := by
-  simp only [mul, not_and, not_le]
-  have := tryMk_eq ty (x.toInt * y.toInt)
-  split <;> simp_all only [inBounds, min, max, true_and, not_and, not_lt] <;>
-  simp_all only [tryMk, ofOption, tryMkOpt, check_bounds, and_self, decide_true, dite_true,
-    ok.injEq, Bool.decide_and, Bool.and_eq_true, decide_eq_true_eq] <;>
-  rename_i hEq <;> simp only [← hEq, ofIntCore, toInt] <;>
-  simp only [toBitVec_toInt_eq, ← BitVec.toInt_inj, BitVec.toInt_mul]
-  . split_conjs
-    . omega
-    . simp only [Int.bmod, BitVec.toInt]
-      simp only [Nat.cast_pow, Nat.cast_ofNat, BitVec.toNat_ofFin, Int.ofNat_toNat]
-      have this : 2 * (x.toInt * y.toInt % 2 ^ ty.numBits).toNat < 2 ^ ty.numBits ↔
-            x.toInt * y.toInt % 2 ^ ty.numBits < (2 ^ ty.numBits + 1) / 2 := by
-        have hdiv : (2 : ℤ) ∣ 2 ^ ty.numBits := by
-          have : ty.numBits = (ty.numBits - 1) + 1 := by
-            have := ty.numBits_nonzero; scalar_tac
-          rw [this, Int.pow_succ]; simp
-        have : (2^ty.numBits + 1 : Int) / 2 = 2^ty.numBits / 2 := by
-          rw [Int.add_ediv_of_dvd_left] <;> [simp; apply hdiv]
-        rw [this]; clear this
-        have heq := @Int.div_lt_div_iff_of_dvd_of_pos (↑x * ↑y % 2 ^ ty.numBits) 1 (2 ^ ty.numBits) 2
-          (by simp) (by simp) (by simp) hdiv
-        simp only [EuclideanDomain.div_one, mul_one] at heq
-        simp only [heq]
-        have : (x.toInt * y.toInt % 2 ^ ty.numBits).toNat = x.toInt * y.toInt % 2 ^ ty.numBits := by
-          scalar_tac
-        scalar_tac
-      simp only [this]
-      split <;>
-      simp_all only [iff_true, sup_eq_left, ge_iff_le, iff_false, not_lt, sub_left_inj] <;> omega
-  . omega
 
 iscalar theorem «%S».mul_equiv (x y : «%S») :
   match x *? y with

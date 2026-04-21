@@ -117,24 +117,6 @@ uscalar theorem «%S».sub_equiv (x y : «%S») :
     zify
     grind
 
-theorem IScalar.sub_equiv {ty} (x y : IScalar ty) :
-  match x -? y with
-  | ok z =>
-    IScalar.inBounds ty (x.toInt - y.toInt) ∧
-    z.toInt = x.toInt - y.toInt ∧
-    z.toBitVec = x.toBitVec - y.toBitVec
-  | fail _ => ¬ (IScalar.inBounds ty (x.toInt - y.toInt))
-  | _ => ⊥ := by
-  have : x -? y = sub x y := by rfl
-  simp [this, sub]
-  have h := tryMk_eq ty (↑x - ↑y)
-  simp [inBounds] at h
-  split at h <;> simp_all
-  apply BitVec.eq_of_toInt_eq
-  simp
-  have := bmod_pow_numBits_eq_of_lt ty (x.toInt - y.toInt) (by omega) (by omega)
-  simp [*]
-
 iscalar theorem «%S».sub_equiv (x y : «%S») :
   match x -? y with
   | ok z =>
