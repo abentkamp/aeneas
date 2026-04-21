@@ -1317,20 +1317,19 @@ namespace Test
   /--
   error: unsolved goals
 case hmax
-ty : UScalarTy
-x y : UScalar ty
-⊢ ↑x + ↑y ≤ UScalar.max ty
+x y : Std.U8
+⊢ ↑x + ↑y ≤ U8.max
   -/
   #guard_msgs in
-  example {ty} {x y : UScalar ty} :
+  example {x y : Std.U8} :
     x +? y ⦃ _ => True ⦄ := by
     step as ⟨ z, h1 ⟩
 
-  example {ty} {x y : UScalar ty} (h : x.toNat + y.toNat ≤ UScalar.max ty) :
+  example {x y : Std.U8} (h : x.toNat + y.toNat ≤ U8.max) :
     x +? y ⦃ _ => True ⦄ := by
     step as ⟨ z, h1 ⟩
 
-  example {ty} {x y : UScalar ty} (h : x.toNat + y.toNat ≤ UScalar.max ty) :
+  example {x y : Std.U8} (h : x.toNat + y.toNat ≤ U8.max) :
     x +? y ⦃ _ => True ⦄ := by
     let* ⟨ z, h1 ⟩ ← *
 
@@ -1360,20 +1359,19 @@ _✝ : z1 = y + 2
 
   /--
   info: Try this:
-  [apply] let* ⟨ z, h1 ⟩ ← UScalar.add_spec
+  [apply] let* ⟨ z, h1 ⟩ ← U8.add_spec
   -/
   #guard_msgs in
-  example {ty} {x y : UScalar ty} (h : x.toNat + y.toNat ≤ UScalar.max ty) :
+  example {x y : Std.U8} (h : x.toNat + y.toNat ≤ U8.max) :
     x +? y ⦃ _ => True ⦄ := by
     let* ⟨ z, h1 ⟩ ← *?
 
   /--
 info: example
-  (ty : UScalarTy)
-  (x : UScalar ty)
-  (y : UScalar ty)
-  (h : ↑x + ↑y ≤ UScalar.max ty)
-  (z : UScalar ty)
+  (x : Std.U8)
+  (y : Std.U8)
+  (h : ↑x + ↑y ≤ U8.max)
+  (z : Std.U8)
   (_ : [> let z ← x +? y <])
   (h1 : ↑z = ↑x + ↑y) :
   ↑z = ↑x + ↑y
@@ -1381,22 +1379,21 @@ info: example
 -/
   #guard_msgs in
   set_option linter.unusedTactic false in
-  example {ty} {x y : UScalar ty} (h : x.toNat + y.toNat ≤ UScalar.max ty) :
+  example {x y : Std.U8} (h : x.toNat + y.toNat ≤ U8.max) :
     x +? y ⦃ z => z.toNat = x.toNat + y.toNat ⦄ := by
-    let* ⟨ z, h1 ⟩ ← UScalar.add_spec
+    let* ⟨ z, h1 ⟩ ← U8.add_spec
     extract_goal0
     scalar_tac
 
   /--
 info: example
-  (ty : UScalarTy)
-  (x : UScalar ty)
-  (y : UScalar ty)
-  (h : 2 * ↑x + ↑y ≤ UScalar.max ty)
-  (z1 : UScalar ty)
+  (x : Std.U8)
+  (y : Std.U8)
+  (h : 2 * ↑x + ↑y ≤ U8.max)
+  (z1 : Std.U8)
   (__1 : [> let z1 ← x +? y <])
   (h1 : ↑z1 = ↑x + ↑y)
-  (z2 : UScalar ty)
+  (z2 : Std.U8)
   (_ : [> let z2 ← z1 +? x <])
   (h2 : ↑z2 = ↑z1 + ↑x) :
   ↑z2 = 2 * ↑x + ↑y
@@ -1404,67 +1401,60 @@ info: example
 -/
   #guard_msgs in
   set_option linter.unusedTactic false in
-  example {ty} {x y : UScalar ty} (h : 2 * x.toNat + y.toNat ≤ UScalar.max ty) :
+  example {x y : Std.U8} (h : 2 * x.toNat + y.toNat ≤ U8.max) :
     (do
       let z1 ← x +? y
       z1 +? x) ⦃ z => z.toNat = 2 * x.toNat + y.toNat ⦄ := by
-    let* ⟨ z1, h1 ⟩ ← UScalar.add_spec
-    let* ⟨ z2, h2 ⟩ ← UScalar.add_spec
+    let* ⟨ z1, h1 ⟩ ← U8.add_spec
+    let* ⟨ z2, h2 ⟩ ← U8.add_spec
     extract_goal0
     scalar_tac
 
-  example {ty} {x y : UScalar ty} (h : 2 * x.toNat + y.toNat ≤ UScalar.max ty) :
+  example {x y : Std.U8} (h : 2 * x.toNat + y.toNat ≤ U8.max) :
     (do
       let z1 ← x +? y
       z1 +? x) ⦃ z => z.toNat = 2 * x.toNat + y.toNat ⦄ := by
-    step with UScalar.add_spec as ⟨ z1, h1 ⟩
-    step with UScalar.add_spec as ⟨ z2, h2 ⟩
+    step with U8.add_spec as ⟨ z1, h1 ⟩
+    step with U8.add_spec as ⟨ z2, h2 ⟩
     scalar_tac
 
-  example {ty} {x y : UScalar ty}
-    (hmax : x.toNat + y.toNat ≤ UScalar.max ty) :
+  example {x y : Std.U8}
+    (hmax : x.toNat + y.toNat ≤ U8.max) :
     x +? y ⦃ z => z.toNat = x.toNat + y.toNat ⦄ := by
     step as ⟨ z, h1 ⟩
     scalar_tac
 
-  example {ty} {x y : IScalar ty}
-    (hmin : IScalar.min ty ≤ x.toInt + y.toInt)
-    (hmax : x.toInt + y.toInt ≤ IScalar.max ty) :
+  example {x y : I8}
+    (hmin : I8.min ≤ x.toInt + y.toInt)
+    (hmax : x.toInt + y.toInt ≤ I8.max) :
     x +? y ⦃ z => z.toInt = x.toInt + y.toInt ⦄ := by
     step as ⟨ z, h1 ⟩
     scalar_tac
 
-  example {ty} {x y : UScalar ty}
-    (hmax : x.toNat + y.toNat ≤ UScalar.max ty) :
+  example {x y : Std.U8}
+    (hmax : x.toNat + y.toNat ≤ U8.max) :
     x +? y ⦃ z => z.toNat = x.toNat + y.toNat ⦄ := by
-    step? as ⟨ z, h1 ⟩ says step with UScalar.add_spec as ⟨ z, h1 ⟩
+    step? as ⟨ z, h1 ⟩ says step with U8.add_spec as ⟨ z, h1 ⟩
     scalar_tac
 
-  example {ty} {x y : IScalar ty}
-    (hmin : IScalar.min ty ≤ x.toInt + y.toInt)
-    (hmax : x.toInt + y.toInt ≤ IScalar.max ty) :
+  example {x y : I8}
+    (hmin : I8.min ≤ x.toInt + y.toInt)
+    (hmax : x.toInt + y.toInt ≤ I8.max) :
     x +? y ⦃ z => z.toInt = x.toInt + y.toInt ⦄ := by
-    step? as ⟨ z, h1 ⟩ says step with IScalar.add_spec as ⟨ z, h1 ⟩
+    step? as ⟨ z, h1 ⟩ says step with I8.add_spec as ⟨ z, h1 ⟩
     scalar_tac
 
-  example {ty} {x y : UScalar ty}
-    (hmax : x.toNat + y.toNat ≤ UScalar.max ty) :
+  example {x y : Std.U8}
+    (hmax : x.toNat + y.toNat ≤ U8.max) :
     x +? y ⦃ z => z.toNat = x.toNat + y.toNat ⦄ := by
-    step with UScalar.add_spec as ⟨ z ⟩
+    step with U8.add_spec as ⟨ z ⟩
     scalar_tac
 
-  example {ty} {x y : IScalar ty}
-    (hmin : IScalar.min ty ≤ x.toInt + y.toInt)
-    (hmax : x.toInt + y.toInt ≤ IScalar.max ty) :
+  example {x y : I8}
+    (hmin : I8.min ≤ x.toInt + y.toInt)
+    (hmax : x.toInt + y.toInt ≤ I8.max) :
     x +? y ⦃ z => z.toInt = x.toInt + y.toInt ⦄ := by
-    step with IScalar.add_spec as ⟨ z ⟩
-    scalar_tac
-
-  example {x y : U32}
-    (hmax : x.toNat + y.toNat ≤ U32.max) :
-    x +? y ⦃ z => z.toNat = x.toNat + y.toNat ⦄ := by
-    -- This spec theorem is suboptimal (compared to `U32.add_spec`), but it is good to check that it works
-    step with UScalar.add_spec as ⟨ z, h1 ⟩
+    step with I8.add_spec as ⟨ z ⟩
     scalar_tac
 
   example {x y : U32}
@@ -1519,19 +1509,19 @@ info: example
 
   /- The use of `right` introduces a meta-variable in the goal, that we
      need to instantiate (otherwise `step` gets stuck) -/
-  example {ty} {x y : UScalar ty}
-    (hmax : x.toNat + y.toNat ≤ UScalar.max ty) :
+  example {x y : Std.U8}
+    (hmax : x.toNat + y.toNat ≤ U8.max) :
     False ∨ x +? y ⦃ z => z.toNat = x.toNat + y.toNat ⦄ := by
     right
     step as ⟨ z, h1 ⟩
     scalar_tac
 
-  example {ty} {x y : IScalar ty}
-    (hmin : IScalar.min ty ≤ x.toInt + y.toInt)
-    (hmax : x.toInt + y.toInt ≤ IScalar.max ty) :
+  example {x y : I8}
+    (hmin : I8.min ≤ x.toInt + y.toInt)
+    (hmax : x.toInt + y.toInt ≤ I8.max) :
     False ∨ x +? y ⦃ z => z.toInt = x.toInt + y.toInt ⦄ := by
     right
-    step? as ⟨ z, h1 ⟩ says step with IScalar.add_spec as ⟨ z, h1 ⟩
+    step? as ⟨ z, h1 ⟩ says step with I8.add_spec as ⟨ z, h1 ⟩
     scalar_tac
 
   /--

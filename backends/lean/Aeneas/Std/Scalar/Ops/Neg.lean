@@ -6,7 +6,7 @@ import Mathlib.Data.BitVec
 
 namespace Aeneas.Std
 
-open Result Error Arith
+open Result Error Arith ScalarElab
 
 /-!
 # Negation: Definitions
@@ -14,11 +14,13 @@ open Result Error Arith
 @[step_pure_def]
 def IScalar.neg {ty : IScalarTy} (x : IScalar ty) : Result (IScalar ty) := IScalar.tryMk ty (- x.toInt)
 
+iscalar @[step_pure_def] def «%S».neg (x : «%S») : Result («%S») := tryMk (- x.toInt)
+
 class ResultNeg (α : Type u) where
   neg : α → Result α
 
 prefix:75  "-?" => ResultNeg.neg
 
-instance {ty} : ResultNeg (IScalar ty) where neg x := IScalar.neg x
+iscalar instance : ResultNeg «%S» where neg x := «%S».neg x
 
 end Aeneas.Std

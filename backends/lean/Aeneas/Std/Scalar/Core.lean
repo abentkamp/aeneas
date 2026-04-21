@@ -559,6 +559,9 @@ iscalar @[simp] abbrev «%S».inBounds (x : Int) : Prop :=
 @[simp] abbrev UScalar.check_bounds (ty : UScalarTy) (x : Nat) : Bool :=
   x < 2^ty.numBits
 
+uscalar @[simp] abbrev «%S».check_bounds (x : Nat) : Bool :=
+  x < 2^%BitWidth
+
 @[simp] abbrev IScalar.check_bounds (ty : IScalarTy) (x : Int) : Bool :=
   -2^(ty.numBits - 1) ≤ x ∧ x < 2^(ty.numBits - 1)
 
@@ -570,8 +573,19 @@ theorem UScalar.check_bounds_imp_inBounds {ty : UScalarTy} {x : Nat}
   UScalar.inBounds ty x := by
   simp at *; apply h
 
+uscalar theorem «%S».check_bounds_imp_inBounds {x : Nat}
+  (h: «%S».check_bounds x) :
+  «%S».inBounds x := by
+  simp at *; apply h
+
 theorem UScalar.check_bounds_eq_inBounds (ty : UScalarTy) (x : Nat) :
   UScalar.check_bounds ty x ↔ UScalar.inBounds ty x := by
+  constructor <;> intro h
+  . apply (check_bounds_imp_inBounds h)
+  . simp_all
+
+uscalar theorem  «%S».check_bounds_eq_inBounds (x : Nat) :
+  «%S».check_bounds x ↔ «%S».inBounds x := by
   constructor <;> intro h
   . apply (check_bounds_imp_inBounds h)
   . simp_all
@@ -606,6 +620,14 @@ def UScalar.tryMkOpt (ty : UScalarTy) (x : Nat) : Option (UScalar ty) :=
 def UScalar.tryMk (ty : UScalarTy) (x : Nat) : Result (UScalar ty) :=
   Result.ofOption (tryMkOpt ty x) integerOverflow
 
+uscalar def «%S».tryMkOpt (x : Nat) : Option «%S» :=
+  if h:check_bounds x then
+    some (UScalar.ofNatCore x (UScalar.check_bounds_imp_inBounds h))
+  else none
+
+uscalar def «%S».tryMk (x : Nat) : Result «%S» :=
+  Result.ofOption (tryMkOpt x) integerOverflow
+
 def IScalar.tryMkOpt (ty : IScalarTy) (x : Int) : Option (IScalar ty) :=
   if h:IScalar.check_bounds ty x then
     some (IScalar.ofIntCore x (IScalar.check_bounds_imp_inBounds h))
@@ -631,6 +653,15 @@ theorem UScalar.tryMkOpt_eq (ty : UScalarTy) (x : Nat) :
   split_ifs <;> simp_all
   simp [UScalar.toNat, UScalarTy.numBits] at *
 
+uscalar theorem «%S».tryMkOpt_eq (x : Nat) :
+  match tryMkOpt x with
+  | some y => y.toNat = x ∧ inBounds x
+  | none => ¬ (inBounds x) := by
+  simp [tryMkOpt, UScalar.ofNatCore]
+  have h := check_bounds_eq_inBounds x
+  split_ifs <;> simp_all
+  simp [UScalar.toNat] at *
+
 theorem UScalar.tryMk_eq (ty : UScalarTy) (x : Nat) :
   match tryMk ty x with
   | ok y => y.toNat = x ∧ inBounds ty x
@@ -639,6 +670,15 @@ theorem UScalar.tryMk_eq (ty : UScalarTy) (x : Nat) :
   have := UScalar.tryMkOpt_eq ty x
   simp [tryMk, ofOption]
   cases h: tryMkOpt ty x <;> simp_all
+
+uscalar theorem «%S».tryMk_eq (x : Nat) :
+  match tryMk x with
+  | ok y => y.toNat = x ∧ inBounds x
+  | fail _ => ¬ (inBounds x)
+  | _ => False := by
+  have := tryMkOpt_eq x
+  simp [tryMk, ofOption]
+  cases h: tryMkOpt x <;> simp_all
 
 theorem IScalar.tryMkOpt_eq (ty : IScalarTy) (x : Int) :
   match tryMkOpt ty x with
