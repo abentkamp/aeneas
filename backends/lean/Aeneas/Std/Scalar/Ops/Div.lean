@@ -203,7 +203,7 @@ iscalar theorem «%S».div_bv_spec {x y : «%S»} (hnz : ↑y ≠ (0 : Int))
     simp only [Int.natCast_ediv, Int.natCast_emod, Nat.cast_pow, Nat.cast_ofNat]
     rw [hyToNat]
     have : ((-y.toInt).toNat : Int) % 2^%BitWidth = -(y.toInt : Int) := by
-      apply IScalar.neg_imp_neg_toInt_toNat_mod_pow_eq_neg_toInt
+      apply neg_imp_neg_toInt_toNat_mod_pow_eq_neg_toInt
       simp only [toBitVec_toInt_eq]; omega
     rw [this]; clear this
     simp only [Int.ediv_neg]
@@ -261,7 +261,7 @@ iscalar theorem «%S».div_bv_spec {x y : «%S»} (hnz : ↑y ≠ (0 : Int))
     unfold IScalarTy.numBits
     rw [hxToNat]
     have : ((-x.toInt).toNat : Int) % 2^%BitWidth = -(x.toInt : Int) := by
-      apply IScalar.neg_imp_neg_toInt_toNat_mod_pow_eq_neg_toInt
+      apply neg_imp_neg_toInt_toNat_mod_pow_eq_neg_toInt
       simp only [toBitVec_toInt_eq]; omega
     rw [this]; clear this
 
