@@ -80,20 +80,17 @@ uscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.max_toNat (x y : 
 iscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.max_toInt (x y : «%S») : (max x y).toInt = Max.max x.toInt y.toInt := by simp [max]; split <;> simp <;> omega
 
 /- Name pattern: core::cmp::impls::{core::cmp::Ord<SCALAR>}::clamp -/
-def UScalar.clamp {ty} (self min max : UScalar ty) : Result (UScalar ty) := do
+uscalar def core.cmp.impls.Ord'S.clamp (self min max : «%S») : Result «%S» := do
   massert (min.toNat ≤ max.toNat)
   if self.toNat < min.toNat then ok min
   else if self.toNat > max.toNat then ok max
   else ok self
 
-def IScalar.clamp {ty} (self min max : IScalar ty) : Result (IScalar ty) := do
+iscalar def core.cmp.impls.Ord'S.clamp (self min max : «%S») : Result «%S» := do
   massert (min.toInt ≤ max.toInt)
   if self.toInt < min.toInt then ok min
   else if self.toInt > max.toInt then ok max
   else ok self
-
-uscalar def core.cmp.impls.Ord'S.clamp (self min max : «%S») : Result «%S» := UScalar.clamp self min max
-iscalar def core.cmp.impls.Ord'S.clamp (self min max : «%S») : Result «%S» := IScalar.clamp self min max
 
 /- Trait implementation: [core::cmp::impls::{core::cmp::Ord for u8}]
    Name pattern: core::cmp::Ord<u8> -/

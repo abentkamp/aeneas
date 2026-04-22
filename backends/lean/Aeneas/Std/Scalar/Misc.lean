@@ -95,113 +95,102 @@ theorem IScalar.neg_imp_toNat_neg_eq_neg_toInt {ty} (x : IScalar ty) (hNeg : x.t
 # Misc Theorems
 -/
 
-@[simp] theorem UScalar.exists_eq_left {p : UScalar ty → Prop} {a' : UScalar ty} :
-  (∃ (a : UScalar ty), a.toNat = a'.toNat ∧ p a) ↔ p a' := by
+uscalar @[simp] theorem «%S».exists_eq_left {p : «%S» → Prop} {a' : «%S»} :
+  (∃ (a : «%S»), a.toNat = a'.toNat ∧ p a) ↔ p a' := by
   constructor <;> intro h
   . replace ⟨ a, h, hp ⟩ := h
     cases a'
-    simp_all only [toNat]
-    have := @BitVec.toNat_injective ty.numBits
-    have := this h
+    simp_all only [UScalar.toNat]
+    have := @BitVec.toNat_injective %BitWidth _ _ h
     simp [← this]
     apply hp
   . exists a'
 
-@[simp] theorem IScalar.exists_eq_left {p : IScalar ty → Prop} {a' : IScalar ty} :
-  (∃ (a : IScalar ty), a.toInt = a'.toInt ∧ p a) ↔ p a' := by
+iscalar @[simp] theorem «%S».exists_eq_left {p : «%S» → Prop} {a' : «%S»} :
+  (∃ (a : «%S»), a.toInt = a'.toInt ∧ p a) ↔ p a' := by
   constructor <;> intro h
   . replace ⟨ a, h, hp ⟩ := h
     cases a'
-    simp_all only [toInt, eq_comm]
+    simp_all only [IScalar.toInt, eq_comm]
     rw [BitVec.toInt_inj] at h
     simp [h]
     apply hp
   . exists a'
 
-@[simp] theorem UScalar.exists_eq_left' {p : UScalar ty → Prop} {a' : UScalar ty} :
-  (∃ (a : UScalar ty), a'.toNat = a.toNat ∧ p a) ↔ p a' := by
+uscalar @[simp] theorem «%S».exists_eq_left' {p : «%S» → Prop} {a' : «%S»} :
+  (∃ (a : «%S»), a'.toNat = a.toNat ∧ p a) ↔ p a' := by
   constructor <;> intro h
   . replace ⟨ a, h, hp ⟩ := h
     cases a'
-    simp_all only [toNat]
-    have := @BitVec.toNat_injective ty.numBits
-    have := this h
+    simp_all only [UScalar.toNat]
+    have := @BitVec.toNat_injective %BitWidth _ _ h
     simp [this]
     apply hp
   . exists a'
 
-@[simp] theorem IScalar.exists_eq_left' {p : IScalar ty → Prop} {a' : IScalar ty} :
-  (∃ (a : IScalar ty), a'.toInt = a.toInt ∧ p a) ↔ p a' := by
+iscalar @[simp] theorem «%S».exists_eq_left' {p : «%S» → Prop} {a' : «%S»} :
+  (∃ (a : «%S»), a'.toInt = a.toInt ∧ p a) ↔ p a' := by
   constructor <;> intro h
   . replace ⟨ a, h, hp ⟩ := h
     cases a'
-    simp_all only [toInt]
+    simp_all only [IScalar.toInt]
     rw [BitVec.toInt_inj] at h
     simp [h]
     apply hp
   . exists a'
 
-@[simp] theorem UScalar.exists_eq_right {p : UScalar ty → Prop} {a' : UScalar ty} :
-  (∃ (a : UScalar ty), p a ∧ a.toNat = a'.toNat) ↔ p a' := by
+uscalar @[simp] theorem «%S».exists_eq_right {p : «%S» → Prop} {a' : «%S»} :
+  (∃ (a : «%S»), p a ∧ a.toNat = a'.toNat) ↔ p a' := by
   constructor <;> intro h
   . replace ⟨ a, hp, h ⟩ := h
     cases a'
-    simp_all only [toNat]
-    have := @BitVec.toNat_injective ty.numBits
-    have := this h
+    simp_all only [UScalar.toNat]
+    have := @BitVec.toNat_injective %BitWidth _ _ h
     simp [← this]
     apply hp
   . exists a'
 
-@[simp] theorem IScalar.exists_eq_right {p : IScalar ty → Prop} {a' : IScalar ty} :
-  (∃ (a : IScalar ty), p a ∧ a.toInt = a'.toInt) ↔ p a' := by
+iscalar @[simp] theorem «%S».exists_eq_right {p : «%S» → Prop} {a' : «%S»} :
+  (∃ (a : «%S»), p a ∧ a.toInt = a'.toInt) ↔ p a' := by
   constructor <;> intro h
   . replace ⟨ a, hp, h ⟩ := h
     cases a'
-    simp_all only [toInt, eq_comm]
+    simp_all only [IScalar.toInt, eq_comm]
     rw [BitVec.toInt_inj] at h
     simp [h]
     apply hp
   . exists a'
 
-@[simp] theorem UScalar.exists_eq_right' {p : UScalar ty → Prop} {a' : UScalar ty} :
-  (∃ (a : UScalar ty), p a ∧ a'.toNat = a.toNat) ↔ p a' := by
+uscalar @[simp] theorem «%S».exists_eq_right' {p : «%S» → Prop} {a' : «%S»} :
+  (∃ (a : «%S»), p a ∧ a'.toNat = a.toNat) ↔ p a' := by
   constructor <;> intro h
   . replace ⟨ a, hp, h ⟩ := h
     cases a'
-    simp_all only [toNat]
-    have := @BitVec.toNat_injective ty.numBits
-    have := this h
+    simp_all only [UScalar.toNat]
+    have := @BitVec.toNat_injective %BitWidth _ _ h
     simp [this]
     apply hp
   . exists a'
 
-@[simp] theorem IScalar.exists_eq_right' {p : IScalar ty → Prop} {a' : IScalar ty} :
-  (∃ (a : IScalar ty), p a ∧ a'.toInt = a.toInt) ↔ p a' := by
+iscalar @[simp] theorem «%S».exists_eq_right' {p : «%S» → Prop} {a' : «%S»} :
+  (∃ (a : «%S»), p a ∧ a'.toInt = a.toInt) ↔ p a' := by
   constructor <;> intro h
   . replace ⟨ a, hp, h ⟩ := h
     cases a'
-    simp_all only [toInt]
+    simp_all only [IScalar.toInt]
     rw [BitVec.toInt_inj] at h
     simp [h]
     apply hp
   . exists a'
 
-@[simp] theorem UScalar.exists_eq {a' : UScalar ty} : ∃ (a : UScalar ty), a.toNat = a'.toNat := by exists a'
-@[simp] theorem UScalar.exists_eq' {a' : UScalar ty} : ∃ (a : UScalar ty), a'.toNat = a.toNat := by exists a'
-@[simp] theorem IScalar.exists_eq {a' : IScalar ty} : ∃ (a : IScalar ty), a.toInt = a'.toInt := by exists a'
-@[simp] theorem IScalar.exists_eq' {a' : IScalar ty} : ∃ (a : IScalar ty), a'.toInt = a.toInt := by exists a'
+uscalar @[simp] theorem «%S».exists_eq {a' : «%S»} : ∃ (a : «%S»), a.toNat = a'.toNat := by exists a'
+uscalar @[simp] theorem «%S».exists_eq' {a' : «%S»} : ∃ (a : «%S»), a'.toNat = a.toNat := by exists a'
+iscalar @[simp] theorem «%S».exists_eq {a' : «%S»} : ∃ (a : «%S»), a.toInt = a'.toInt := by exists a'
+iscalar @[simp] theorem «%S».exists_eq' {a' : «%S»} : ∃ (a : «%S»), a'.toInt = a.toInt := by exists a'
 
 /-!
 # Equalities and simplification lemmas
 -/
-
-theorem UScalar.ofNatCore_toBitVec_lt_equiv {ty} (x y : Nat) (hx) (hy) :
-  (@UScalar.ofNatCore ty x hx).toBitVec < (@UScalar.ofNatCore ty y hy).toBitVec ↔ x < y := by
-  simp only [ofNatCore]
-  have := Nat.mod_eq_of_lt hx
-  have := Nat.mod_eq_of_lt hy
-  simp only [BitVec.lt_ofFin, Fin.mk_lt_mk]
 
 uscalar theorem «%S».ofNatCore_toBitVec_lt_equiv (x y : Nat) (hx) (hy) :
   («%S».ofNatCore x hx).toBitVec < («%S».ofNatCore y hy).toBitVec ↔ x < y := by

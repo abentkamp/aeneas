@@ -1221,7 +1221,7 @@ error: unsolved goals
 x y x✝¹ : U32
 x✝ : Bool
 _ : [> let(x✝¹, x✝) ← lift (core.num.U32.overflowing_add x y) <]
-_✝ : if ↑x + ↑y > UScalar.max UScalarTy.U32 then ↑x✝¹ + U32.size = ↑x + ↑y ∧ x✝ = true else ↑x✝¹ = ↑x + ↑y ∧ x✝ = false
+_✝ : if ↑x + ↑y > U32.max then ↑x✝¹ + U32.size = ↑x + ↑y ∧ x✝ = true else ↑x✝¹ = ↑x + ↑y ∧ x✝ = false
 ⊢ False
 -/
 #guard_msgs in
