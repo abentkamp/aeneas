@@ -72,9 +72,8 @@ theorem IScalar.toBitVec_signExtend (x : IScalar ty) : x.toBitVec.signExtend ty.
 @[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem I128.toBitVec_signExtend (x : I128) : x.toBitVec.signExtend 128 = x.toBitVec := IScalar.toBitVec_signExtend x
 @[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem Isize.toBitVec_signExtend (x : Isize) : x.toBitVec.signExtend System.Platform.numBits = x.toBitVec := IScalar.toBitVec_signExtend x
 
-@[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem UScalar.cast_toBitVec (x : UScalar ty) : (UScalar.cast tgt x).toBitVec = x.toBitVec.setWidth tgt.numBits := by
-  simp
+uscalar attribute [bvify] «%S».cast_U8_toBitVec_eq «%S».cast_U16_toBitVec_eq «%S».cast_U32_toBitVec_eq
+  «%S».cast_U64_toBitVec_eq «%S».cast_U128_toBitVec_eq «%S».cast_Usize_toBitVec_eq
 
 theorem BitVec.lt_pow_ofNat_le {n : Nat} (a b : Nat) (h0 : b < 2^n) (h1 : a ≤ b) :
   BitVec.ofNat n a ≤ BitVec.ofNat n b := by
@@ -455,7 +454,7 @@ example
 
 example
   (x : U32) (_ : x.toNat < 3329)
-  (y : U16) (_ : y = UScalar.cast UScalarTy.U16 x) :
+  (y : U16) (_ : y = ScalarCast.cast U16 x) :
   y.toNat = x.toNat
   := by
   bvify 16 at *

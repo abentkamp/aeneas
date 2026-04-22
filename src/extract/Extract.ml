@@ -429,10 +429,7 @@ let extract_cast_kind_gen (span : Meta.span)
   match kind with
   | CastLit (src, tgt) ->
       let integer_type_to_string (ty : integer_type) : string =
-        if backend () = Lean then
-          match ty with
-          | Unsigned _ -> "." ^ int_name ty
-          | Signed _ -> "." ^ int_name ty
+        if backend () = Lean then int_name ty
         else
           StringUtils.capitalize_first_letter
             (PrintPure.integer_type_to_string ty)
@@ -448,13 +445,7 @@ let extract_cast_kind_gen (span : Meta.span)
              let cast_str =
                match backend () with
                | Coq | FStar -> "scalar_cast"
-               | Lean ->
-                   let signed_src = Scalars.integer_type_is_signed src in
-                   let signed_tgt = Scalars.integer_type_is_signed tgt in
-                   if signed_src = signed_tgt then
-                     if signed_src then "IScalar.cast" else "UScalar.cast"
-                   else if signed_src then "IScalar.hcast"
-                   else "UScalar.hcast"
+               | Lean -> "ScalarCast.cast"
                | HOL4 -> admit_string __FILE__ __LINE__ span "Unreachable"
              in
              let src =
@@ -468,10 +459,7 @@ let extract_cast_kind_gen (span : Meta.span)
              let cast_str =
                match backend () with
                | Coq | FStar -> "scalar_cast_bool"
-               | Lean ->
-                   if Scalars.integer_type_is_signed tgt then
-                     "IScalar.cast_fromBool"
-                   else "UScalar.cast_fromBool"
+               | Lean -> "ScalarCast.cast"
                | HOL4 -> admit_string __FILE__ __LINE__ span "Unreachable"
              in
              let tgt = integer_type_to_string tgt in
