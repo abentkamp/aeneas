@@ -248,8 +248,8 @@ attribute [scalar_tac_simps]
 
 uscalar @[scalar_tac x.toNat]
 theorem «%S».bounds (x : «%S») : x.toNat ≤ «%S».max := by
-  simp only [«%S».max, «%S».numBits]
   have := x.hBounds
+  simp only [«%S».max, «%S».numBits, UScalarTy.numBits] at *
   omega
 
 uscalar grind_pattern «%S».bounds => UScalar.toNat x
