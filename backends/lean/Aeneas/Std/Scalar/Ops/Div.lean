@@ -81,9 +81,9 @@ iscalar theorem Int.bmod_pow2_'S_numBits_minus_one :
      those proofs are annoying -/
   cases System.Platform.numBits_eq <;> simp [*]
 
-theorem IScalar.neg_imp_neg_toInt_toNat_mod_pow_eq_neg_toInt {ty} (x : IScalar ty)
+iscalar theorem «%S».neg_imp_neg_toInt_toNat_mod_pow_eq_neg_toInt (x : «%S»)
   (hNeg : x.toBitVec.toInt < 0) :
-  ((-x.toInt).toNat : Int) % 2^ty.numBits = -(x.toInt : Int) := by
+  ((-x.toInt).toNat : Int) % 2^%BitWidth = -(x.toInt : Int) := by
   have hmsb : x.toBitVec.msb = true := by
     have := @BitVec.msb_eq_toInt _ x.toBitVec
     simp only [hNeg] at this
@@ -91,26 +91,25 @@ theorem IScalar.neg_imp_neg_toInt_toNat_mod_pow_eq_neg_toInt {ty} (x : IScalar t
   have hx := @BitVec.toInt_eq_msb_cond _ x.toBitVec
   simp [hmsb] at hx
   have hBounds := x.hBounds
-  have pow2Ineq : (2^(ty.numBits - 1) : Int) < 2^ty.numBits := by
-    have := ty.numBits_nonzero
-    have : (0 : Int) < 2^(ty.numBits - 1) := by simp
-    have : ty.numBits = ty.numBits - 1 + 1 := by omega
+  have pow2Ineq : (2^(%BitWidth - 1) : Int) < 2^%BitWidth := by
+    have := System.Platform.numBits_eq
+    have : (0 : Int) < 2^(%BitWidth - 1) := by simp
+    have : %BitWidth = %BitWidth - 1 + 1 := by omega
     conv => rhs; rw [this]
     rw [Int.pow_succ']
     omega
-  have hyToNat : 2 ^ ty.numBits - x.toBitVec.toNat = (-x.toInt).toNat := by
+  have hyToNat : 2 ^ %BitWidth - x.toBitVec.toNat = (-x.toInt).toNat := by
     rw [hx]
-    simp
-    norm_cast
-  have hyValToNatMod : ((-x.toInt).toNat : Nat) % 2^ty.numBits = (-x.toInt).toNat := by
-    have : ↑(-x.toInt).toNat < 2 ^ ty.numBits := by
+    grind
+  have hyValToNatMod : ((-x.toInt).toNat : Nat) % 2^%BitWidth = (-x.toInt).toNat := by
+    have : ↑(-x.toInt).toNat < 2 ^ %BitWidth := by
       zify
       apply Int.lt_of_neg_lt_neg
       have : - (-x.toInt).toNat = x.toInt := by omega
       rw [this]; clear this
       have := x.hmin
-      omega
-    have := @Nat.mod_eq_of_lt (-x.toInt).toNat (2^ty.numBits) (by omega)
+      scalar_tac
+    have := @Nat.mod_eq_of_lt (-x.toInt).toNat (2^%BitWidth) (by omega)
     apply this
   zify at hyValToNatMod
   rw [hyValToNatMod]
