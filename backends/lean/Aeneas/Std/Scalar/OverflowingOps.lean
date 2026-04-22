@@ -34,7 +34,7 @@ theorem core.num.«%S».overflowing_add_eq (x y : «%S») :
     z.snd = false
   := by
   simp [core.num.«%S».overflowing_add]
-  simp only [UScalar.toNat, «%S».numBits_eq, UScalarTy.numBits, BitVec.toNat_ofNat, max]
+  simp only [UScalar.toNat, «%S».numBits_eq, UScalarTy.numBits, BitVec.toNat_ofNat]
   split <;> rename_i hLt
   . split_conjs
     . have : (x.toBitVec.toNat + y.toBitVec.toNat) % 2^%BitWidth =

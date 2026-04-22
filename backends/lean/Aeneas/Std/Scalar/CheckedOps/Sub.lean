@@ -30,9 +30,9 @@ theorem «%S».checked_sub_bv_spec (x y : «%S») :
   | some z => y.toNat ≤ x.toNat ∧ z.toNat = x.toNat - y.toNat ∧ z.toBitVec = x.toBitVec - y.toBitVec
   | none => x.toNat < y.toNat := by
   have h := «%S».sub_equiv x y
-  have hSub : x -? y = UScalar.sub x y := by rfl
+  have hSub : x -? y = «%S».sub x y := by rfl
   rw [hSub] at h
-  cases hEq : UScalar.sub x y
+  cases hEq : «%S».sub x y
     <;> simp_all [Option.ofResult, checked_sub]
 
 /-!

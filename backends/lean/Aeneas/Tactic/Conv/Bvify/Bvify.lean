@@ -51,26 +51,12 @@ attribute [bvify]
 @[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem I128.IScalar_toBitVec (x : I128) : IScalar.toBitVec x = x.toBitVec := by simp
 @[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem Isize.IScalar_toBitVec (x : Isize) : IScalar.toBitVec x = x.toBitVec := by simp
 
-@[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem UScalar.toBitVec_setWidth (x : UScalar ty) : x.toBitVec.setWidth ty.numBits = x.toBitVec := by simp only [BitVec.setWidth_eq]
+uscalar @[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem «%S».toBitVec_setWidth (x : «%S») :
+  x.toBitVec.setWidth %BitWidth = x.toBitVec := by simp only [BitVec.setWidth_eq]
 
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem U8.toBitVec_setWidth (x : U8) : x.toBitVec.setWidth 8 = x.toBitVec := UScalar.toBitVec_setWidth x
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem U16.toBitVec_setWidth (x : U16) : x.toBitVec.setWidth 16 = x.toBitVec := UScalar.toBitVec_setWidth x
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem U32.toBitVec_setWidth (x : U32) : x.toBitVec.setWidth 32 = x.toBitVec := UScalar.toBitVec_setWidth x
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem U64.toBitVec_setWidth (x : U64) : x.toBitVec.setWidth 64 = x.toBitVec := UScalar.toBitVec_setWidth x
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem U128.toBitVec_setWidth (x : U128) : x.toBitVec.setWidth 128 = x.toBitVec := UScalar.toBitVec_setWidth x
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem Usize.toBitVec_setWidth (x : Usize) : x.toBitVec.setWidth System.Platform.numBits = x.toBitVec := UScalar.toBitVec_setWidth x
-
-@[simp, simp_scalar_safe, bvify, grind =, agrind =]
-theorem IScalar.toBitVec_signExtend (x : IScalar ty) : x.toBitVec.signExtend ty.numBits = x.toBitVec := by
-  simp only [BitVec.signExtend, IScalar.toBitVec_toInt_eq, IScalar.BitVec_ofInt_toInt]
-
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem I8.toBitVec_signExtend (x : I8) : x.toBitVec.signExtend 8 = x.toBitVec := IScalar.toBitVec_signExtend x
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem I16.toBitVec_signExtend (x : I16) : x.toBitVec.signExtend 16 = x.toBitVec := IScalar.toBitVec_signExtend x
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem I32.toBitVec_signExtend (x : I32) : x.toBitVec.signExtend 32 = x.toBitVec := IScalar.toBitVec_signExtend x
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem I64.toBitVec_signExtend (x : I64) : x.toBitVec.signExtend 64 = x.toBitVec := IScalar.toBitVec_signExtend x
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem I128.toBitVec_signExtend (x : I128) : x.toBitVec.signExtend 128 = x.toBitVec := IScalar.toBitVec_signExtend x
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem Isize.toBitVec_signExtend (x : Isize) : x.toBitVec.signExtend System.Platform.numBits = x.toBitVec := IScalar.toBitVec_signExtend x
+iscalar @[simp, simp_scalar_safe, bvify, grind =, agrind =]
+theorem «%S».toBitVec_signExtend (x : «%S») : x.toBitVec.signExtend %BitWidth = x.toBitVec := by
+  simp only [BitVec.signExtend, IScalar.toBitVec_toInt_eq, «%S».BitVec_ofInt_toInt]
 
 uscalar attribute [bvify] «%S».cast_U8_toBitVec_eq «%S».cast_U16_toBitVec_eq «%S».cast_U32_toBitVec_eq
   «%S».cast_U64_toBitVec_eq «%S».cast_U128_toBitVec_eq «%S».cast_Usize_toBitVec_eq

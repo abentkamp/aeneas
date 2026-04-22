@@ -12,16 +12,9 @@ open Result Error Arith ScalarElab WP
 # Subtraction: Definitions
 -/
 
-def UScalar.sub {ty : UScalarTy} (x y : UScalar ty) : Result (UScalar ty) :=
-  if x.toNat < y.toNat then fail .integerOverflow
-  else ok ⟨ BitVec.ofNat _ (x.toNat - y.toNat) ⟩
-
 uscalar def «%S».sub (x y : «%S») : Result «%S» :=
   if x.toNat < y.toNat then fail .integerOverflow
   else ok ⟨ BitVec.ofNat _ (x.toNat - y.toNat) ⟩
-
-def IScalar.sub {ty : IScalarTy} (x y : IScalar ty) : Result (IScalar ty) :=
-  IScalar.tryMk ty (x.toInt - y.toInt)
 
 iscalar def «%S».sub (x y : «%S») : Result «%S» :=
   «%S».tryMk (x.toInt - y.toInt)
@@ -33,12 +26,6 @@ class ResultSub (α : Type u) where
   sub : α → α → Result α
 
 infixl:65 " -? " => ResultSub.sub
-
-instance {ty} : ResultSub (UScalar ty) where
-  sub x y := UScalar.sub x y
-
-instance {ty} : ResultSub (IScalar ty) where
-  sub x y := IScalar.sub x y
 
 scalar instance : ResultSub «%S» where
   sub x y := «%S».sub x y
