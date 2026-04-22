@@ -1,4 +1,5 @@
 import Aeneas.Tactic.Solver.BvTac.BvTac
+import Aeneas.Std.Scalar.Elab
 
 /-!
 # Simprocs for scalar bitwise operations
@@ -28,10 +29,11 @@ private def isScalarLit (x : Lean.Expr) : Bool :=
 end
 
 section
-open Lean Meta in
+open Lean Meta Aeneas.Std ScalarElab
 
-/-- Reduce `~~~(literal)` for UScalar types by computation. -/
-simproc reduceUScalarNot (@Complement.complement (Aeneas.Std.UScalar _) _ _) := fun e => do
+uscalar
+/-- Reduce `~~~(literal)` for unsigned integer types by computation. -/
+simproc reduce'SNot (@Complement.complement «%S» _ _) := fun e => do
   match e.consumeMData.getAppFnArgs with
   | (``Complement.complement, #[_, _, x]) =>
     unless isScalarLit x do return .continue
@@ -40,15 +42,16 @@ simproc reduceUScalarNot (@Complement.complement (Aeneas.Std.UScalar _) _ _) := 
     return .done { expr := reduced }
   | _ => return .continue
 
-attribute [simp, simp_scalar_safe, bvify] reduceUScalarNot
+uscalar attribute [simp, simp_scalar_safe, bvify] reduce'SNot
 
 end
 
 section
-open Lean Meta in
+open Lean Meta Aeneas.Std ScalarElab
 
-/-- Reduce `~~~(literal)` for IScalar types by computation. -/
-simproc reduceIScalarNot (@Complement.complement (Aeneas.Std.IScalar _) _ _) := fun e => do
+iscalar
+/-- Reduce `~~~(literal)` for signed integer types by computation. -/
+simproc reduce'SNot (@Complement.complement «%S» _ _) := fun e => do
   match e.consumeMData.getAppFnArgs with
   | (``Complement.complement, #[_, _, x]) =>
     unless isScalarLit x do return .continue
@@ -57,7 +60,7 @@ simproc reduceIScalarNot (@Complement.complement (Aeneas.Std.IScalar _) _ _) := 
     return .done { expr := reduced }
   | _ => return .continue
 
-attribute [simp, simp_scalar_safe, bvify] reduceIScalarNot
+iscalar attribute [simp, simp_scalar_safe, bvify] reduce'SNot
 
 end
 

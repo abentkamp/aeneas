@@ -125,6 +125,7 @@ uscalar theorem «%S».div_bv_spec (x : «%S») {y : «%S»} (hnz : ↑y ≠ (0 
     simp_all
   simp [hzero', div]; rfl
 
+set_option maxHeartbeats 600000 in
 iscalar theorem «%S».div_bv_spec {x y : «%S»} (hnz : ↑y ≠ (0 : Int))
   (hNoOverflow : ¬ (x.toInt = «%S».min ∧ y.toInt = -1)) :
   ∃ z, x /? y = ok z ∧ (↑z : Int) = Int.tdiv ↑x ↑y ∧ z.toBitVec = BitVec.sdiv x.toBitVec y.toBitVec := by

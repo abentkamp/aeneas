@@ -7,23 +7,23 @@ namespace Aeneas
 
 namespace Std
 
-open ScalarTac
+open ScalarTac ScalarElab
 
 set_option maxRecDepth 1024
 
-instance (x y : UScalar ty) : IsLinearIntProp (x < y) where
-instance (x y : UScalar ty) : IsLinearIntProp (x > y) where
-instance (x y : UScalar ty) : IsLinearIntProp (x ≤ y) where
-instance (x y : UScalar ty) : IsLinearIntProp (x ≥ y) where
-instance (x y : UScalar ty) : IsLinearIntProp (x ≥ y) where
-instance (x y : UScalar ty) : IsLinearIntProp (x = y) where
+uscalar instance (x y : «%S») : IsLinearIntProp (x < y) where
+uscalar instance (x y : «%S») : IsLinearIntProp (x > y) where
+uscalar instance (x y : «%S») : IsLinearIntProp (x ≤ y) where
+uscalar instance (x y : «%S») : IsLinearIntProp (x ≥ y) where
+uscalar instance (x y : «%S») : IsLinearIntProp (x ≥ y) where
+uscalar instance (x y : «%S») : IsLinearIntProp (x = y) where
 
-instance (x y : IScalar ty) : IsLinearIntProp (x < y) where
-instance (x y : IScalar ty) : IsLinearIntProp (x > y) where
-instance (x y : IScalar ty) : IsLinearIntProp (x ≤ y) where
-instance (x y : IScalar ty) : IsLinearIntProp (x ≥ y) where
-instance (x y : IScalar ty) : IsLinearIntProp (x ≥ y) where
-instance (x y : IScalar ty) : IsLinearIntProp (x = y) where
+iscalar instance (x y : «%S») : IsLinearIntProp (x < y) where
+iscalar instance (x y : «%S») : IsLinearIntProp (x > y) where
+iscalar instance (x y : «%S») : IsLinearIntProp (x ≤ y) where
+iscalar instance (x y : «%S») : IsLinearIntProp (x ≥ y) where
+iscalar instance (x y : «%S») : IsLinearIntProp (x ≥ y) where
+iscalar instance (x y : «%S») : IsLinearIntProp (x = y) where
 
 attribute [scalar_tac_simps] Prod.mk.injEq Membership.mem Int.ofNat_toNat zero_add bne_iff_ne
 
@@ -255,15 +255,15 @@ theorem «%S».bounds (x : «%S») : x.toNat ≤ «%S».max := by
 uscalar grind_pattern «%S».bounds => UScalar.toNat x
 uscalar grind_pattern [agrind] «%S».bounds => UScalar.toNat x
 
-@[scalar_tac x.toInt]
-theorem IScalar.bounds {ty : IScalarTy} (x : IScalar ty) :
-  IScalar.min ty ≤ x.toInt ∧ x.toInt ≤ IScalar.max ty := by
-  simp [IScalar.max, IScalar.min]
+iscalar @[scalar_tac x.toInt]
+theorem «%S».bounds (x : «%S») :
+  «%S».min ≤ x.toInt ∧ x.toInt ≤ «%S».max := by
+  simp [«%S».max, «%S».min]
   have := x.hBounds
-  omega
+  scalar_tac
 
-grind_pattern IScalar.bounds => IScalar.toInt x
-grind_pattern [agrind] IScalar.bounds => IScalar.toInt x
+iscalar grind_pattern «%S».bounds => IScalar.toInt x
+iscalar grind_pattern [agrind] «%S».bounds => IScalar.toInt x
 
 attribute [scalar_tac a.toNat] Int.toNat_eq_max
 

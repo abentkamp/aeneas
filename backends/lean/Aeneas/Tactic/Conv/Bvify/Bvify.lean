@@ -197,37 +197,18 @@ theorem BitVec.ofNat_div (n a b : Nat)
 attribute [bvify] ZMod.eq_iff_mod ZMod.val_add ZMod.val_sub ZMod.val_mul ZMod.val_sub' ZMod.val_natCast
 attribute [bvify] Nat.add_one_sub_one Nat.add_mod_mod Nat.mod_add_mod
 
-@[simp, simp_scalar_safe, bvify]
-theorem BitVec.ofNat_shift_UScalar_val (x : UScalar ty) (n : Nat) :
-  BitVec.ofNat ty.numBits (x.toNat >>> n) = x.toBitVec >>> n := by
+uscalar @[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem BitVec.ofNat_shift_'S_val (x : «%S») (n : Nat) :
+  BitVec.ofNat %BitWidth (x.toNat >>> n) = x.toBitVec >>> n := by
   apply BitVec.eq_of_toNat_eq
   simp only [BitVec.toNat_ofNat, BitVec.toNat_ushiftRight, UScalar.toBitVec_toNat]
   have : x.toNat >>> n ≤ x.toNat := by
     simp [Nat.shiftRight_eq_div_pow]
     apply Nat.div_le_self
-  have : (x.toNat >>> n) % 2^ty.numBits = x.toNat >>> n := by
+  have : (x.toNat >>> n) % 2^%BitWidth = x.toNat >>> n := by
     apply Nat.mod_eq_of_lt
     have := x.hBounds
     scalar_tac
   rw [this]
-
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem BitVec.ofNat_shift_U8_val (x : U8) (n : Nat) :
-  BitVec.ofNat 8 (x.toNat >>> n) = x.toBitVec >>> n := BitVec.ofNat_shift_UScalar_val x n
-
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem BitVec.ofNat_shift_U16_val (x : U16) (n : Nat) :
-  BitVec.ofNat 16 (x.toNat >>> n) = x.toBitVec >>> n := BitVec.ofNat_shift_UScalar_val x n
-
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem BitVec.ofNat_shift_U32_val (x : U32) (n : Nat) :
-  BitVec.ofNat 32 (x.toNat >>> n) = x.toBitVec >>> n := BitVec.ofNat_shift_UScalar_val x n
-
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem BitVec.ofNat_shift_U64_val (x : U64) (n : Nat) :
-  BitVec.ofNat 64 (x.toNat >>> n) = x.toBitVec >>> n := BitVec.ofNat_shift_UScalar_val x n
-
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem BitVec.ofNat_shift_U128_val (x : U128) (n : Nat) :
-  BitVec.ofNat 128 (x.toNat >>> n) = x.toBitVec >>> n := BitVec.ofNat_shift_UScalar_val x n
-
-@[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem BitVec.ofNat_shift_Usize_val (x : Usize) (n : Nat) :
-  BitVec.ofNat System.Platform.numBits (x.toNat >>> n) = x.toBitVec >>> n := BitVec.ofNat_shift_UScalar_val x n
 
 /-!
 Simplification lemmas about `setWidth`

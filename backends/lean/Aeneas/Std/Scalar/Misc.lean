@@ -25,12 +25,13 @@ iscalar theorem «%S».bmod_pow_numBits_eq_of_lt (x : Int)
   simp [hEq] at this
   apply this
 
+iscalar
 /-- We need this lemma to prove the theorems about division and remainder -/
-theorem IScalar.neg_imp_toNat_neg_eq_neg_toInt {ty} (x : IScalar ty) (hNeg : x.toInt < 0):
+theorem «%S».neg_imp_toNat_neg_eq_neg_toInt (x : «%S») (hNeg : x.toInt < 0):
   (-x.toBitVec).toNat = -x.toBitVec.toInt := by
   have hmsb : x.toBitVec.msb = true := by
     have := @BitVec.msb_eq_toInt _ x.toBitVec
-    simp only [toInt] at hNeg
+    simp only [IScalar.toInt] at hNeg
     simp only [hNeg] at this
     apply this
   have hx := @BitVec.toInt_eq_msb_cond _ x.toBitVec
@@ -43,53 +44,35 @@ theorem IScalar.neg_imp_toNat_neg_eq_neg_toInt {ty} (x : IScalar ty) (hNeg : x.t
   conv => lhs; simp only [Neg.neg, BitVec.neg]
   simp only [BitVec.toInt_eq_toNat_bmod]
 
-  have hxToNatMod : (x.toBitVec.toNat : Int) % 2^ty.numBits = x.toBitVec.toNat := by
+  have hxToNatMod : (x.toBitVec.toNat : Int) % 2^%BitWidth = x.toBitVec.toNat := by
     apply Int.emod_eq_of_lt <;> omega
 
-  have hPow : (2 ^ ty.numBits + 1 : Int) / 2  = 2^(ty.numBits - 1) := by
-    have : ty.numBits = ty.numBits - 1 + 1 := by
-      have := ty.numBits_nonzero
-      omega
+  have hPow : (2 ^ %BitWidth + 1 : Int) / 2  = 2^(%BitWidth - 1) := by
+    have := System.Platform.numBits_pos
+    have : %BitWidth = %BitWidth - 1 + 1 := by scalar_tac
     conv => lhs; rw [this]
     rw [Int.pow_succ']
     rw [Int.add_ediv_of_dvd_left] <;> simp
 
-  have : ¬ ((x.toBitVec.toNat : Int) % ↑(2 ^ ty.numBits : Nat) < (↑(2 ^ ty.numBits : Nat) + 1) / 2) := by
+  have : ¬ ((x.toBitVec.toNat : Int) % ↑(2 ^ %BitWidth : Nat) < (↑(2 ^ %BitWidth : Nat) + 1) / 2) := by
     have hIneq := @BitVec.msb_eq_toNat _ x.toBitVec
     rw [hmsb] at hIneq
     simp at hIneq
     simp
-    rw [hPow]
-
-    rw [hxToNatMod]
     zify at hIneq
     omega
   rw [Int.bmod_def]
   simp only [this]
   simp
-  have : (2 ^ ty.numBits - x.toBitVec.toNat : Nat) % (2 ^ ty.numBits : Int) =
-         (2^ty.numBits - x.toBitVec.toNat : Nat) := by
-    apply Int.emod_eq_of_lt
-    . omega
-    . have := x.hBounds
-      simp only [toInt] at *
-      have : (2 ^ ty.numBits - x.toBitVec.toNat : Nat) = (2 ^ ty.numBits - x.toBitVec.toNat : Int) := by
-        have : (2 ^ ty.numBits : Nat) = (2 ^ ty.numBits : Int) := by simp
-        omega
-      rw [this]
-      have : x.toBitVec.toNat > 0 := by
-        by_contra
-        have hxz : x.toBitVec.toNat = 0 := by omega
-        have : x.toBitVec.toInt = 0 := by
-          simp only [BitVec.toInt_eq_toNat_bmod, Int.bmod_def, hxz]
-          simp [hPow]
-        omega
-      omega
-  rw [this]; clear this
-  rw [hxToNatMod]
-
-  have : (2 ^ ty.numBits : Nat) = (2 ^ ty.numBits : Int) := by simp
-  omega
+  rw [Int.emod_eq_of_lt (by omega)]
+  · rw [Int.emod_eq_of_lt (by omega)]
+    · rw [Nat.cast_sub (by omega)]; rfl
+    · omega
+  · rw [Nat.cast_sub]
+    · apply Int.sub_lt_self
+      simp
+      scalar_tac
+    · omega
 
 /-!
 # Misc Theorems
