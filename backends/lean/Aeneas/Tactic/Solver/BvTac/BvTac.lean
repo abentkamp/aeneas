@@ -88,7 +88,7 @@ it can be omitted.
 
 **Preprocessing**:
 `bv_tac` first preprocesses the goal (essentially by using `bvify`) to lift inequalities
-so that they use bit-vectors rather than `ℕ` or `ℤ`, before calling `toBitVec_decide`.
+so that they use bit-vectors rather than `ℕ` or `ℤ`, before calling `bv_decide`.
 This can sometimes fail as lifting those inequalities requires solving arithmetic proof
 obligations. For this reason, when `bv_tac` fails, we advise looking carefully at the goal
 to check if all the expected inequalities have been lifted to bit-vectors. If some could not
@@ -96,14 +96,14 @@ be lifted, one can try lifting them manually - see the documentation of `bvify` 
 and tricks.
 
 **Debugging**:
-Calling `bv_tac n` is (roughly) equivalent to: `bv_tac_preprocess n; toBitVec_decide`,
-which is itself roughly equivalent to: `bvify n at *; simp_all only; toBitVec_decide`.
+Calling `bv_tac n` is (roughly) equivalent to: `bv_tac_preprocess n; bv_decide`,
+which is itself roughly equivalent to: `bvify n at *; simp_all only; bv_decide`.
 
 Note that it often happens that `bv_tac` fails because `bvify` could not
-lift some assumptions to the subset `toBitVec_decide` can reason about. For this
+lift some assumptions to the subset `bv_decide` can reason about. For this
 reason, it is often useful to inspect the goal after calling `bvify` (or `bv_tac_preprocess`).
 Typically problematic terms are applications of `BitVec.ofNat` to complex expressions
-(for instance, `toBitVec_decide` can generally not reason about `BitVec.ofNat n (a + b)`, which we
+(for instance, `bv_decide` can generally not reason about `BitVec.ofNat n (a + b)`, which we
 want to simplify to `BitVec.ofNat n a + BitVec.ofNat n b`).
 -/
 elab "bv_tac" config:Parser.Tactic.optConfig n:(colGt term)? : tactic =>
@@ -115,7 +115,7 @@ elab "bv_tac" config:Parser.Tactic.optConfig n:(colGt term)? : tactic =>
   bvTacPreprocess config (← optElabTerm n)
   -- The preprocessing step may have proven the goal
   Utils.allGoals do
-  -- Call toBitVec_decide
+  -- Call bv_decide
   IO.FS.withTempFile fun _ lratFile => do
     let config := config.toBVDecideConfig
     let cfg ← BVDecide.Frontend.TacticContext.new lratFile config
