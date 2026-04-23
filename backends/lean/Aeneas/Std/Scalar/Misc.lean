@@ -31,7 +31,7 @@ theorem «%S».neg_imp_toNat_neg_eq_neg_toInt (x : «%S») (hNeg : x.toInt < 0):
   (-x.toBitVec).toNat = -x.toBitVec.toInt := by
   have hmsb : x.toBitVec.msb = true := by
     have := @BitVec.msb_eq_toInt _ x.toBitVec
-    simp only [IScalar.toInt] at hNeg
+    simp only [toInt] at hNeg
     simp only [hNeg] at this
     apply this
   have hx := @BitVec.toInt_eq_msb_cond _ x.toBitVec
@@ -83,7 +83,7 @@ uscalar @[simp] theorem «%S».exists_eq_left {p : «%S» → Prop} {a' : «%S»
   constructor <;> intro h
   . replace ⟨ a, h, hp ⟩ := h
     cases a'
-    simp_all only [UScalar.toNat]
+    simp_all only [toNat]
     have := @BitVec.toNat_injective %BitWidth _ _ h
     simp [← this]
     apply hp
@@ -94,7 +94,7 @@ iscalar @[simp] theorem «%S».exists_eq_left {p : «%S» → Prop} {a' : «%S»
   constructor <;> intro h
   . replace ⟨ a, h, hp ⟩ := h
     cases a'
-    simp_all only [IScalar.toInt, eq_comm]
+    simp_all only [toInt, eq_comm]
     rw [BitVec.toInt_inj] at h
     simp [h]
     apply hp
@@ -105,7 +105,7 @@ uscalar @[simp] theorem «%S».exists_eq_left' {p : «%S» → Prop} {a' : «%S�
   constructor <;> intro h
   . replace ⟨ a, h, hp ⟩ := h
     cases a'
-    simp_all only [UScalar.toNat]
+    simp_all only [toNat]
     have := @BitVec.toNat_injective %BitWidth _ _ h
     simp [this]
     apply hp
@@ -116,7 +116,7 @@ iscalar @[simp] theorem «%S».exists_eq_left' {p : «%S» → Prop} {a' : «%S�
   constructor <;> intro h
   . replace ⟨ a, h, hp ⟩ := h
     cases a'
-    simp_all only [IScalar.toInt]
+    simp_all only [toInt]
     rw [BitVec.toInt_inj] at h
     simp [h]
     apply hp
@@ -127,7 +127,7 @@ uscalar @[simp] theorem «%S».exists_eq_right {p : «%S» → Prop} {a' : «%S�
   constructor <;> intro h
   . replace ⟨ a, hp, h ⟩ := h
     cases a'
-    simp_all only [UScalar.toNat]
+    simp_all only [toNat]
     have := @BitVec.toNat_injective %BitWidth _ _ h
     simp [← this]
     apply hp
@@ -138,7 +138,7 @@ iscalar @[simp] theorem «%S».exists_eq_right {p : «%S» → Prop} {a' : «%S�
   constructor <;> intro h
   . replace ⟨ a, hp, h ⟩ := h
     cases a'
-    simp_all only [IScalar.toInt, eq_comm]
+    simp_all only [toInt, eq_comm]
     rw [BitVec.toInt_inj] at h
     simp [h]
     apply hp
@@ -149,7 +149,7 @@ uscalar @[simp] theorem «%S».exists_eq_right' {p : «%S» → Prop} {a' : «%S
   constructor <;> intro h
   . replace ⟨ a, hp, h ⟩ := h
     cases a'
-    simp_all only [UScalar.toNat]
+    simp_all only [toNat]
     have := @BitVec.toNat_injective %BitWidth _ _ h
     simp [this]
     apply hp
@@ -160,7 +160,7 @@ iscalar @[simp] theorem «%S».exists_eq_right' {p : «%S» → Prop} {a' : «%S
   constructor <;> intro h
   . replace ⟨ a, hp, h ⟩ := h
     cases a'
-    simp_all only [IScalar.toInt]
+    simp_all only [toInt]
     rw [BitVec.toInt_inj] at h
     simp [h]
     apply hp

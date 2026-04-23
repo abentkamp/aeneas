@@ -34,7 +34,7 @@ theorem «%S».checked_rem_bv_spec (x y : «%S») :
   . zify at *; simp_all
   . rename_i hnz
     simp only [hnz, not_false_eq_true]
-    simp only [UScalar.toNat]
+    simp only [toNat]
     simp
 
 /-!
@@ -50,7 +50,7 @@ theorem «%S».checked_rem_bv_spec (x y : «%S») :
   . zify at *; simp_all
   . rename_i hnz
     simp only [hnz, not_false_eq_true]
-    simp only [IScalar.toInt]
+    simp only [toInt]
     simp only [BitVec.toInt_srem, toBitVec_toInt_eq, and_true]
 
 end Aeneas.Std

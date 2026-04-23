@@ -125,7 +125,7 @@ run_cmd do
         := by
         simp only [spec_ok, ResultShiftRight.shiftRight,
           hy, reduceIte, «%S».size, numBits, UScalarTy.numBits]
-        simp only [BitVec.ushiftRight_eq, UScalar.toNat]
+        simp only [BitVec.ushiftRight_eq, toNat]
         simp only [BitVec.toNat_ushiftRight, toBitVec_toNat, and_true]
     ))
 
@@ -142,7 +142,7 @@ run_cmd do
         := by
         simp only [ResultShiftRight.shiftRight, hy0, hy1, and_self, ↓reduceIte, I8.toNat,
           spec_ok, and_true]
-        simp only [BitVec.ushiftRight_eq, UScalar.toNat, Nat.instShiftRight]
+        simp only [BitVec.ushiftRight_eq, toNat, Nat.instShiftRight]
         simp only [IScalar.toNat, BitVec.toNat_ushiftRight, toBitVec_toNat, and_self]
     ))
 
@@ -159,7 +159,7 @@ run_cmd do
         := by
         simp only [spec_ok, ResultShiftLeft.shiftLeft, hy, reduceIte,
           «%S».size, numBits, UScalarTy.numBits]
-        simp only [BitVec.shiftLeft_eq, UScalar.toNat, UScalarTy.numBits]
+        simp only [BitVec.shiftLeft_eq, toNat, UScalarTy.numBits]
         simp only [toBitVec_toNat, BitVec.toNat_shiftLeft, and_self]
     ))
 
@@ -176,7 +176,7 @@ run_cmd do
         := by
         simp only [ResultShiftLeft.shiftLeft, hy0, hy1, and_self, ↓reduceIte, I8.toNat,
           size, numBits, UScalarTy.numBits, Nat.reducePow, spec_ok, and_true]
-        simp only [BitVec.shiftLeft_eq, UScalar.toNat, UScalarTy.numBits]
+        simp only [BitVec.shiftLeft_eq, toNat, UScalarTy.numBits]
         simp only [IScalar.toNat, BitVec.toNat_shiftLeft, toBitVec_toNat, and_self]
     ))
 

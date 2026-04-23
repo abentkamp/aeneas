@@ -787,7 +787,7 @@ theorem core.slice.index.SliceIndexRangeUsizeSlice.index_mut.step_spec (r : core
   s1.val = s.val.slice r.start r.end ∧
   s1.length = r.end - r.start ∧
   ∀ s2, index_mut_back s2 = s.setSlice! r.start.toNat s2 ⦄ := by
-  simp only [index_mut, UScalar.le_equiv, Slice.length]
+  simp only [index_mut, Usize.le_equiv, Slice.length]
   split
   . simp only [spec_ok, true_and]
     simp_lists
@@ -801,7 +801,7 @@ theorem core.slice.index.SliceIndexRangeUsizeSlice.index.step_spec {α : Type}
     core.slice.index.SliceIndexRangeUsizeSlice.index r s ⦃ (s1 : Slice α) =>
       s1.val = s.val.slice r.start r.end ∧
       s1.length = r.end - r.start ⦄ := by
-  simp only [core.slice.index.SliceIndexRangeUsizeSlice.index, UScalar.le_equiv, Slice.length]
+  simp only [core.slice.index.SliceIndexRangeUsizeSlice.index, Usize.le_equiv, Slice.length]
   split
   · simp only [spec_ok, true_and]
     simp_lists
@@ -934,7 +934,7 @@ theorem Slice.mapM_spec {α β} {f : α → Result β} {s : Slice α} {post : Na
   obtain ⟨l', hl'⟩ := hmapM_ok
   split
   case h_1 xs heq =>
-    simp only [UScalar.lt_equiv, Usize.ofNatCore_toNat_eq, spec_ok]
+    simp only [Usize.lt_equiv, Usize.ofNatCore_toNat_eq, spec_ok]
     refine ⟨by grind [List.mapM_Result_length], fun i hi => ?_⟩
     have hlen : i < s.len := by have := List.mapM_Result_length heq; simp [Slice.len] at *; omega
     have : f s[i] = ok xs[↑i] := List.mapM_Result_ok heq (↑i) (by scalar_tac)

@@ -70,14 +70,18 @@ scalar @[reducible] def core.cmp.PartialOrd'S : core.cmp.PartialOrd «%S» «%S�
 /- Name pattern: core::cmp::impls::{core::cmp::Ord<SCALAR>}::min -/
 scalar @[step_pure_def] def core.cmp.impls.Ord'S.min (x y : «%S») : «%S» := if x < y then x else y
 
-uscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.min_toNat (x y : «%S») : (min x y).toNat = Min.min x.toNat y.toNat := by simp [min]; split <;> simp <;> omega
-iscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.min_toInt (x y : «%S») : (min x y).toInt = Min.min x.toInt y.toInt := by simp [min]; split <;> simp <;> omega
+uscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.min_toNat (x y : «%S») :
+  (min x y).toNat = Min.min x.toNat y.toNat := by simp only [min, «%S».lt_equiv]; split <;> simp <;> omega
+iscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.min_toInt (x y : «%S») :
+  (min x y).toInt = Min.min x.toInt y.toInt := by simp only [min, «%S».lt_equiv]; split <;> simp <;> omega
 
 /- Name pattern: core::cmp::impls::{core::cmp::Ord<SCALAR>}::max -/
 scalar @[step_pure_def] def core.cmp.impls.Ord'S.max (x y : «%S») : «%S» := if x < y then y else x
 
-uscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.max_toNat (x y : «%S») : (max x y).toNat = Max.max x.toNat y.toNat := by simp [max]; split <;> simp <;> omega
-iscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.max_toInt (x y : «%S») : (max x y).toInt = Max.max x.toInt y.toInt := by simp [max]; split <;> simp <;> omega
+uscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.max_toNat (x y : «%S») :
+  (max x y).toNat = Max.max x.toNat y.toNat := by simp [max]; split <;> simp <;> omega
+iscalar @[simp, scalar_tac_simps] theorem core.cmp.impls.Ord'S.max_toInt (x y : «%S») :
+  (max x y).toInt = Max.max x.toInt y.toInt := by simp [max]; split <;> simp <;> omega
 
 /- Name pattern: core::cmp::impls::{core::cmp::Ord<SCALAR>}::clamp -/
 uscalar def core.cmp.impls.Ord'S.clamp (self min max : «%S») : Result «%S» := do

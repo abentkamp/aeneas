@@ -46,7 +46,7 @@ uscalar theorem «%S».sub_equiv (x y : «%S») :
   simp [this, sub]
   dcases h : x.toNat < y.toNat <;> simp [h]
   simp_all
-  simp only [UScalar.toNat]
+  simp only [toNat]
   simp
   split_conjs
   . have: (x.toNat - y.toNat) % «%S».size = x.toNat - y.toNat := by
@@ -57,8 +57,8 @@ uscalar theorem «%S».sub_equiv (x y : «%S») :
     simp [this]
     omega
   . change BitVec.ofNat _ _ = _
-    zify
-    grind
+    rw [← BitVec.ofNat_sub_ofNat_of_le _ _ (by scalar_tac) (by assumption)]
+    simp
 
 iscalar theorem «%S».sub_equiv (x y : «%S») :
   match x -? y with

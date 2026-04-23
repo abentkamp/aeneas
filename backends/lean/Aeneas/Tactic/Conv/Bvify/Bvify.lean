@@ -56,7 +56,7 @@ uscalar @[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem «%S».toBit
 
 iscalar @[simp, simp_scalar_safe, bvify, grind =, agrind =]
 theorem «%S».toBitVec_signExtend (x : «%S») : x.toBitVec.signExtend %BitWidth = x.toBitVec := by
-  simp only [BitVec.signExtend, IScalar.toBitVec_toInt_eq, «%S».BitVec_ofInt_toInt]
+  simp only [BitVec.signExtend, «%S».toBitVec_toInt_eq, «%S».BitVec_ofInt_toInt]
 
 uscalar attribute [bvify] «%S».cast_U8_toBitVec_eq «%S».cast_U16_toBitVec_eq «%S».cast_U32_toBitVec_eq
   «%S».cast_U64_toBitVec_eq «%S».cast_U128_toBitVec_eq «%S».cast_Usize_toBitVec_eq
@@ -200,7 +200,7 @@ attribute [bvify] Nat.add_one_sub_one Nat.add_mod_mod Nat.mod_add_mod
 uscalar @[simp, simp_scalar_safe, bvify, grind =, agrind =] theorem BitVec.ofNat_shift_'S_val (x : «%S») (n : Nat) :
   BitVec.ofNat %BitWidth (x.toNat >>> n) = x.toBitVec >>> n := by
   apply BitVec.eq_of_toNat_eq
-  simp only [BitVec.toNat_ofNat, BitVec.toNat_ushiftRight, UScalar.toBitVec_toNat]
+  simp only [BitVec.toNat_ofNat, BitVec.toNat_ushiftRight, «%S».toBitVec_toNat]
   have : x.toNat >>> n ≤ x.toNat := by
     simp [Nat.shiftRight_eq_div_pow]
     apply Nat.div_le_self
@@ -217,7 +217,7 @@ attribute [bvify] BitVec.setWidth_eq
 
 uscalar @[simp, simp_scalar_safe, bvify, grind =, agrind =]
 theorem «%S».BitVec_ofNat_setWidth (x : «%S») : BitVec.ofNat n x.toNat = x.toBitVec.setWidth n := by
-  simp only [UScalar.toNat, BitVec.toNat_eq]; simp
+  simp only [BitVec.toNat_eq]; simp
 
 syntax (name := bvify_saturate) "bvify_saturate" colGe term : tactic
 

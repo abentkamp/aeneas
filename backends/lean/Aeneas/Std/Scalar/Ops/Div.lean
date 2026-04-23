@@ -132,7 +132,7 @@ iscalar theorem «%S».div_bv_spec {x y : «%S»} (hnz : ↑y ≠ (0 : Int))
   conv => congr; ext; lhs; simp only [ResultDiv.div]
   simp only [div, bne_iff_ne, ne_eq, hnz, not_false_eq_true, ↓reduceIte, Int.reduceNeg,
     Bool.and_eq_true, decide_eq_true_eq, hNoOverflow, ok.injEq, _root_.exists_eq_left', and_true]
-  simp only [IScalar.toInt]
+  simp only [toInt]
   -- TODO: simplify the proof by using BitVec.toInt_srem
 
   simp only [BitVec.sdiv_eq, BitVec.udiv_eq, BitVec.udiv_def, BitVec.toNat_neg, toBitVec_toInt_eq]

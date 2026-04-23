@@ -34,7 +34,7 @@ iscalar @[simp, bvify, grind =, agrind =] theorem core.num.«%S».wrapping_add_t
 
 uscalar @[simp, grind =, agrind =] theorem «%S».wrapping_add_toNat_eq (x y : «%S») :
   («%S».wrapping_add x y).toNat = (x.toNat + y.toNat) % UScalar.size .«%S» := by
-  simp only [wrapping_add, UScalar.toNat, UScalar.size]
+  simp only [wrapping_add, toNat, UScalar.size]
   have : 0 < 2^«%S».numBits := by simp
   have : 2 ^ «%S».numBits - 1 + 1 = 2^«%S».numBits := by omega
   simp only [BitVec.toNat_add, toBitVec_toNat]
@@ -45,7 +45,7 @@ uscalar @[simp, grind =, agrind =] theorem core.num.«%S».wrapping_add_toNat_eq
 
 iscalar @[simp, grind =, agrind =] theorem «%S».wrapping_add_toInt_eq (x y : «%S») :
   («%S».wrapping_add x y).toInt = Int.bmod (x.toInt + y.toInt) (2^ %BitWidth) := by
-  simp only [wrapping_add, IScalar.toInt]
+  simp only [wrapping_add, toInt]
   simp only [BitVec.toInt_add, toBitVec_toInt_eq]
   rfl
 

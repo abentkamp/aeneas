@@ -49,7 +49,7 @@ uscalar theorem «%S».mul_equiv (x y : «%S») :
   have := tryMk_eq (x.toNat * y.toNat)
   split <;> simp_all only [inBounds, true_and, not_lt, gt_iff_lt]
   simp_all only [tryMk, ofOption, tryMkOpt, check_bounds, decide_true, dite_true, ok.injEq]
-  rename_i hEq; simp only [← hEq, UScalar.ofNatCore, UScalar.toNat]
+  rename_i hEq; simp only [← hEq, UScalar.ofNatCore, toNat]
   split_conjs
   . simp only [toBitVec_toNat, max]; scalar_tac
   . change @BitVec.ofFin _ _ = _
@@ -73,12 +73,12 @@ iscalar theorem «%S».mul_equiv (x y : «%S») :
   split <;> simp_all only [inBounds, min, max, true_and, not_and, not_lt] <;>
   simp_all only [tryMk, ofOption, tryMkOpt, check_bounds, and_self, decide_true, dite_true,
     ok.injEq, Bool.decide_and, Bool.and_eq_true, decide_eq_true_eq] <;>
-  rename_i hEq <;> simp only [← hEq, IScalar.ofIntCore, IScalar.toInt] <;>
+  rename_i hEq <;> simp only [← hEq, IScalar.ofIntCore, toInt] <;>
   simp only [toBitVec_toInt_eq, ← BitVec.toInt_inj, BitVec.toInt_mul]
   . split_conjs
     . scalar_tac
     . scalar_tac
-    . rw [IScalar.toInt]
+    . rw [toInt]
       simp only [Int.bmod, BitVec.toInt]
       simp only [Nat.cast_pow, Nat.cast_ofNat, BitVec.toNat_ofFin, Int.ofNat_toNat]
       have this : 2 * (x.toInt * y.toInt % 2 ^ %BitWidth).toNat < 2 ^ %BitWidth ↔

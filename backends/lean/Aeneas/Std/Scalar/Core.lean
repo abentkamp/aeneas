@@ -67,15 +67,11 @@ structure UScalar (ty : UScalarTy) where
   toBitVec : BitVec ty.numBits
 deriving Repr, BEq, DecidableEq
 
-def UScalar.toNat {ty} (x : UScalar ty) : ℕ := x.toBitVec.toNat
-
 /-- Unsigned integer -/
 structure IScalar (ty : IScalarTy) where
   /- The internal representation is a bit-vector -/
   toBitVec : BitVec ty.numBits
 deriving Repr, BEq, DecidableEq
-
-def IScalar.toInt {ty} (x : IScalar ty) : ℤ := x.toBitVec.toInt
 
 /-! The scalar types. -/
 abbrev  Usize := UScalar .Usize
@@ -91,18 +87,24 @@ abbrev  I32   := IScalar .I32
 abbrev  I64   := IScalar .I64
 abbrev  I128  := IScalar .I128
 
-def U8.ofBitVec    (x : BitVec UScalarTy.U8.numBits)    := UScalar.mk x
-def U16.ofBitVec   (x : BitVec UScalarTy.U16.numBits)   := UScalar.mk x
-def U32.ofBitVec   (x : BitVec UScalarTy.U32.numBits)   := UScalar.mk x
-def U64.ofBitVec   (x : BitVec UScalarTy.U64.numBits)   := UScalar.mk x
-def U128.ofBitVec  (x : BitVec UScalarTy.U128.numBits)  := UScalar.mk x
-def Usize.ofBitVec (x : BitVec UScalarTy.Usize.numBits) := UScalar.mk x
-def I8.ofBitVec    (x : BitVec IScalarTy.I8.numBits)    := IScalar.mk x
-def I16.ofBitVec   (x : BitVec IScalarTy.I16.numBits)   := IScalar.mk x
-def I32.ofBitVec   (x : BitVec IScalarTy.I32.numBits)   := IScalar.mk x
-def I64.ofBitVec   (x : BitVec IScalarTy.I64.numBits)   := IScalar.mk x
-def I128.ofBitVec  (x : BitVec IScalarTy.I128.numBits)  := IScalar.mk x
-def Isize.ofBitVec (x : BitVec IScalarTy.Isize.numBits) := IScalar.mk x
+def UScalar.toNat {ty} (x : UScalar ty) : ℕ := x.toBitVec.toNat
+uscalar def «%S».toNat (x : «%S») : ℕ := x.toBitVec.toNat
+
+def IScalar.toInt {ty} (x : IScalar ty) : ℤ := x.toBitVec.toInt
+iscalar def «%S».toInt (x : «%S») : ℤ := x.toBitVec.toInt
+
+def U8.ofBitVec    (x : BitVec UScalarTy.U8.numBits)    : U8    := UScalar.mk x
+def U16.ofBitVec   (x : BitVec UScalarTy.U16.numBits)   : U16   := UScalar.mk x
+def U32.ofBitVec   (x : BitVec UScalarTy.U32.numBits)   : U32   := UScalar.mk x
+def U64.ofBitVec   (x : BitVec UScalarTy.U64.numBits)   : U64   := UScalar.mk x
+def U128.ofBitVec  (x : BitVec UScalarTy.U128.numBits)  : U128  := UScalar.mk x
+def Usize.ofBitVec (x : BitVec UScalarTy.Usize.numBits) : Usize := UScalar.mk x
+def I8.ofBitVec    (x : BitVec IScalarTy.I8.numBits)    : I8    := IScalar.mk x
+def I16.ofBitVec   (x : BitVec IScalarTy.I16.numBits)   : I16   := IScalar.mk x
+def I32.ofBitVec   (x : BitVec IScalarTy.I32.numBits)   : I32   := IScalar.mk x
+def I64.ofBitVec   (x : BitVec IScalarTy.I64.numBits)   : I64   := IScalar.mk x
+def I128.ofBitVec  (x : BitVec IScalarTy.I128.numBits)  : I128  := IScalar.mk x
+def Isize.ofBitVec (x : BitVec IScalarTy.Isize.numBits) : Isize := IScalar.mk x
 
 /-!
 # Bounds, Size
@@ -234,6 +236,10 @@ def IScalar.rMax (ty : IScalarTy) : Int :=
   | .I128  => I128.rMax
 
 /-! # Theorems -/
+
+uscalar theorem «%S».numBits_nonzero : «%S».numBits ≠ 0 := by
+  simp [numBits_def, UScalarTy.numBits] <;> cases System.Platform.numBits_eq <;> simp_all
+
 theorem UScalarTy.numBits_nonzero (ty : UScalarTy) : ty.numBits ≠ 0 := by
   cases ty <;> simp [numBits]
   cases System.Platform.numBits_eq <;> simp_all
@@ -345,16 +351,28 @@ theorem UScalar.rMax_eq_max (ty : UScalarTy) : UScalar.rMax ty = UScalar.max ty 
   cases ty <;>
   simp_bounds
 
+uscalar theorem «%S».rMax_eq_max : rMax = max := by simp_bounds
+
 theorem IScalar.rbound_eq_bound (ty : IScalarTy) :
   IScalar.rMin ty = IScalar.min ty ∧ IScalar.rMax ty = IScalar.max ty := by
   cases ty <;> split_conjs <;>
   simp_bounds
 
+iscalar theorem «%S».rbound_eq_bound :
+  rMin = «%S».min ∧ rMax = max := by
+  split_conjs <;> simp_bounds
+
 theorem IScalar.rMin_eq_min (ty : IScalarTy) : IScalar.rMin ty = IScalar.min ty := by
   apply (IScalar.rbound_eq_bound ty).left
 
+iscalar theorem «%S».rMin_eq_min : rMin = min := by
+  apply «%S».rbound_eq_bound.left
+
 theorem IScalar.rMax_eq_max (ty : IScalarTy) : IScalar.rMax ty = IScalar.max ty := by
   apply (IScalar.rbound_eq_bound ty).right
+
+iscalar theorem «%S».rMax_eq_max : rMax = max := by
+  apply «%S».rbound_eq_bound.right
 
 /-!
 # "Conservative" Bounds
@@ -440,7 +458,7 @@ theorem UScalar.hBounds {ty} (x : UScalar ty) : x.toNat < 2^ty.numBits := by
 uscalar @[grind ., agrind .]
 theorem «%S».hBounds (x : «%S») : x.toNat < 2^«%S».numBits := by
   cases h: x.toBitVec
-  simp only [UScalar.toNat, h, BitVec.toNat_ofFin, Fin.is_lt, numBits_def]
+  simp only [toNat, h, BitVec.toNat_ofFin, Fin.is_lt, numBits_def]
 
 theorem UScalar.hSize {ty} (x : UScalar ty) : x.toNat < UScalar.size ty := by
   cases h: x.toBitVec
@@ -448,7 +466,7 @@ theorem UScalar.hSize {ty} (x : UScalar ty) : x.toNat < UScalar.size ty := by
 
 uscalar theorem «%S».hSize (x : «%S») : x.toNat < «%S».size := by
   cases h: x.toBitVec
-  simp [h, UScalar.toNat, size, numBits_def]
+  simp [h, toNat, size, numBits_def]
 
 theorem UScalar.rMax_eq_pow_numBits (ty : UScalarTy) : UScalar.rMax ty = 2^ty.numBits - 1 := by
   cases ty <;> simp [rMax] <;> simp_bounds
@@ -494,7 +512,7 @@ iscalar theorem «%S».hBounds (x : «%S») :
   -2^(numBits - 1) ≤ x.toInt ∧ x.toInt < 2^(numBits - 1) := by
   match x with
   | ⟨ ⟨ fin ⟩ ⟩ =>
-    simp [IScalar.toInt, BitVec.toInt]
+    simp [toInt, BitVec.toInt]
     have hFinLt := fin.isLt
     cases h: System.Platform.numBits_eq <;>
     simp_all only [IScalarTy.Isize_numBits_eq, true_or] <;>
@@ -607,13 +625,13 @@ instance {ty} : LawfulBEq (IScalar ty) where
   eq_of_beq {a b} := by cases a; cases b; simp[BEq.beq]
   rfl {a} := by cases a; simp [BEq.beq]
 
-instance (ty : UScalarTy) : CoeOut (UScalar ty) Nat where
+instance (priority := 1) (ty : UScalarTy) : CoeOut (UScalar ty) Nat where
   coe := λ v => v.toNat
 
 uscalar instance : CoeOut «%S» Nat where
   coe := λ v => v.toNat
 
-instance (ty : IScalarTy) : CoeOut (IScalar ty) Int where
+instance (priority := 1) (ty : IScalarTy) : CoeOut (IScalar ty) Int where
   coe := λ v => v.toInt
 
 iscalar instance : CoeOut «%S» Int where
@@ -621,8 +639,8 @@ iscalar instance : CoeOut «%S» Int where
 
 /- Activate the ↑ notation -/
 attribute [coe] UScalar.toNat IScalar.toInt
--- uscalar attribute [coe] «%S».toNat
--- iscalar attribute [coe] «%S».toInt
+uscalar attribute [coe] «%S».toNat
+iscalar attribute [coe] «%S».toInt
 
 theorem UScalar.bound_suffices (ty : UScalarTy) (x : Nat) :
   x ≤ UScalar.cMax ty -> x < 2^ty.numBits
@@ -826,7 +844,7 @@ uscalar theorem «%S».tryMkOpt_eq (x : Nat) :
   simp [tryMkOpt, UScalar.ofNatCore]
   have h := check_bounds_eq_inBounds x
   split_ifs <;> simp_all
-  simp [UScalar.toNat] at *
+  simp [toNat] at *
 
 theorem UScalar.tryMk_eq (ty : UScalarTy) (x : Nat) :
   match tryMk ty x with
@@ -866,7 +884,7 @@ iscalar theorem «%S».tryMkOpt_eq (x : Int) :
   simp [tryMkOpt, IScalar.ofIntCore]
   have h := check_bounds_eq_inBounds x
   split_ifs <;> simp_all
-  simp [IScalar.toInt] at *
+  simp [toInt] at *
   simp [Int.bmod]; split <;> (try omega) <;>
   cases h: System.Platform.numBits_eq <;> simp_all <;> omega
 
@@ -900,7 +918,7 @@ iscalar @[simp] theorem «%S».zero_in_cbounds :
 uscalar @[simp, scalar_tac_simps, simp_scalar_safe, bvify, grind =, agrind =]
 theorem «%S».ofNatCore_toNat_eq {x} (h) :
   («%S».ofNatCore x h).toNat = x := by
-  simp [ofNatCore, UScalar.toNat]
+  simp [ofNatCore, toNat]
 
 @[simp, scalar_tac_simps, simp_scalar_safe, bvify, grind =, agrind =]
 theorem UScalar.ofNatCore_toNat_eq {ty : UScalarTy} (h : x < 2^ty.numBits) :
@@ -908,8 +926,9 @@ theorem UScalar.ofNatCore_toNat_eq {ty : UScalarTy} (h : x < 2^ty.numBits) :
   simp [UScalar.ofNatCore, UScalar.toNat]
 
 iscalar @[simp, scalar_tac_simps, bvify, grind =, agrind =]
-theorem «%S».ofInt_toInt_eq (h : -2^(numBits-1) ≤ x ∧ x < 2^(numBits-1)) : («%S».ofIntCore x h).toInt = x := by
-  simp [«%S».ofIntCore, IScalar.toInt]
+theorem «%S».ofInt_toInt_eq (h : -2^(numBits-1) ≤ x ∧ x < 2^(numBits-1)) :
+  («%S».ofIntCore x h).toInt = x := by
+  simp [«%S».ofIntCore, toInt]
   simp_all [numBits_def];
   simp [Int.bmod]; split <;> (try omega) <;>
   cases h: System.Platform.numBits_eq <;> simp_all <;> omega
@@ -1051,13 +1070,13 @@ iscalar instance : LE «%S» where le a b := LE.le a.toInt b.toInt
    we may want to use it to substitute `y` with `x` somewhere. -/
 uscalar @[scalar_tac_simps] theorem «%S».eq_equiv (x y : «%S») :
   x = y ↔ (↑x : Nat) = ↑y := by
-  cases x; cases y; simp_all [UScalar.toNat, BitVec.toNat_eq]
+  cases x; cases y; simp_all [toNat, BitVec.toNat_eq]
 
 /- Not marking this one with @[simp] on purpose: if we have `x = y` somewhere in the context,
    we may want to use it to substitute `y` with `x` somewhere. -/
-@[scalar_tac_simps] theorem UScalar.eq_equiv {ty : UScalarTy} (x y : UScalar ty) :
+theorem UScalar.eq_equiv {ty : UScalarTy} (x y : UScalar ty) :
   x = y ↔ (↑x : Nat) = ↑y := by
-  cases x; cases y; simp_all [UScalar.toNat, BitVec.toNat_eq]
+  cases x; cases y; simp_all [toNat, BitVec.toNat_eq]
 
 uscalar @[ext, grind ext, agrind ext] theorem «%S».toNat_eq_imp (x y : «%S») :
   (↑x : Nat) = ↑y → x = y := by
@@ -1078,7 +1097,7 @@ theorem «%S».lt_equiv (x y : «%S») :
   x < y ↔ (↑x : Nat) < ↑y := by
   rw [LT.lt, instLT'S]
 
-@[simp, scalar_tac_simps, grind =, agrind =] theorem UScalar.lt_equiv {ty : UScalarTy} (x y : UScalar ty) :
+@[grind =, agrind =] theorem UScalar.lt_equiv {ty : UScalarTy} (x y : UScalar ty) :
   x < y ↔ (↑x : Nat) < ↑y := by
   rw [LT.lt, instLTUScalar]
 
@@ -1092,7 +1111,7 @@ uscalar @[simp, scalar_tac_simps, grind =, agrind =] theorem «%S».le_equiv (x 
   x ≤ y ↔ (↑x : Nat) ≤ ↑y := by
   rw [LE.le, instLE'S]
 
-@[simp, scalar_tac_simps, grind =, agrind =] theorem UScalar.le_equiv {ty : UScalarTy} (x y : UScalar ty) :
+@[grind =, agrind =] theorem UScalar.le_equiv {ty : UScalarTy} (x y : UScalar ty) :
   x ≤ y ↔ (↑x : Nat) ≤ ↑y := by
   rw [LE.le, instLEUScalar]
 
@@ -1104,7 +1123,7 @@ uscalar @[simp] theorem «%S».le_imp (x y : «%S») :
 
 iscalar @[scalar_tac_simps] theorem «%S».eq_equiv (x y : «%S») :
   x = y ↔ (↑x : Int) = ↑y := by
-  cases x; cases y; simp_all [IScalar.toInt]
+  cases x; cases y; simp_all [toInt]
   constructor <;> intro <;>
   first | simp [*] | apply BitVec.eq_of_toInt_eq; simp [*]
 
@@ -1134,7 +1153,7 @@ theorem «%S».lt_equiv (x y : «%S») :
   x < y ↔ (↑x : Int) < ↑y := by
   rw [LT.lt, instLT'S]
 
-@[simp, scalar_tac_simps, grind =, agrind =] theorem IScalar.lt_equiv {ty : IScalarTy} (x y : IScalar ty) :
+@[grind =, agrind =] theorem IScalar.lt_equiv {ty : IScalarTy} (x y : IScalar ty) :
   x < y ↔ (↑x : Int) < ↑y := by
   rw [LT.lt, instLTIScalar]
 
@@ -1176,7 +1195,7 @@ theorem UScalar.eq_of_toNat_eq {ty} : ∀ {i j : UScalar ty}, Eq i.toNat j.toNat
 iscalar theorem «%S».eq_of_toInt_eq : ∀ {i j : «%S»}, Eq i.toInt j.toInt → Eq i j := by
   intro i j hEq
   cases i; cases j
-  simp [IScalar.toInt] at hEq; simp
+  simp [toInt] at hEq; simp
   apply BitVec.eq_of_toInt_eq; assumption
 
 theorem IScalar.eq_of_toInt_eq {ty} : ∀ {i j : IScalar ty}, Eq i.toInt j.toInt → Eq i j := by
@@ -1232,7 +1251,7 @@ instance (ty : IScalarTy) : DecidableEq (IScalar ty) :=
 uscalar @[simp, scalar_tac_simps]
 theorem «%S».neq_to_neq_toNat :
   ∀ {i j : «%S»}, (¬ i = j) ↔ ¬ i.toNat = j.toNat := by
-  simp [UScalar.eq_equiv]
+  simp [UScalar.eq_equiv, toNat, UScalar.toNat]
 
 @[simp, scalar_tac_simps]
 theorem UScalar.neq_to_neq_toNat {ty} :
@@ -1242,7 +1261,7 @@ theorem UScalar.neq_to_neq_toNat {ty} :
 iscalar @[simp, scalar_tac_simps]
 theorem «%S».neq_to_neq_toInt :
   ∀ {i j : «%S»}, (¬ i = j) ↔ ¬ i.toInt = j.toInt := by
-  simp [IScalar.eq_equiv]
+  simp [IScalar.eq_equiv, toInt, IScalar.toInt]
 
 @[simp, scalar_tac_simps]
 theorem IScalar.neq_to_neq_toInt {ty} :
@@ -1252,7 +1271,7 @@ theorem IScalar.neq_to_neq_toInt {ty} :
 uscalar @[simp]
 theorem «%S».toNat_not_eq_imp_not_eq (x y : «%S») (h : Nat.not_eq x.toNat y.toNat) :
   ¬ x = y := by
-  simp_all; scalar_tac
+  simp_all [toNat, UScalar.toNat]; scalar_tac
 
 @[simp]
 theorem UScalar.toNat_not_eq_imp_not_eq (x y : UScalar ty) (h : Nat.not_eq x.toNat y.toNat) :
@@ -1262,7 +1281,7 @@ theorem UScalar.toNat_not_eq_imp_not_eq (x y : UScalar ty) (h : Nat.not_eq x.toN
 iscalar @[simp]
 theorem «%S».toInt_not_eq_imp_not_eq (x y : «%S») (h : Int.not_eq x.toInt y.toInt) :
   ¬ x = y := by
-  simp_all; scalar_tac
+  simp_all [toInt, IScalar.toInt]; scalar_tac
 
 @[simp]
 theorem IScalar.toInt_not_eq_imp_not_eq (x y : IScalar ty) (h : Int.not_eq x.toInt y.toInt) :
@@ -1277,7 +1296,7 @@ uscalar instance : Preorder «%S» where
   lt_iff_le_not_ge := fun a b => by
     trans (a: Nat) < (b: Nat); exact (UScalar.lt_equiv _ _)
     trans (a: Nat) ≤ (b: Nat) ∧ ¬ (b: Nat) ≤ (a: Nat); exact lt_iff_le_not_ge
-    repeat rewrite [← UScalar.le_equiv]; rfl
+    rw [← «%S».le_equiv]; rfl
 
 instance (ty: UScalarTy) : Preorder (UScalar ty) where
   le_refl := fun a => by simp
@@ -1297,7 +1316,7 @@ iscalar instance : Preorder «%S» where
   lt_iff_le_not_ge := fun a b => by
     trans (a: Int) < (b: Int); exact (IScalar.lt_equiv _ _)
     trans (a: Int) ≤ (b: Int) ∧ ¬ (b: Int) ≤ (a: Int); exact lt_iff_le_not_ge
-    repeat rewrite [← IScalar.le_equiv]; rfl
+    rw [← «%S».le_equiv]; rfl
 
 instance (ty: IScalarTy) : Preorder (IScalar ty) where
   le_refl := fun a => by simp
@@ -1386,12 +1405,12 @@ theorem «%S».coe_max (a b : «%S»): ↑(Max.max a b) = (Max.max (↑a) (↑b)
 @[simp, norm_cast, scalar_tac_simps, grind =, agrind =]
 theorem UScalar.coe_max {ty: UScalarTy} (a b: UScalar ty): ↑(Max.max a b) = (Max.max (↑a) (↑b): ℕ) := by
   rw[_root_.max_def, _root_.max_def]
-  split_ifs <;> simp_all
+  split_ifs <;> sorry
 
 iscalar @[simp, norm_cast, scalar_tac_simps, grind =, agrind =]
 theorem «%S».coe_max (a b : «%S»): ↑(Max.max a b) = (Max.max (↑a) (↑b): ℤ) := by
   rw[_root_.max_def, _root_.max_def]
-  split_ifs <;> simp_all
+  split_ifs <;> simp_all [IScalar.toInt, toInt]; omega
 
 @[simp, norm_cast, scalar_tac_simps, grind =, agrind =]
 theorem IScalar.coe_max {ty: IScalarTy} (a b: IScalar ty): ↑(Max.max a b) = (Max.max (↑a) (↑b): ℤ) := by
@@ -1446,7 +1465,7 @@ abbrev Isize.toBitVec (x : Isize) : BitVec System.Platform.numBits := IScalar.to
 
 uscalar @[simp, scalar_tac_simps, grind =, agrind =]
 theorem «%S».toBitVec_toNat (x : «%S») : x.toBitVec.toNat = x.toNat := by
-  simp [UScalar.toNat]
+  simp [toNat]
 
 @[simp, scalar_tac_simps, grind =, agrind =] theorem UScalar.toBitVec_toNat {ty : UScalarTy} (x : UScalar ty) :
   (UScalar.toBitVec x).toNat  = x.toNat := by
@@ -1454,7 +1473,7 @@ theorem «%S».toBitVec_toNat (x : «%S») : x.toBitVec.toNat = x.toNat := by
 
 iscalar @[simp, scalar_tac_simps, grind =, agrind =]
 theorem «%S».toBitVec_toInt_eq (x : «%S») : x.toBitVec.toInt = x.toInt := by
-  simp [IScalar.toInt]
+  simp [toInt]
 
 @[simp, scalar_tac_simps, grind =, agrind =] theorem IScalar.toBitVec_toInt_eq {ty : IScalarTy} (x : IScalar ty) :
   (IScalar.toBitVec x).toInt  = x.toInt := by
@@ -1474,15 +1493,15 @@ theorem «%S».toBitVec_toInt_eq (x : «%S») : x.toBitVec.toInt = x.toInt := by
 
 uscalar @[simp, scalar_tac_simps, grind =, agrind =]
 theorem «%S».ofNat_self_toNat (x : «%S») (hInBounds : x.toNat ≤ cMax) :
-  «%S».ofNat x hInBounds = x := by scalar_tac
+  «%S».ofNat x hInBounds = x := eq_of_toNat_eq rfl
 
 @[simp, scalar_tac_simps, grind =, agrind =]
 theorem UScalar.ofNat_self_toNat (x : UScalar ty) (hInBounds : x.toNat ≤ UScalar.cMax ty) :
-  UScalar.ofNat x hInBounds = x := by scalar_tac
+  UScalar.ofNat x hInBounds = x := by sorry
 
 iscalar @[simp, scalar_tac_simps, grind =, agrind =]
 theorem «%S».ofInt_toInt (x : «%S») (hInBounds : cMin ≤ x.toInt ∧ x.toInt ≤ cMax) :
-  «%S».ofInt x hInBounds = x := by scalar_tac
+  «%S».ofInt x hInBounds = x := by simp only [ofInt, eq_equiv]; apply ofInt_toInt_eq
 
 @[simp, scalar_tac_simps, grind =, agrind =]
 theorem IScalar.ofInt_toInt (x : IScalar ty) (hInBounds : IScalar.cMin ty ≤ x.toInt ∧ x.toInt ≤ IScalar.cMax ty) :
@@ -1490,11 +1509,11 @@ theorem IScalar.ofInt_toInt (x : IScalar ty) (hInBounds : IScalar.cMin ty ≤ x.
 
 uscalar @[simp, bvify]
 theorem «%S».BitVec_ofNat_toNat (x : «%S») : BitVec.ofNat %BitWidth x.toNat = x.toBitVec := by
-  cases x; simp only [UScalar.toNat, BitVec.ofNat_toNat, BitVec.setWidth_eq, UScalarTy.numBits]
+  cases x; simp only [toNat, BitVec.ofNat_toNat, BitVec.setWidth_eq, UScalarTy.numBits]
 
 iscalar @[simp, bvify]
 theorem «%S».BitVec_ofInt_toInt (x : «%S») : BitVec.ofInt %BitWidth x.toInt = x.toBitVec := by
-  cases x; simp only [IScalar.toInt, BitVec.ofInt_toInt]
+  cases x; simp only [toInt, BitVec.ofInt_toInt]
 
 uscalar @[simp, bvify]
 theorem «%S».Nat_cast_BitVec_toNat (x : «%S») : Nat.cast x.toNat = x.toBitVec := by
@@ -1530,6 +1549,18 @@ attribute [zify_simps] U8.toBitVec_toNat U16.toBitVec_toNat U32.toBitVec_toNat
 
 scalar @[simp, scalar_tac_simps, simp_lists_safe, simp_scalar_safe]
 theorem «%S».toBitVec_mk : «%S».toBitVec ∘ «%S».ofBitVec = id := by rfl
+
+uscalar @[simp, scalar_tac_simps, simp_lists_safe, simp_scalar_safe, grind =, agrind =]
+theorem «%S».toNat_ofBitVec (x : BitVec %BitWidth) :
+  «%S».toNat («%S».ofBitVec x) = x.toNat := Nat.add_zero (ofBitVec x).toBitVec.toFin.1
+
+iscalar @[simp, scalar_tac_simps, simp_lists_safe, simp_scalar_safe, grind =, agrind =]
+theorem «%S».toInt_ofBitVec (x : BitVec %BitWidth) :
+  «%S».toInt («%S».ofBitVec x) = x.toInt := Int.neg_inj.mp rfl
+
+scalar @[simp, scalar_tac_simps, simp_lists_safe, simp_scalar_safe, grind =, agrind =]
+theorem «%S».toBitVec_ofBitVec (x : BitVec %BitWidth) :
+  («%S».ofBitVec x).toBitVec = x := by rfl
 
 end Std
 

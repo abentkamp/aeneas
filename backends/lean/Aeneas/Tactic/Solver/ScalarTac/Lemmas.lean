@@ -569,7 +569,7 @@ grind_pattern [agrind_nla] mod_lt => x % y
 uscalar @[simp, scalar_tac_simps, grind =, agrind =]
 theorem «%S».sizeOf (x : «%S») : sizeOf x = x.toNat + 3 := by
   cases x; simp only [UScalar.mk.sizeOf_spec, BitVec.sizeOf, Fin.sizeOf, BitVec.val_toFin]
-  unfold UScalar.toNat
+  unfold «%S».toNat
   simp only
   omega
 

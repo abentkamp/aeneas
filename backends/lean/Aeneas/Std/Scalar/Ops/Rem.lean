@@ -76,14 +76,14 @@ uscalar theorem «%S».rem_bv_spec (x : «%S») {y : «%S»} (hnz : y.toNat ≠ 
   x %? y ⦃ z => (↑z : Nat) = ↑x % ↑y ∧ z.toBitVec = x.toBitVec % y.toBitVec ⦄ := by
   conv => arg 1; simp [ResultMod.mod]
   simp [hnz, rem]
-  simp only [UScalar.toNat]
+  simp only [toNat]
   simp
 
 iscalar theorem «%S».rem_bv_spec (x : «%S») {y : «%S»} (hnz : y.toInt ≠ 0) :
   x %? y ⦃ z => (↑z : Int) = Int.tmod ↑x ↑y ∧ z.toBitVec = BitVec.srem x.toBitVec y.toBitVec ⦄ :=by
   conv => arg 1; simp [ResultMod.mod]
   simp only [spec_ok, rem, bne_iff_ne, ne_eq, hnz, not_false_eq_true, ↓reduceIte]
-  simp only [IScalar.toInt]
+  simp only [toInt]
   simp only [BitVec.toInt_srem, toBitVec_toInt_eq, and_true]
 
 /-!

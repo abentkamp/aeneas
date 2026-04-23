@@ -119,7 +119,7 @@ def parseStepArraySpec
           throwUnsupportedSyntax
     -- Elaborate the full theorem
     elabCommand
-      (← `(command| $vis:declModifiers theorem $thm_name:ident $i (_ : Aeneas.Std.UScalar.toNat $i < Aeneas.Std.Array.length $array) :
+      (← `(command| $vis:declModifiers theorem $thm_name:ident $i (_ : Aeneas.Std.Usize.toNat $i < Aeneas.Std.Array.length $array) :
             Aeneas.Std.WP.spec (Aeneas.Std.Array.index_usize $array $i) (fun $x:ident => $pred) :=
             Aeneas.Std.Array.index_usize_const_spec (fun $i:ident $x:ident => $pred) (fun $i:ident $x:ident => $pred)
             $array (by simp) (by $tac) $i (by scalar_tac) (by scalar_tac)))
