@@ -17,3 +17,4 @@ import Aeneas.Std.Scalar.Pow
 import Aeneas.Std.Scalar.Rotate
 import Aeneas.Std.Scalar.SaturatingOps
 import Aeneas.Std.Scalar.WrappingOps
+import Aeneas.Std.Scalar.Elab.Tests
