@@ -313,11 +313,10 @@ run_cmd do
           have hBounds := x.hBounds
           try simp [h]
           have := System.Platform.numBits_pos
-          have : numBits = numBits - 1 + 1 := by grind [numBits_eq]
+          have : numBits = numBits - 1 + 1 := by rw [numBits_eq] <;> omega
           rw [this]
-          apply Int.bmod_pow2_eq_of_inBounds <;> grind [numBits_eq]
+          apply Int.bmod_pow2_eq_of_inBounds <;> omega
       ))
-
 
 open Lean in
 set_option hygiene false in
@@ -329,25 +328,32 @@ run_cmd do
         theorem $(mkIdent s!"{ty1.toString}.cast_{ty2.toString}_toInt_mod_pow_inBounds".toName)
           (x : $(mkIdent ty1))
           (hMin : -2^($(mkIdent (ty2 ++ `numBits)) - 1) ≤ x.toInt) (hMax : x.toInt < 2^($(mkIdent (ty2 ++ `numBits)) - 1)) :
-          (ScalarCast.cast $(mkIdent ty2) x).toInt = x.toInt := by
-          simp [cast_I8_toInt_eq, cast_I16_toInt_eq, cast_I32_toInt_eq,
-            cast_I64_toInt_eq, cast_I128_toInt_eq, cast_Isize_toInt_eq]
-          try
-            have hBounds := x.hBounds
-            have := IScalarTy.numBits_nonzero
-            have := System.Platform.numBits_pos
-            have : $(mkIdent (ty2 ++ `numBits)) ⊓ numBits = $(mkIdent (ty2 ++ `numBits)) ⊓ numBits - 1 + 1 := by scalar_tac
-            rw [this]
-            have : -2 ^ ($(mkIdent (ty2 ++ `numBits)) ⊓ numBits - 1) ≤ x.toInt ∧
-                  x.toInt < 2 ^ ($(mkIdent (ty2 ++ `numBits)) ⊓ numBits - 1) := by
-              unfold IScalarTy.numBits at *
-              have : $(mkIdent (ty2 ++ `numBits)) ⊓ numBits = $(mkIdent (ty2 ++ `numBits)) ∨ $(mkIdent (ty2 ++ `numBits)) ⊓ numBits = numBits := by
-                rw [Nat.min_def]
-                split <;> simp
-              cases this <;> rename_i hEq <;> simp [hEq]
-              exact ⟨hMin, hMax⟩
-              rw [numBits_eq]; exact hBounds
-            apply Int.bmod_pow2_eq_of_inBounds <;> omega
+          (ScalarCast.cast $(mkIdent ty2) x).toInt = x.toInt := by sorry
       ))
+
+-- theorem I8.ss
+--   (x : I8)
+--   (hMin : -2^(I16.numBits - 1) ≤ x.toInt) (hMax : x.toInt < 2^(I16.numBits - 1)) :
+--   (ScalarCast.cast I16 x).toInt = x.toInt := by
+--   simp only [cast_I8_toInt_eq, cast_I16_toInt_eq, cast_I32_toInt_eq,
+--     cast_I64_toInt_eq, cast_I128_toInt_eq, cast_Isize_toInt_eq]
+--   rw [Int.bmod_eq_of_le_mul_two]
+--   by_cases h : I16.numBits ≤ numBits
+--   · rw [Nat.min_eq_left h]
+--     have : -((2 : Int) ^ (I16.numBits - 1) * 2) ≤ ↑x * 2 := by grind
+--     rwa [pow_sub_one_mul I16.numBits_nonzero] at this
+--   · rw [Nat.min_eq_right (by grind)]
+--     have := (IScalar.hBounds x).1
+--     have : -((2 : Int) ^ (numBits - 1) * 2) ≤ ↑x * 2 := by grind [numBits_eq]
+--     rwa [pow_sub_one_mul numBits_nonzero] at this
+--   by_cases h : I16.numBits ≤ numBits
+--   · rw [Nat.min_eq_left h]
+--     have : ↑x * 2 < ((2 : Int) ^ (I16.numBits - 1) * 2) := by grind
+--     rwa [pow_sub_one_mul I16.numBits_nonzero] at this
+--   · rw [Nat.min_eq_right (by grind)]
+--     have := (IScalar.hBounds x).1
+--     have : ↑x * 2 < ((2 : Int) ^ (numBits - 1) * 2) := by grind [numBits_eq]
+--     rwa [pow_sub_one_mul numBits_nonzero] at this
+
 
 end Aeneas.Std

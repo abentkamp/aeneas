@@ -488,6 +488,19 @@ uscalar theorem «%S».hrBounds (x : «%S») : x.toNat ≤ «%S».rMax := by
 
 theorem UScalar.hmax {ty} (x : UScalar ty) : x.toNat < 2^ty.numBits := x.hBounds
 
+uscalar theorem «%S».hmax (x : «%S») : x.toNat < 2^«%S».numBits := x.hBounds
+
+iscalar theorem «%S».hBounds (x : «%S») :
+  -2^(numBits - 1) ≤ x.toInt ∧ x.toInt < 2^(numBits - 1) := by
+  match x with
+  | ⟨ ⟨ fin ⟩ ⟩ =>
+    simp [IScalar.toInt, BitVec.toInt]
+    have hFinLt := fin.isLt
+    cases h: System.Platform.numBits_eq <;>
+    simp_all only [IScalarTy.Isize_numBits_eq, true_or] <;>
+    simp_all only [numBits_def, IScalarTy.numBits] <;>
+    omega
+
 theorem IScalar.hBounds {ty} (x : IScalar ty) :
   -2^(ty.numBits - 1) ≤ x.toInt ∧ x.toInt < 2^(ty.numBits - 1) := by
   match x with
@@ -567,14 +580,24 @@ theorem IScalar.hrBounds {ty} (x : IScalar ty) :
   have := IScalar.rMax_eq_pow_numBits ty
   omega
 
+iscalar def «%S».hmin (x : «%S») : -2^(numBits - 1) ≤ x.toInt := x.hBounds.left
+iscalar def «%S».hmax (x : «%S») : x.toInt < 2^(numBits - 1) := x.hBounds.right
+
 def IScalar.hmin {ty} (x : IScalar ty) : -2^(ty.numBits - 1) ≤ x.toInt := x.hBounds.left
 def IScalar.hmax {ty} (x : IScalar ty) : x.toInt < 2^(ty.numBits - 1) := x.hBounds.right
+
+scalar instance : BEq «%S» where
+  beq a b := a.toBitVec = b.toBitVec
 
 instance {ty} : BEq (UScalar ty) where
   beq a b := a.toBitVec = b.toBitVec
 
 instance {ty} : BEq (IScalar ty) where
   beq a b := a.toBitVec = b.toBitVec
+
+scalar instance : LawfulBEq «%S» where
+  eq_of_beq {a b} := by cases a; cases b; simp [BEq.beq]
+  rfl {a} := by cases a; simp [BEq.beq]
 
 instance {ty} : LawfulBEq (UScalar ty) where
   eq_of_beq {a b} := by cases a; cases b; simp [BEq.beq]
@@ -587,7 +610,13 @@ instance {ty} : LawfulBEq (IScalar ty) where
 instance (ty : UScalarTy) : CoeOut (UScalar ty) Nat where
   coe := λ v => v.toNat
 
+uscalar instance : CoeOut «%S» Nat where
+  coe := λ v => v.toNat
+
 instance (ty : IScalarTy) : CoeOut (IScalar ty) Int where
+  coe := λ v => v.toInt
+
+iscalar instance : CoeOut «%S» Int where
   coe := λ v => v.toInt
 
 /- Activate the ↑ notation -/
@@ -859,8 +888,10 @@ iscalar theorem «%S».tryMk_eq (x : Int) :
   simp [tryMk]
   cases h : tryMkOpt x <;> simp_all
 
-@[simp] theorem UScalar.zero_in_cbounds {ty : UScalarTy} : 0 < 2^ty.numBits := by
-  simp
+uscalar @[simp] theorem «%S».zero_in_cbounds : 0 < 2^numBits := by simp
+
+iscalar @[simp] theorem «%S».zero_in_cbounds :
+  -2^(numBits - 1) ≤ 0 ∧ 0 < 2^(numBits - 1) := by simp
 
 @[simp] theorem IScalar.zero_in_cbounds {ty : IScalarTy} :
   -2^(ty.numBits - 1) ≤ 0 ∧ 0 < 2^(ty.numBits - 1) := by
