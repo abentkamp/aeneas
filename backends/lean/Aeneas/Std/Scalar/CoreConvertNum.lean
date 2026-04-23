@@ -576,17 +576,17 @@ open ScalarElab
 # To Little-Endian
 -/
 uscalar_no_usize def core.num.«%S».to_le_bytes (x : «%S») : Array U8 (%Size)#usize := ⟨ x.toBitVec.toLEBytes.map UScalar.mk, by
-  simp only [List.length_map, UScalar.ofNatCore_toNat_eq, @BitVec.toLEBytes_length ((%Size) * 8)] ⟩
+  simp only [List.length_map, Usize.ofNatCore_toNat_eq, @BitVec.toLEBytes_length ((%Size) * 8)] ⟩
 iscalar_no_isize def core.num.«%S».to_le_bytes (x : «%S») : Array I8 (%Size)#usize := ⟨ x.toBitVec.toLEBytes.map IScalar.mk, by
-  simp only [List.length_map, UScalar.ofNatCore_toNat_eq, @BitVec.toLEBytes_length ((%Size) * 8)] ⟩
+  simp only [List.length_map, Usize.ofNatCore_toNat_eq, @BitVec.toLEBytes_length ((%Size) * 8)] ⟩
 
 /-!
 # To Big-Endian
 -/
 uscalar_no_usize def core.num.«%S».to_be_bytes (x : «%S») : Array U8 (%Size)#usize := ⟨ x.toBitVec.toBEBytes.map UScalar.mk, by
-  simp only [List.length_map, UScalar.ofNatCore_toNat_eq, @BitVec.toBEBytes_length ((%Size) * 8)] ⟩
+  simp only [List.length_map, Usize.ofNatCore_toNat_eq, @BitVec.toBEBytes_length ((%Size) * 8)] ⟩
 iscalar_no_isize def core.num.«%S».to_be_bytes (x : «%S») : Array I8 (%Size)#usize := ⟨ x.toBitVec.toBEBytes.map IScalar.mk, by
-  simp only [List.length_map, UScalar.ofNatCore_toNat_eq, @BitVec.toBEBytes_length ((%Size) * 8)] ⟩
+  simp only [List.length_map, Usize.ofNatCore_toNat_eq, @BitVec.toBEBytes_length ((%Size) * 8)] ⟩
 
 /-!
 # From Little-Endian

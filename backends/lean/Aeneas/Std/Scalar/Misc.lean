@@ -177,10 +177,7 @@ iscalar @[simp] theorem «%S».exists_eq' {a' : «%S»} : ∃ (a : «%S»), a'.t
 
 uscalar theorem «%S».ofNatCore_toBitVec_lt_equiv (x y : Nat) (hx) (hy) :
   («%S».ofNatCore x hx).toBitVec < («%S».ofNatCore y hy).toBitVec ↔ x < y := by
-  simp only [ofNatCore, UScalar.ofNatCore]
-  have := Nat.mod_eq_of_lt hx
-  have := Nat.mod_eq_of_lt hy
-  simp only [BitVec.lt_ofFin, Fin.mk_lt_mk]
+  apply BitVec.lt_ofFin
 
 @[simp, scalar_tac_simps] theorem U8.toNat_mod_size_eq (x : U8) : x.toNat % U8.size = x.toNat := by
   apply Nat.mod_eq_of_lt; scalar_tac
