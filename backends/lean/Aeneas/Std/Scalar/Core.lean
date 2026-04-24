@@ -1387,20 +1387,10 @@ theorem «%S».coe_max (a b : «%S»): ↑(Max.max a b) = (Max.max (↑a) (↑b)
   rw[_root_.max_def, _root_.max_def]
   split_ifs <;> simp_all
 
-@[simp, norm_cast, scalar_tac_simps, grind =, agrind =]
-theorem UScalar.coe_max {ty: UScalarTy} (a b: UScalar ty): ↑(Max.max a b) = (Max.max (↑a) (↑b): ℕ) := by
-  rw[_root_.max_def, _root_.max_def]
-  split_ifs <;> sorry
-
 iscalar @[simp, norm_cast, scalar_tac_simps, grind =, agrind =]
 theorem «%S».coe_max (a b : «%S»): ↑(Max.max a b) = (Max.max (↑a) (↑b): ℤ) := by
   rw[_root_.max_def, _root_.max_def]
   split_ifs <;> simp_all [IScalar.toInt, toInt]; omega
-
-@[simp, norm_cast, scalar_tac_simps, grind =, agrind =]
-theorem IScalar.coe_max {ty: IScalarTy} (a b: IScalar ty): ↑(Max.max a b) = (Max.max (↑a) (↑b): ℤ) := by
-  rw[_root_.max_def, _root_.max_def]
-  split_ifs <;> simp_all
 
 /-! Max theory -/
 -- TODO: do the min theory later on.
@@ -1483,10 +1473,6 @@ theorem «%S».ofNat_self_toNat (x : «%S») (hInBounds : x.toNat ≤ cMax) :
 iscalar @[simp, scalar_tac_simps, grind =, agrind =]
 theorem «%S».ofInt_toInt (x : «%S») (hInBounds : cMin ≤ x.toInt ∧ x.toInt ≤ cMax) :
   «%S».ofInt x hInBounds = x := by simp only [ofInt, eq_equiv]; apply ofInt_toInt_eq
-
-@[simp, scalar_tac_simps, grind =, agrind =]
-theorem IScalar.ofInt_toInt (x : IScalar ty) (hInBounds : IScalar.cMin ty ≤ x.toInt ∧ x.toInt ≤ IScalar.cMax ty) :
-  IScalar.ofInt x hInBounds = x := by scalar_tac
 
 uscalar @[simp, bvify]
 theorem «%S».BitVec_ofNat_toNat (x : «%S») : BitVec.ofNat %BitWidth x.toNat = x.toBitVec := by
