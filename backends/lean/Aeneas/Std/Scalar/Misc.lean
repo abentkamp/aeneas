@@ -6,17 +6,9 @@ namespace Aeneas.Std
 
 open Result Error Arith ScalarElab
 
+iscalar
 /-- Important theorem to reason with `Int.bmod` in the proofs about `IScalar` -/
-theorem bmod_pow_numBits_eq_of_lt (ty : IScalarTy) (x : Int)
-  (h0 : - 2 ^ (ty.numBits-1) ≤ x) (h1 : x < 2 ^ (ty.numBits -1)) :
-  Int.bmod x (2^ty.numBits) = x := by
-  have := ty.numBits_nonzero
-  have hEq : ty.numBits - 1 + 1 = ty.numBits := by omega
-  have := Int.bmod_pow2_eq_of_inBounds (ty.numBits-1) x (by omega) (by omega)
-  simp [hEq] at this
-  apply this
-
-iscalar theorem «%S».bmod_pow_numBits_eq_of_lt (x : Int)
+theorem «%S».bmod_pow_numBits_eq_of_lt (x : Int)
   (h0 : - 2 ^ (%BitWidth-1) ≤ x) (h1 : x < 2 ^ (%BitWidth -1)) :
   Int.bmod x (2^%BitWidth) = x := by
   have := System.Platform.numBits_pos

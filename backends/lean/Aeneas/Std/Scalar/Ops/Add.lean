@@ -67,7 +67,7 @@ iscalar theorem «%S».add_equiv (x y : «%S») :
   split at h <;> simp_all
   apply BitVec.eq_of_toInt_eq
   simp
-  have := bmod_pow_numBits_eq_of_lt (x.toInt + y.toInt) (by omega) (by omega)
+  have := «%S».bmod_pow_numBits_eq_of_lt (x.toInt + y.toInt) (by omega) (by omega)
   simp_all
 
 /-!

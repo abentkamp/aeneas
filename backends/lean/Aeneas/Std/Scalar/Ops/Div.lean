@@ -168,7 +168,7 @@ iscalar theorem «%S».div_bv_spec {x y : «%S»} (hnz : ↑y ≠ (0 : Int))
       have := @Int.ediv_le_self x.toInt y.toInt (by omega)
       scalar_tac
 
-    have hEq := bmod_pow_numBits_eq_of_lt (Int.tdiv x.toInt y.toInt) (by omega) (by omega)
+    have hEq := «%S».bmod_pow_numBits_eq_of_lt (Int.tdiv x.toInt y.toInt) (by omega) (by omega)
     rw [← hEq]
     have htdiv : Int.tdiv x.toInt y.toInt = x.toInt / y.toInt := by
       rw [Int.tdiv_eq_ediv]
@@ -221,7 +221,7 @@ iscalar theorem «%S».div_bv_spec {x y : «%S»} (hnz : ↑y ≠ (0 : Int))
         have : 0 < 2 ^ (%BitWidth - 1) := by simp only [Nat.ofNat_pos, pow_pos]
         have : x.toInt / y.toInt ≤ 0 := by apply Int.ediv_nonpos_of_nonneg_of_nonpos <;> omega
         scalar_tac
-      have := bmod_pow_numBits_eq_of_lt (x.toInt / y.toInt) (by omega) (by omega)
+      have := «%S».bmod_pow_numBits_eq_of_lt (x.toInt / y.toInt) (by omega) (by omega)
       rw [this]
 
     rw [this]; clear this
@@ -292,11 +292,11 @@ iscalar theorem «%S».div_bv_spec {x y : «%S»} (hnz : ↑y ≠ (0 : Int))
       rw [← hy]
       have : (-x.toInt / y.toInt).bmod (2 ^ %BitWidth) =
              (-x.toInt / y.toInt) := by
-        apply bmod_pow_numBits_eq_of_lt _ (by omega) (by omega)
+        apply «%S».bmod_pow_numBits_eq_of_lt _ (by omega) (by omega)
       rw [this]; clear this
       have : (-(-x.toInt / ↑y)).bmod (2 ^ %BitWidth) =
              (-(-x.toInt / ↑y)) := by
-        apply bmod_pow_numBits_eq_of_lt _ (by omega) (by omega)
+        apply «%S».bmod_pow_numBits_eq_of_lt _ (by omega) (by omega)
       rw [this]; clear this
       have : (-x.toInt) / y.toInt = (-x.toInt).tdiv y.toInt := by
         rw [Int.tdiv_eq_ediv]
@@ -369,7 +369,7 @@ iscalar theorem «%S».div_bv_spec {x y : «%S»} (hnz : ↑y ≠ (0 : Int))
       have : (-y.toInt).toNat = -y.toInt := by omega
       rw [this] at hIneq; rw [this]
       omega
-    have := bmod_pow_numBits_eq_of_lt ((-x.toInt).toNat / (-y.toInt).toNat : Nat) (by omega) (by omega)
+    have := «%S».bmod_pow_numBits_eq_of_lt ((-x.toInt).toNat / (-y.toInt).toNat : Nat) (by omega) (by omega)
     rw [this]
 
     zify; simp only [Int.ofNat_toNat]
