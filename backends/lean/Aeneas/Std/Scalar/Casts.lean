@@ -270,7 +270,7 @@ theorem «%S1».cast_'S2_toInt_mod_pow_inBounds (x : «%S1»)
     have : -((2 : Int) ^ («%S2».numBits - 1) * 2) ≤ ↑x * 2 := by omega
     rwa [pow_sub_one_mul «%S2».numBits_nonzero] at this
   · rw [Nat.min_eq_right (by omega)]
-    have := (IScalar.hBounds x).1
+    have := x.hBounds.1
     have : -((2 : Int) ^ (numBits - 1) * 2) ≤ ↑x * 2 := by scalar_tac
     rwa [pow_sub_one_mul numBits_nonzero] at this
   by_cases h : «%S2».numBits ≤ numBits
@@ -278,7 +278,7 @@ theorem «%S1».cast_'S2_toInt_mod_pow_inBounds (x : «%S1»)
     have : ↑x * 2 < ((2 : Int) ^ («%S2».numBits - 1) * 2) := by omega
     rwa [pow_sub_one_mul «%S2».numBits_nonzero] at this
   · rw [Nat.min_eq_right (by omega)]
-    have := (IScalar.hBounds x).1
+    have := x.hBounds.1
     have : ↑x * 2 < ((2 : Int) ^ (numBits - 1) * 2) := by scalar_tac
     rwa [pow_sub_one_mul numBits_nonzero] at this
 
