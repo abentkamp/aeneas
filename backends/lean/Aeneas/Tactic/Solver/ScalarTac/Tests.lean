@@ -57,10 +57,10 @@ example (x y : Nat) (h0 : x < 4) (h1 : y ≤ 5): x * y < 4 * 5 := by
   scalar_tac +nonLin
 
 
-example (x _y : U32) : x.toNat ≤ UScalar.max .U32 := by
+example (x _y : U32) : x.toNat ≤ U32.max := by
   scalar_tac_preprocess
 
-example (x _y : U32) : x.toNat ≤ UScalar.max .U32 := by
+example (x _y : U32) : x.toNat ≤ U32.max := by
   scalar_tac
 
 -- Checking that we explore the goal *and* projectors correctly
@@ -147,7 +147,7 @@ example (x y : Nat) (h : x = y - 2^32) : 0 ≤ x := by
   scalar_tac
 
 example (v : { l : List α // l.length ≤ Usize.max }) :
-  v.val.length < 2 ^ UScalarTy.Usize.numBits := by
+  v.val.length < 2 ^ Usize.numBits := by
   scalar_tac
 
 example (i : I8) : - 2^(Isize.numBits - 1) ≤ i.toInt ∧ i.toInt ≤ 2^(Isize.numBits - 1) := by scalar_tac
