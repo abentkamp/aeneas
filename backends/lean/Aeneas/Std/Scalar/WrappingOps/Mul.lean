@@ -33,14 +33,14 @@ iscalar @[simp, bvify, grind =, agrind =] theorem core.num.«%S».wrapping_mul_t
   simp [core.num.«%S».wrapping_mul]
 
 uscalar @[simp, grind =, agrind =] theorem «%S».wrapping_mul_toNat_eq (x y : «%S») :
-  («%S».wrapping_mul x y).toNat = (x.toNat * y.toNat) % UScalar.size .«%S» := by
-  simp only [wrapping_mul, toNat, UScalar.size]
+  («%S».wrapping_mul x y).toNat = (x.toNat * y.toNat) % «%S».size := by
+  simp only [wrapping_mul, toNat, size, numBits_def]
   have : 0 < 2^«%S».numBits := by simp
   have : 2 ^ «%S».numBits - 1 + 1 = 2^«%S».numBits := by omega
   simp only [BitVec.toNat_mul, toBitVec_toNat]
 
 uscalar @[simp, grind =, agrind =] theorem core.num.«%S».wrapping_mul_toNat_eq (x y : «%S») :
-  (core.num.«%S».wrapping_mul x y).toNat = (x.toNat * y.toNat) % UScalar.size .«%S» :=
+  (core.num.«%S».wrapping_mul x y).toNat = (x.toNat * y.toNat) % «%S».size :=
   _root_.Aeneas.Std.«%S».wrapping_mul_toNat_eq x y
 
 iscalar @[simp, grind =, agrind =] theorem «%S».wrapping_mul_toInt_eq (x y : «%S») :

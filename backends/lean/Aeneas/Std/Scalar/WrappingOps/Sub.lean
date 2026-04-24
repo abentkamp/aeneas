@@ -33,15 +33,15 @@ iscalar @[simp, bvify, grind =, agrind =] theorem core.num.«%S».wrapping_sub_t
   simp [core.num.«%S».wrapping_sub]
 
 uscalar @[simp, grind =, agrind =] theorem «%S».wrapping_sub_toNat_eq (x y : «%S») :
-  («%S».wrapping_sub x y).toNat = (x.toNat + (UScalar.size .«%S» - y.toNat)) % UScalar.size .«%S» := by
-  simp only [wrapping_sub, toNat, UScalar.size]
+  («%S».wrapping_sub x y).toNat = (x.toNat + («%S».size - y.toNat)) % «%S».size := by
+  simp only [wrapping_sub, toNat, size, numBits_def]
   have : 0 < 2^«%S».numBits := by simp
   have : 2 ^ «%S».numBits - 1 + 1 = 2^«%S».numBits := by omega
   simp only [BitVec.toNat_sub, toBitVec_toNat]
   ring_nf
 
 uscalar @[simp, grind =, agrind =] theorem core.num.«%S».wrapping_sub_toNat_eq (x y : «%S») :
-  (core.num.«%S».wrapping_sub x y).toNat = (x.toNat + (UScalar.size .«%S» - y.toNat)) % UScalar.size .«%S» :=
+  (core.num.«%S».wrapping_sub x y).toNat = (x.toNat + («%S».size - y.toNat)) % «%S».size :=
   _root_.Aeneas.Std.«%S».wrapping_sub_toNat_eq x y
 
 iscalar @[simp, grind =, agrind =] theorem «%S».wrapping_sub_toInt_eq (x y : «%S») :
