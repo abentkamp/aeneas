@@ -1480,10 +1480,6 @@ uscalar @[simp, scalar_tac_simps, grind =, agrind =]
 theorem «%S».ofNat_self_toNat (x : «%S») (hInBounds : x.toNat ≤ cMax) :
   «%S».ofNat x hInBounds = x := eq_of_toNat_eq rfl
 
-@[simp, scalar_tac_simps, grind =, agrind =]
-theorem UScalar.ofNat_self_toNat (x : UScalar ty) (hInBounds : x.toNat ≤ UScalar.cMax ty) :
-  UScalar.ofNat x hInBounds = x := by sorry
-
 iscalar @[simp, scalar_tac_simps, grind =, agrind =]
 theorem «%S».ofInt_toInt (x : «%S») (hInBounds : cMin ≤ x.toInt ∧ x.toInt ≤ cMax) :
   «%S».ofInt x hInBounds = x := by simp only [ofInt, eq_equiv]; apply ofInt_toInt_eq
