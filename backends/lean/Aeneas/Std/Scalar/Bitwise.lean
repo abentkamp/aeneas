@@ -20,72 +20,58 @@ class ResultShiftLeft (α : Type u) (β : Type v) where
 
 infixl:75 " <<<? " => ResultShiftLeft.shiftLeft
 
-open Lean in
-set_option hygiene false in
-run_cmd do
-  for ty in [`U8, `U16, `U32, `U64, `U128, `Usize] do
-    Lean.Elab.Command.elabCommand (← `(
-      scalar instance : ResultShiftLeft «%S» $(mkIdent ty) where
-        shiftLeft x y :=
-          if y.toNat < %BitWidth
-          then ok ⟨ x.toBitVec.shiftLeft y.toNat ⟩
-          else fail .integerOverflow
-    ))
+uuscalar instance : ResultShiftLeft «%S1» «%S2» where
+  shiftLeft x y :=
+    if y.toNat < %BitWidth1
+    then ok ⟨ x.toBitVec.shiftLeft y.toNat ⟩
+    else fail .integerOverflow
 
-open Lean in
-set_option hygiene false in
-run_cmd do
-  for ty in [`I8, `I16, `I32, `I64, `I128, `Isize] do
-    Lean.Elab.Command.elabCommand (← `(
-      scalar instance : ResultShiftLeft «%S» $(mkIdent ty) where
-        shiftLeft x y :=
-          if 0 ≤ y.toInt ∧ y.toInt < %BitWidth
-          then ok ⟨ x.toBitVec.shiftLeft y.toNat ⟩
-          else fail .integerOverflow
-    ))
+iuscalar instance : ResultShiftLeft «%S1» «%S2» where
+  shiftLeft x y :=
+    if y.toNat < %BitWidth1
+    then ok ⟨ x.toBitVec.shiftLeft y.toNat ⟩
+    else fail .integerOverflow
+
+uiscalar instance : ResultShiftLeft «%S1» «%S2» where
+  shiftLeft x y :=
+    if 0 ≤ y.toInt ∧ y.toInt < %BitWidth1
+    then ok ⟨ x.toBitVec.shiftLeft y.toNat ⟩
+    else fail .integerOverflow
+
+iiscalar instance : ResultShiftLeft «%S1» «%S2» where
+  shiftLeft x y :=
+    if 0 ≤ y.toInt ∧ y.toInt < %BitWidth1
+    then ok ⟨ x.toBitVec.shiftLeft y.toNat ⟩
+    else fail .integerOverflow
 
 class ResultShiftRight (α : Type u) (β : Type v) where
   shiftRight : α → β → Result α
 
 infixl:75 " >>>? " => ResultShiftRight.shiftRight
 
-open Lean in
-set_option hygiene false in
-run_cmd do
-  for ty in [`U8, `U16, `U32, `U64, `U128, `Usize] do
-    Lean.Elab.Command.elabCommand (← `(
-      uscalar instance : ResultShiftRight «%S» $(mkIdent ty) where
-        shiftRight x y :=
-          if y.toNat < %BitWidth
-          then ok ⟨ x.toBitVec.ushiftRight y.toNat ⟩
-          else fail .integerOverflow
-    ))
-    Lean.Elab.Command.elabCommand (← `(
-      iscalar instance : ResultShiftRight «%S» $(mkIdent ty) where
-        shiftRight x y :=
-          if y.toNat < %BitWidth
-          then ok ⟨ x.toBitVec.sshiftRight y.toNat ⟩
-          else fail .integerOverflow
-    ))
+uuscalar instance : ResultShiftRight «%S1» «%S2» where
+  shiftRight x y :=
+    if y.toNat < %BitWidth1
+    then ok ⟨ x.toBitVec.ushiftRight y.toNat ⟩
+    else fail .integerOverflow
 
-open Lean in
-set_option hygiene false in
-run_cmd do
-  for ty in [`I8, `I16, `I32, `I64, `I128, `Isize] do
-    Lean.Elab.Command.elabCommand (← `(
-      uscalar instance : ResultShiftRight «%S» $(mkIdent ty) where
-        shiftRight x y :=
-          if 0 ≤ y.toInt ∧ y.toInt < %BitWidth
-          then ok ⟨ x.toBitVec.ushiftRight y.toNat ⟩
-          else fail .integerOverflow
-    ))
-    Lean.Elab.Command.elabCommand (← `(
-      iscalar instance : ResultShiftRight «%S» $(mkIdent ty) where
-        shiftRight x y :=
-          if 0 ≤ y.toInt ∧ y.toInt < %BitWidth
-          then ok ⟨ x.toBitVec.sshiftRight y.toNat ⟩
-          else fail .integerOverflow
-    ))
+iuscalar instance : ResultShiftRight «%S1» «%S2» where
+  shiftRight x y :=
+    if y.toNat < %BitWidth1
+    then ok ⟨ x.toBitVec.sshiftRight y.toNat ⟩
+    else fail .integerOverflow
+
+uiscalar instance : ResultShiftRight «%S1» «%S2» where
+  shiftRight x y :=
+    if 0 ≤ y.toInt ∧ y.toInt < %BitWidth1
+    then ok ⟨ x.toBitVec.ushiftRight y.toNat ⟩
+    else fail .integerOverflow
+
+iiscalar instance : ResultShiftRight «%S1» «%S2» where
+  shiftRight x y :=
+    if 0 ≤ y.toInt ∧ y.toInt < %BitWidth1
+    then ok ⟨ x.toBitVec.sshiftRight y.toNat ⟩
+    else fail .integerOverflow
 
 /-!
 Bitwise logical operations
@@ -112,73 +98,48 @@ scalar instance : Complement «%S» where
 ## Bit shifts
 -/
 
-open Lean in
-set_option hygiene false in
-run_cmd do
-  for ty in [`U8, `U16, `U32, `U64, `U128, `Usize] do
-    Lean.Elab.Command.elabCommand (← `(
-      uscalar @[step] theorem $(mkIdent s!"«%S».ShiftRight_{ty.toString}_spec".toName) (x : «%S») (y : $(mkIdent ty))
-        (hy : y.toNat < %BitWidth) :
-        (x >>>? y) ⦃ z =>
-        z.toNat = x.toNat >>> y.toNat ∧
-        z.toBitVec = x.toBitVec >>> y.toNat ⦄
-        := by
-        simp only [spec_ok, ResultShiftRight.shiftRight,
-          hy, reduceIte, «%S».size, numBits, UScalarTy.numBits]
-        simp only [BitVec.ushiftRight_eq, toNat]
-        simp only [BitVec.toNat_ushiftRight, toBitVec_toNat, and_true]
-    ))
+uuscalar @[step] theorem «%S1».ShiftRight_'S2_spec (x : «%S1») (y : «%S2»)
+  (hy : y.toNat < %BitWidth1) :
+  (x >>>? y) ⦃ z =>
+  z.toNat = x.toNat >>> y.toNat ∧
+  z.toBitVec = x.toBitVec >>> y.toNat ⦄
+  := by
+  simp only [spec_ok, ResultShiftRight.shiftRight, hy, reduceIte]
+  simp only [BitVec.ushiftRight_eq, toNat]
+  simp only [BitVec.toNat_ushiftRight, toBitVec_toNat, and_true]
 
-open Lean in
-set_option hygiene false in
-run_cmd do
-  for ty in [`I8, `I16, `I32, `I64, `I128, `Isize] do
-    Lean.Elab.Command.elabCommand (← `(
-      uscalar @[step] theorem $(mkIdent s!"«%S».ShiftRight_{ty.toString}_spec".toName) (x : «%S») (y : $(mkIdent ty))
-        (hy0 : 0 ≤ y.toInt) (hy1 : y.toInt < %BitWidth) :
-        (x >>>? y) ⦃ z =>
-        z.toNat = x.toNat >>> y.toNat ∧
-        z.toBitVec = x.toBitVec >>> y.toNat ⦄
-        := by
-        simp only [ResultShiftRight.shiftRight, hy0, hy1, and_self, ↓reduceIte, I8.toNat,
-          spec_ok, and_true]
-        simp only [BitVec.ushiftRight_eq, toNat, Nat.instShiftRight]
-        simp only [IScalar.toNat, BitVec.toNat_ushiftRight, toBitVec_toNat, and_self]
-    ))
+uiscalar @[step] theorem «%S1».ShiftRight_'S2_spec (x : «%S1») (y : «%S2»)
+  (hy0 : 0 ≤ y.toInt) (hy1 : y.toInt < %BitWidth1) :
+  (x >>>? y) ⦃ z =>
+  z.toNat = x.toNat >>> y.toNat ∧
+  z.toBitVec = x.toBitVec >>> y.toNat ⦄
+  := by
+  simp only [ResultShiftRight.shiftRight, hy0, hy1, and_self, ↓reduceIte, I8.toNat,
+    spec_ok]
+  simp only [BitVec.ushiftRight_eq, toNat, Nat.instShiftRight]
+  simp only [BitVec.toNat_ushiftRight, toBitVec_toNat, and_self]
 
-open Lean in
-set_option hygiene false in
-run_cmd do
-  for ty in [`U8, `U16, `U32, `U64, `U128, `Usize] do
-    Lean.Elab.Command.elabCommand (← `(
-      uscalar @[step] theorem $(mkIdent s!"«%S».ShiftLeft_{ty.toString}_spec".toName) (x : «%S») (y : $(mkIdent ty))
-        (hy : y.toNat < %BitWidth) :
-        (x <<<? y) ⦃ z =>
-        z.toNat = (x.toNat <<< y.toNat) % «%S».size ∧
-        z.toBitVec = x.toBitVec <<< y.toNat ⦄
-        := by
-        simp only [spec_ok, ResultShiftLeft.shiftLeft, hy, reduceIte,
-          «%S».size, numBits, UScalarTy.numBits]
-        simp only [BitVec.shiftLeft_eq, toNat, UScalarTy.numBits]
-        simp only [toBitVec_toNat, BitVec.toNat_shiftLeft, and_self]
-    ))
+uuscalar @[step] theorem «%S1».ShiftLeft_'S2_spec (x : «%S1») (y : «%S2»)
+  (hy : y.toNat < %BitWidth1) :
+  (x <<<? y) ⦃ z =>
+  z.toNat = (x.toNat <<< y.toNat) % «%S1».size ∧
+  z.toBitVec = x.toBitVec <<< y.toNat ⦄
+  := by
+  simp only [spec_ok, ResultShiftLeft.shiftLeft, hy, reduceIte,
+    «%S1».size, numBits, UScalarTy.numBits]
+  simp only [BitVec.shiftLeft_eq, toNat, UScalarTy.numBits]
+  simp only [toBitVec_toNat, BitVec.toNat_shiftLeft, and_self]
 
-open Lean in
-set_option hygiene false in
-run_cmd do
-  for ty in [`I8, `I16, `I32, `I64, `I128, `Isize] do
-    Lean.Elab.Command.elabCommand (← `(
-      uscalar @[step] theorem $(mkIdent s!"«%S».ShiftLeft_{ty.toString}_spec".toName) (x : «%S») (y : $(mkIdent ty))
-        (hy0 : 0 ≤ y.toInt) (hy1 : y.toInt < %BitWidth) :
-        (x <<<? y) ⦃ z =>
-        z.toNat = (x.toNat <<< y.toNat) % «%S».size ∧
-        z.toBitVec = x.toBitVec <<< y.toNat ⦄
-        := by
-        simp only [ResultShiftLeft.shiftLeft, hy0, hy1, and_self, ↓reduceIte, I8.toNat,
-          size, numBits, UScalarTy.numBits, Nat.reducePow, spec_ok, and_true]
-        simp only [BitVec.shiftLeft_eq, toNat, UScalarTy.numBits]
-        simp only [IScalar.toNat, BitVec.toNat_shiftLeft, toBitVec_toNat, and_self]
-    ))
+uiscalar @[step] theorem «%S1».ShiftLeft_'S2_spec (x : «%S1») (y : «%S2»)
+  (hy0 : 0 ≤ y.toInt) (hy1 : y.toInt < %BitWidth1) :
+  (x <<<? y) ⦃ z =>
+  z.toNat = (x.toNat <<< y.toNat) % «%S1».size ∧
+  z.toBitVec = x.toBitVec <<< y.toNat ⦄
+  := by
+  simp only [ResultShiftLeft.shiftLeft, hy0, hy1, and_self, ↓reduceIte, I8.toNat,
+    size, numBits, UScalarTy.numBits, Nat.reducePow, spec_ok]
+  simp only [BitVec.shiftLeft_eq, toNat, UScalarTy.numBits]
+  simp only [BitVec.toNat_shiftLeft, toBitVec_toNat, and_self]
 
 /-!
 ## Bitwise And, Or

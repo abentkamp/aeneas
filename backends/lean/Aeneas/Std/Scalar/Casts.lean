@@ -17,28 +17,24 @@ class ScalarCast (α β : Type) where
 
 attribute [step_pure_def] ScalarCast.cast
 
-open Lean in
-set_option hygiene false in
-run_cmd do
- for ty in [`U8, `U16, `U32, `U64, `U128, `Usize] do
-    /- When casting from unsigned integers, we truncate or **zero**-extend the integer. -/
-    Lean.Elab.Command.elabCommand (← `(
-      scalar @[step_pure_def] instance : ScalarCast $(mkIdent ty) «%S» where
-        cast x :=
-          -- This truncates the integer if the numBits is smaller
-          .ofBitVec (x.toBitVec.zeroExtend %BitWidth)
-    ))
+/- When casting from unsigned integers, we truncate or **zero**-extend the integer. -/
+uuscalar @[step_pure_def] instance : ScalarCast «%S2» «%S1» where
+  cast x :=
+    -- This truncates the integer if the numBits is smaller
+    .ofBitVec (x.toBitVec.zeroExtend %BitWidth1)
 
-open Lean in
-set_option hygiene false in
-run_cmd do
- for ty in [`I8, `I16, `I32, `I64, `I128, `Isize] do
-    /- When casting from signed integers, we truncate or **sign**-extend. -/
-    Lean.Elab.Command.elabCommand (← `(
-      scalar @[step_pure_def] instance : ScalarCast $(mkIdent ty) «%S» where
-        cast x :=
-          .ofBitVec (x.toBitVec.signExtend %BitWidth)
-    ))
+iuscalar @[step_pure_def] instance : ScalarCast «%S2» «%S1» where
+  cast x :=
+    .ofBitVec (x.toBitVec.zeroExtend %BitWidth1)
+
+/- When casting from signed integers, we truncate or **sign**-extend. -/
+uiscalar @[step_pure_def] instance : ScalarCast «%S2» «%S1» where
+  cast x :=
+    .ofBitVec (x.toBitVec.signExtend %BitWidth1)
+
+iiscalar @[step_pure_def] instance : ScalarCast «%S2» «%S1» where
+  cast x :=
+    .ofBitVec (x.toBitVec.signExtend %BitWidth1)
 
 section
     /-! Checking that the semantics of casts are correct by using the examples given by the Rust reference. -/
@@ -228,30 +224,18 @@ theorem U64.cast_Usize_toNat_eq (x : U64) (h : System.Platform.numBits = 64) :
     (ScalarCast.cast Usize x).toNat = x.toNat := by
   simp [cast_Usize_toNat_eq_mod]; scalar_tac
 
-open Lean in
-set_option hygiene false in
-run_cmd do
-  for ty in [`U8, `U16, `U32, `U64, `U128, `Usize] do
-    Lean.Elab.Command.elabCommand (← `(
-      uscalar @[simp]
-      theorem $(mkIdent s!"{ty.toString}.cast_'S_toNat_mod_pow_of_inBounds_eq".toName)
-        (x : $(mkIdent ty)) (h : x.toNat < 2^%BitWidth) :
-        (ScalarCast.cast «%S» x).toNat = x.toNat := by
-        simp [cast_U8_toNat_eq_mod, cast_U16_toNat_eq_mod, cast_U32_toNat_eq_mod,
-          cast_U64_toNat_eq_mod, cast_U128_toNat_eq_mod, cast_Usize_toNat_eq_mod]
-        try cases System.Platform.numBits_eq <;> scalar_tac
-    ))
+uuscalar @[simp]
+theorem «%S2».cast_'S1_toNat_mod_pow_of_inBounds_eq
+  (x : «%S2») (h : x.toNat < 2^%BitWidth1) :
+  (ScalarCast.cast «%S1» x).toNat = x.toNat := by
+  simp [cast_U8_toNat_eq_mod, cast_U16_toNat_eq_mod, cast_U32_toNat_eq_mod,
+    cast_U64_toNat_eq_mod, cast_U128_toNat_eq_mod, cast_Usize_toNat_eq_mod]
+  try cases System.Platform.numBits_eq <;> scalar_tac
 
-open Lean in
-set_option hygiene false in
-run_cmd do
-  for ty in [`U8, `U16, `U32, `U64, `U128, `Usize] do
-    Lean.Elab.Command.elabCommand (← `(
-      uscalar @[simp]
-      theorem $(mkIdent s!"{ty.toString}.cast_'S_toBitVec_eq".toName) (x : $(mkIdent ty)) :
-        (ScalarCast.cast «%S» x).toBitVec = x.toBitVec.setWidth %BitWidth := by
-        simp [ScalarCast.cast]
-    ))
+uuscalar @[simp]
+theorem «%S2».cast_'S1_toBitVec_eq (x : «%S2») :
+  (ScalarCast.cast «%S1» x).toBitVec = x.toBitVec.setWidth %BitWidth1 := by
+  simp [ScalarCast.cast]
 
 example (x : U16) : (ScalarCast.cast U32 x).toNat = x.toNat := by simp
 example : (ScalarCast.cast U16 (U32.ofNat 42)).toNat = 42 := by simp
@@ -263,24 +247,17 @@ iiscalar theorem «%S1».cast_'S2_toInt_eq (x : «%S1») :
     simp only [IScalarTy.numBits, BitVec.toInt_signExtend, «%S2».toInt_ofBitVec,
       «%S2».toBitVec_ofBitVec]
 
-open Lean in
-set_option hygiene false in
-run_cmd do
-  for ty1 in [`I8, `I16, `I32, `I64, `I128, `Isize] do
-    for ty2 in [`I8, `I16, `I32, `I64, `I128, `Isize] do
-      Lean.Elab.Command.elabCommand (← `(
-        @[simp] theorem $(mkIdent s!"{ty1.toString}.cast_{ty2.toString}_toInt_mod_pow_greater_numBits".toName)
-          (x : $(mkIdent ty1)) (h : $(mkIdent (ty1 ++ `numBits)) ≤ $(mkIdent (ty2 ++ `numBits))) :
-          (ScalarCast.cast $(mkIdent ty2) x).toInt = x.toInt := by
-          simp [cast_I8_toInt_eq, cast_I16_toInt_eq, cast_I32_toInt_eq,
-            cast_I64_toInt_eq, cast_I128_toInt_eq, cast_Isize_toInt_eq]
-          have hBounds := x.hBounds
-          try simp [h]
-          have := System.Platform.numBits_pos
-          have : numBits = numBits - 1 + 1 := by rw [numBits_eq] <;> omega
-          rw [this]
-          apply Int.bmod_pow2_eq_of_inBounds <;> omega
-      ))
+iiscalar @[simp] theorem «%S2».cast_'S1_toInt_mod_pow_greater_numBits
+  (x : «%S2») (h : «%S2».numBits ≤ «%S1».numBits) :
+  (ScalarCast.cast «%S1» x).toInt = x.toInt := by
+  simp [cast_I8_toInt_eq, cast_I16_toInt_eq, cast_I32_toInt_eq,
+    cast_I64_toInt_eq, cast_I128_toInt_eq, cast_Isize_toInt_eq]
+  have hBounds := x.hBounds
+  try simp [h]
+  have := System.Platform.numBits_pos
+  have : numBits = numBits - 1 + 1 := by rw [numBits_eq] <;> omega
+  rw [this]
+  apply Int.bmod_pow2_eq_of_inBounds <;> omega
 
 iiscalar @[simp]
 theorem «%S1».cast_'S2_toInt_mod_pow_inBounds (x : «%S1»)
