@@ -110,8 +110,8 @@ uiscalar
 theorem «%S1».cast_'S2_inBounds_spec
   (x : «%S2») (h : 0 ≤ x.toInt ∧ x.toInt ≤ «%S1».max) :
   lift (ScalarCast.cast «%S1» x) ⦃ y => y.toNat = x.toInt ⦄ := by
-    simp only [lift, ScalarCast.cast, BitVec.signExtend, IScalar.toBitVec_toInt_eq, WP.spec_ok]
-    simp only [IScalar.toInt, toNat, UScalarTy.numBits]
+    simp only [lift, ScalarCast.cast, BitVec.signExtend, «%S2».toBitVec_toInt_eq, WP.spec_ok]
+    simp only [«%S2».toInt, toNat, UScalarTy.numBits]
     simp only [IScalarTy.I16_numBits_eq, I16.toBitVec_toInt_eq, toBitVec_ofBitVec,
       BitVec.toNat_ofInt, Nat.reducePow, Nat.cast_ofNat, Int.ofNat_toNat, max] at *
     rw [numBits_eq] at *
