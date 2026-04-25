@@ -332,29 +332,14 @@ grind_pattern Isize.bounds_eq => Isize.min
 grind_pattern [agrind] Isize.bounds_eq => Isize.max
 grind_pattern [agrind] Isize.bounds_eq => Isize.min
 
-theorem UScalar.rMax_eq_max (ty : UScalarTy) : UScalar.rMax ty = UScalar.max ty := by
-  cases ty <;>
-  simp_bounds
-
 uscalar theorem «%S».rMax_eq_max : rMax = max := by simp_bounds
-
-theorem IScalar.rbound_eq_bound (ty : IScalarTy) :
-  IScalar.rMin ty = IScalar.min ty ∧ IScalar.rMax ty = IScalar.max ty := by
-  cases ty <;> split_conjs <;>
-  simp_bounds
 
 iscalar theorem «%S».rbound_eq_bound :
   rMin = «%S».min ∧ rMax = max := by
   split_conjs <;> simp_bounds
 
-theorem IScalar.rMin_eq_min (ty : IScalarTy) : IScalar.rMin ty = IScalar.min ty := by
-  apply (IScalar.rbound_eq_bound ty).left
-
 iscalar theorem «%S».rMin_eq_min : rMin = min := by
   apply «%S».rbound_eq_bound.left
-
-theorem IScalar.rMax_eq_max (ty : IScalarTy) : IScalar.rMax ty = IScalar.max ty := by
-  apply (IScalar.rbound_eq_bound ty).right
 
 iscalar theorem «%S».rMax_eq_max : rMax = max := by
   apply «%S».rbound_eq_bound.right
@@ -727,12 +712,6 @@ uscalar theorem «%S».check_bounds_imp_inBounds {x : Nat}
   «%S».inBounds x := by
   simp at *; apply h
 
-theorem UScalar.check_bounds_eq_inBounds (ty : UScalarTy) (x : Nat) :
-  UScalar.check_bounds ty x ↔ UScalar.inBounds ty x := by
-  constructor <;> intro h
-  . apply (check_bounds_imp_inBounds h)
-  . simp_all
-
 uscalar theorem  «%S».check_bounds_eq_inBounds (x : Nat) :
   «%S».check_bounds x ↔ «%S».inBounds x := by
   constructor <;> intro h
@@ -748,12 +727,6 @@ iscalar theorem «%S».check_bounds_imp_inBounds {x : Int}
   (h: «%S».check_bounds x) :
   «%S».inBounds x := by
   simp at *; apply h
-
-theorem IScalar.check_bounds_eq_inBounds (ty : IScalarTy) (x : Int) :
-  IScalar.check_bounds ty x ↔ IScalar.inBounds ty x := by
-  constructor <;> intro h
-  . apply (check_bounds_imp_inBounds h)
-  . simp_all
 
 iscalar theorem «%S».check_bounds_eq_inBounds (x : Int) :
   «%S».check_bounds x ↔ «%S».inBounds x := by
@@ -793,15 +766,6 @@ iscalar def «%S».tryMkOpt (x : Int) : Option «%S» :=
 iscalar def «%S».tryMk (x : Int) : Result «%S» :=
   Result.ofOption (tryMkOpt x) integerOverflow
 
-theorem UScalar.tryMkOpt_eq (ty : UScalarTy) (x : Nat) :
-  match tryMkOpt ty x with
-  | some y => y.toNat = x ∧ inBounds ty x
-  | none => ¬ (inBounds ty x) := by
-  simp [tryMkOpt, ofNatCore]
-  have h := check_bounds_eq_inBounds ty x
-  split_ifs <;> simp_all
-  simp [UScalar.toNat, UScalarTy.numBits] at *
-
 uscalar theorem «%S».tryMkOpt_eq (x : Nat) :
   match tryMkOpt x with
   | some y => y.toNat = x ∧ inBounds x
@@ -811,15 +775,6 @@ uscalar theorem «%S».tryMkOpt_eq (x : Nat) :
   split_ifs <;> simp_all
   simp [toNat] at *
 
-theorem UScalar.tryMk_eq (ty : UScalarTy) (x : Nat) :
-  match tryMk ty x with
-  | ok y => y.toNat = x ∧ inBounds ty x
-  | fail _ => ¬ (inBounds ty x)
-  | _ => False := by
-  have := UScalar.tryMkOpt_eq ty x
-  simp [tryMk, ofOption]
-  cases h: tryMkOpt ty x <;> simp_all
-
 uscalar theorem «%S».tryMk_eq (x : Nat) :
   match tryMk x with
   | ok y => y.toNat = x ∧ inBounds x
@@ -828,19 +783,6 @@ uscalar theorem «%S».tryMk_eq (x : Nat) :
   have := tryMkOpt_eq x
   simp [tryMk, ofOption]
   cases h: tryMkOpt x <;> simp_all
-
-theorem IScalar.tryMkOpt_eq (ty : IScalarTy) (x : Int) :
-  match tryMkOpt ty x with
-  | some y => y.toInt = x ∧ inBounds ty x
-  | none => ¬ (inBounds ty x) := by
-  simp [tryMkOpt, ofIntCore]
-  have h := check_bounds_eq_inBounds ty x
-  split_ifs <;> simp_all
-  simp [IScalar.toInt, IScalarTy.numBits] at *
-  cases ty <;>
-  simp_all [] <;>
-  simp [Int.bmod] <;> split <;> (try omega) <;>
-  cases h: System.Platform.numBits_eq <;> simp_all <;> omega
 
 iscalar theorem «%S».tryMkOpt_eq (x : Int) :
   match tryMkOpt x with
@@ -852,15 +794,6 @@ iscalar theorem «%S».tryMkOpt_eq (x : Int) :
   simp [toInt] at *
   simp [Int.bmod]; split <;> (try omega) <;>
   cases h: System.Platform.numBits_eq <;> simp_all <;> omega
-
-theorem IScalar.tryMk_eq (ty : IScalarTy) (x : Int) :
-  match tryMk ty x with
-  | ok y => y.toInt = x ∧ inBounds ty x
-  | fail _ => ¬ (inBounds ty x)
-  | _ => False := by
-  have := tryMkOpt_eq ty x
-  simp [tryMk]
-  cases h : tryMkOpt ty x <;> simp_all
 
 iscalar theorem «%S».tryMk_eq (x : Int) :
   match «%S».tryMk x with
@@ -960,17 +893,8 @@ iscalar theorem «%S».min_lt_max : «%S».min < «%S».max := by
   have : (0 : Int) < 2 ^ (System.Platform.numBits - 1) := by simp
   simp [«%S».min, «%S».max]; (try simp_bounds) <;> omega
 
-theorem IScalar.min_lt_max (ty : IScalarTy) : IScalar.min ty < IScalar.max ty := by
-  cases ty <;> simp [IScalar.min, IScalar.max] <;> (try simp_bounds)
-  have : (0 : Int) < 2 ^ (System.Platform.numBits - 1) := by simp
-  omega
-
 iscalar theorem «%S».min_le_max : «%S».min ≤ «%S».max := by
   have := «%S».min_lt_max
-  scalar_tac
-
-theorem IScalar.min_le_max (ty : IScalarTy) : IScalar.min ty ≤ IScalar.max ty := by
-  have := IScalar.min_lt_max ty
   scalar_tac
 
 uscalar_no_usize @[reducible] def core.num.«%S».MIN : «%S» := «%S».ofNat 0
