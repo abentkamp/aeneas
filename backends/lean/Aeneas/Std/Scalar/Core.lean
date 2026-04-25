@@ -905,26 +905,12 @@ theorem «%S».ofNatCore_toNat_eq {x} (h) :
   («%S».ofNatCore x h).toNat = x := by
   simp [ofNatCore, toNat]
 
-@[simp, scalar_tac_simps, simp_scalar_safe, bvify, grind =, agrind =]
-theorem UScalar.ofNatCore_toNat_eq {ty : UScalarTy} (h : x < 2^ty.numBits) :
-  (UScalar.ofNatCore x h).toNat = x := by
-  simp [UScalar.ofNatCore, UScalar.toNat]
-
 iscalar @[simp, scalar_tac_simps, bvify, grind =, agrind =]
 theorem «%S».ofInt_toInt_eq (h : -2^(numBits-1) ≤ x ∧ x < 2^(numBits-1)) :
   («%S».ofIntCore x h).toInt = x := by
   simp [«%S».ofIntCore, toInt]
   simp_all [numBits_def];
   simp [Int.bmod]; split <;> (try omega) <;>
-  cases h: System.Platform.numBits_eq <;> simp_all <;> omega
-
-@[simp, scalar_tac_simps, simp_scalar_safe, bvify, grind! ., agrind! .]
-theorem IScalar.ofInt_toInt_eq {ty : IScalarTy} (h : - 2^(ty.numBits - 1) ≤ x ∧ x < 2^(ty.numBits - 1)) :
-  (IScalar.ofIntCore x h).toInt = x := by
-  simp [IScalar.ofIntCore, IScalar.toInt]
-  cases ty <;>
-  simp_all <;>
-  simp [Int.bmod] <;> split <;> (try omega) <;>
   cases h: System.Platform.numBits_eq <;> simp_all <;> omega
 
 theorem UScalar.eq_equiv_toBitVec_eq {ty : UScalarTy} (x y : UScalar ty) :
@@ -1373,15 +1359,13 @@ theorem «%S».coe_max (a b : «%S»): ↑(Max.max a b) = (Max.max (↑a) (↑b)
 
 uscalar theorem «%S».zero_le (x: «%S»): «%S».ofNat 0 (by simp) ≤ x := by simp
 
-theorem UScalar.zero_le {ty} (x: UScalar ty): UScalar.ofNat 0 (by simp) ≤ x := by simp
-
 uscalar @[simp]
 theorem «%S».max_left_zero_eq (x : «%S»):
-  Max.max («%S».ofNat 0 (by simp)) x = x := max_eq_right (UScalar.zero_le x)
+  Max.max («%S».ofNat 0 (by simp)) x = x := max_eq_right («%S».zero_le x)
 
 uscalar @[simp]
 theorem «%S».max_right_zero_eq (x : «%S»):
-  Max.max x («%S».ofNat 0 (by simp)) = x := max_eq_left (UScalar.zero_le x)
+  Max.max x («%S».ofNat 0 (by simp)) = x := max_eq_left («%S».zero_le x)
 
 /-! Some conversions -/
 @[simp, scalar_tac_simps, simp_scalar_safe, bvify, grind, agrind] abbrev IScalar.toNat {ty} (x : IScalar ty) : Nat := x.toInt.toNat

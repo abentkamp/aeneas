@@ -173,9 +173,6 @@ deriving Inhabited
 structure Stats extends Goals where
   usedTheorem : UsedTheorem
 
-attribute [step_post_simps]
-  Std.IScalar.toNat Std.UScalar.ofNatCore_toNat_eq Std.IScalar.ofInt_toInt_eq
-
 open Std ScalarElab in
 uscalar attribute [step_post_simps] «%S».ofNatCore_toNat_eq
 
