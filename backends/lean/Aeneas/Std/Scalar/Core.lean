@@ -913,10 +913,6 @@ theorem «%S».ofInt_toInt_eq (h : -2^(numBits-1) ≤ x ∧ x < 2^(numBits-1)) :
   simp [Int.bmod]; split <;> (try omega) <;>
   cases h: System.Platform.numBits_eq <;> simp_all <;> omega
 
-theorem UScalar.eq_equiv_toBitVec_eq {ty : UScalarTy} (x y : UScalar ty) :
-    x = y ↔ x.toBitVec = y.toBitVec := by
-  cases x; cases y; simp
-
 uscalar @[bvify] theorem «%S».eq_equiv_toBitVec_eq (x y : «%S») :
     x = y ↔ x.toBitVec = y.toBitVec := by
   cases x; cases y; simp
@@ -936,10 +932,6 @@ theorem UScalar.ofNatCore_toBitVec {ty : UScalarTy} (x : Nat) h :
 uscalar @[simp, scalar_tac_simps, simp_scalar_safe, bvify, grind =, agrind =]
 theorem «%S».ofNat_toBitVec (x : Nat) (h) : («%S».ofNat x h).toBitVec = BitVec.ofNat _ x := by
   apply «%S».ofNatCore_toBitVec
-
-theorem IScalar.eq_equiv_toBitVec_eq {ty : IScalarTy} (x y : IScalar ty) :
-    x = y ↔ x.toBitVec = y.toBitVec := by
-  cases x; cases y; simp
 
 iscalar @[bvify] theorem «%S».eq_equiv_toBitVec_eq (x y : «%S») :
     x = y ↔ x.toBitVec = y.toBitVec := by

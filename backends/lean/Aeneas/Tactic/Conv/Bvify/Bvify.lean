@@ -225,8 +225,7 @@ syntax (name := bvify_saturate) "bvify_saturate" colGe term : tactic
 Some theorems which automatically lift comparisons between machine scalars, without needing the number of bits to be provided by the user.
 -/
 
-attribute [bvify] UScalar.eq_equiv_toBitVec_eq IScalar.eq_equiv_toBitVec_eq
-                        gt_iff_lt ge_iff_le true_and and_true
+attribute [bvify] gt_iff_lt ge_iff_le true_and and_true
 
 uscalar @[bvify] theorem «%S».lt_equiv_toBitVec_lt (x y : «%S») : x < y ↔ x.toBitVec < y.toBitVec := by rfl
 
