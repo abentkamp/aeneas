@@ -445,10 +445,6 @@ theorem «%S».hBounds (x : «%S») : x.toNat < 2^«%S».numBits := by
   cases h: x.toBitVec
   simp only [toNat, h, BitVec.toNat_ofFin, Fin.is_lt, numBits_def]
 
-theorem UScalar.hSize {ty} (x : UScalar ty) : x.toNat < UScalar.size ty := by
-  cases h: x.toBitVec
-  simp [h, toNat, size]
-
 uscalar theorem «%S».hSize (x : «%S») : x.toNat < «%S».size := by
   cases h: x.toBitVec
   simp [h, toNat, size, numBits_def]
@@ -479,17 +475,11 @@ uscalar theorem «%S».cMax_le_rMax : «%S».cMax ≤ «%S».rMax := by
   have := @Nat.pow_le_pow_right 2 (by simp) cNumBits numBits cNumBits_le
   omega
 
-theorem UScalar.hrBounds {ty} (x : UScalar ty) : x.toNat ≤ UScalar.rMax ty := by
-  have := UScalar.hBounds x
-  have := UScalar.rMax_eq_pow_numBits ty
-  omega
-
 uscalar theorem «%S».hrBounds (x : «%S») : x.toNat ≤ «%S».rMax := by
   have := hBounds x
   have := rMax_eq_pow_numBits
   omega
 
-theorem UScalar.hmax {ty} (x : UScalar ty) : x.toNat < 2^ty.numBits := x.hBounds
 
 uscalar theorem «%S».hmax (x : «%S») : x.toNat < 2^«%S».numBits := x.hBounds
 
@@ -576,18 +566,8 @@ theorem IScalar.cMax_le_rMax (ty : IScalarTy) : IScalar.cMax ty ≤ IScalar.rMax
   zify at this
   omega
 
-theorem IScalar.hrBounds {ty} (x : IScalar ty) :
-  IScalar.rMin ty ≤ x.toInt ∧ x.toInt ≤ IScalar.rMax ty := by
-  have := IScalar.hBounds x
-  have := IScalar.rMin_eq_pow_numBits ty
-  have := IScalar.rMax_eq_pow_numBits ty
-  omega
-
 iscalar def «%S».hmin (x : «%S») : -2^(numBits - 1) ≤ x.toInt := x.hBounds.left
 iscalar def «%S».hmax (x : «%S») : x.toInt < 2^(numBits - 1) := x.hBounds.right
-
-def IScalar.hmin {ty} (x : IScalar ty) : -2^(ty.numBits - 1) ≤ x.toInt := x.hBounds.left
-def IScalar.hmax {ty} (x : IScalar ty) : x.toInt < 2^(ty.numBits - 1) := x.hBounds.right
 
 scalar instance : BEq «%S» where
   beq a b := a.toBitVec = b.toBitVec
