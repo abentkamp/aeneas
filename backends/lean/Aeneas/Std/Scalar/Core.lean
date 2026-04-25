@@ -994,10 +994,6 @@ uscalar @[simp, scalar_tac_simps, simp_scalar_safe, grind =, agrind =]
 theorem «%S».default_toNat : (default : «%S»).toNat = 0 := by
   simp only [default]; simp
 
-@[simp, scalar_tac_simps, simp_scalar_safe, grind =, agrind =]
-theorem UScalar.default_toNat {ty} : (default : UScalar ty).toNat = 0 := by
-  simp only [default]; cases ty <;> simp
-
 uscalar @[simp, scalar_tac_simps, simp_scalar_safe, grind =, agrind =]
 theorem «%S».default_toBitVec : (default : «%S»).toBitVec = 0 := by
   simp only [default]; simp
@@ -1238,40 +1234,20 @@ theorem «%S».neq_to_neq_toNat :
   ∀ {i j : «%S»}, (¬ i = j) ↔ ¬ i.toNat = j.toNat := by
   simp [UScalar.eq_equiv, toNat, UScalar.toNat]
 
-@[simp, scalar_tac_simps]
-theorem UScalar.neq_to_neq_toNat {ty} :
-  ∀ {i j : UScalar ty}, (¬ i = j) ↔ ¬ i.toNat = j.toNat := by
-  simp [eq_equiv]
-
 iscalar @[simp, scalar_tac_simps]
 theorem «%S».neq_to_neq_toInt :
   ∀ {i j : «%S»}, (¬ i = j) ↔ ¬ i.toInt = j.toInt := by
   simp [IScalar.eq_equiv, toInt, IScalar.toInt]
-
-@[simp, scalar_tac_simps]
-theorem IScalar.neq_to_neq_toInt {ty} :
-  ∀ {i j : IScalar ty}, (¬ i = j) ↔ ¬ i.toInt = j.toInt := by
-  simp [eq_equiv]
 
 uscalar @[simp]
 theorem «%S».toNat_not_eq_imp_not_eq (x y : «%S») (h : Nat.not_eq x.toNat y.toNat) :
   ¬ x = y := by
   simp_all [toNat, UScalar.toNat]; scalar_tac
 
-@[simp]
-theorem UScalar.toNat_not_eq_imp_not_eq (x y : UScalar ty) (h : Nat.not_eq x.toNat y.toNat) :
-  ¬ x = y := by
-  simp_all; scalar_tac
-
 iscalar @[simp]
 theorem «%S».toInt_not_eq_imp_not_eq (x y : «%S») (h : Int.not_eq x.toInt y.toInt) :
   ¬ x = y := by
   simp_all [toInt, IScalar.toInt]; scalar_tac
-
-@[simp]
-theorem IScalar.toInt_not_eq_imp_not_eq (x y : IScalar ty) (h : Int.not_eq x.toInt y.toInt) :
-  ¬ x = y := by
-  simp_all; scalar_tac
 
 uscalar instance : Preorder «%S» where
   le_refl := fun a => by simp
@@ -1403,17 +1379,9 @@ uscalar @[simp]
 theorem «%S».max_left_zero_eq (x : «%S»):
   Max.max («%S».ofNat 0 (by simp)) x = x := max_eq_right (UScalar.zero_le x)
 
-@[simp]
-theorem UScalar.max_left_zero_eq {ty} (x : UScalar ty):
-  Max.max (UScalar.ofNat 0 (by simp)) x = x := max_eq_right (UScalar.zero_le x)
-
 uscalar @[simp]
 theorem «%S».max_right_zero_eq (x : «%S»):
   Max.max x («%S».ofNat 0 (by simp)) = x := max_eq_left (UScalar.zero_le x)
-
-@[simp]
-theorem UScalar.max_right_zero_eq {ty} (x : UScalar ty):
-  Max.max x (UScalar.ofNat 0 (by simp)) = x := max_eq_left (UScalar.zero_le x)
 
 /-! Some conversions -/
 @[simp, scalar_tac_simps, simp_scalar_safe, bvify, grind, agrind] abbrev IScalar.toNat {ty} (x : IScalar ty) : Nat := x.toInt.toNat
