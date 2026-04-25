@@ -1128,64 +1128,33 @@ instance IScalar.decLe {ty} (a b : IScalar ty) : Decidable (LE.le a b) := Int.de
 uscalar theorem «%S».eq_of_toNat_eq : ∀ {i j : «%S»}, Eq i.toNat j.toNat → Eq i j
   | ⟨_, _⟩, ⟨_, _⟩, rfl => rfl
 
-theorem UScalar.eq_of_toNat_eq {ty} : ∀ {i j : UScalar ty}, Eq i.toNat j.toNat → Eq i j
-  | ⟨_, _⟩, ⟨_, _⟩, rfl => rfl
-
 iscalar theorem «%S».eq_of_toInt_eq : ∀ {i j : «%S»}, Eq i.toInt j.toInt → Eq i j := by
   intro i j hEq
   cases i; cases j
   simp [toInt] at hEq; simp
   apply BitVec.eq_of_toInt_eq; assumption
 
-theorem IScalar.eq_of_toInt_eq {ty} : ∀ {i j : IScalar ty}, Eq i.toInt j.toInt → Eq i j := by
-  intro i j hEq
-  cases i; cases j
-  simp [IScalar.toInt] at hEq; simp
-  apply BitVec.eq_of_toInt_eq; assumption
-
 uscalar theorem «%S».toNat_eq_of_eq {i j : «%S»} (h : Eq i j) : Eq i.toNat j.toNat := h ▸ rfl
-
-theorem UScalar.toNat_eq_of_eq {ty} {i j : UScalar ty} (h : Eq i j) : Eq i.toNat j.toNat := h ▸ rfl
 
 iscalar theorem «%S».toInt_eq_of_eq {i j : «%S»} (h : Eq i j) : Eq i.toInt j.toInt := h ▸ rfl
 
-theorem IScalar.toInt_eq_of_eq {ty} {i j : IScalar ty} (h : Eq i j) : Eq i.toInt j.toInt := h ▸ rfl
-
-uscalar theorem  «%S».ne_of_toNat_ne {i j : «%S»} (h : Not (Eq i.toNat j.toNat)) : Not (Eq i j) :=
-  fun h' => absurd (UScalar.toNat_eq_of_eq h') h
-
-theorem UScalar.ne_of_toNat_ne {ty} {i j : UScalar ty} (h : Not (Eq i.toNat j.toNat)) : Not (Eq i j) :=
-  fun h' => absurd (UScalar.toNat_eq_of_eq h') h
+uscalar theorem «%S».ne_of_toNat_ne {i j : «%S»} (h : Not (Eq i.toNat j.toNat)) : Not (Eq i j) :=
+  fun h' => absurd («%S».toNat_eq_of_eq h') h
 
 iscalar theorem «%S».ne_of_toInt_ne {i j : «%S»} (h : Not (Eq i.toInt j.toInt)) : Not (Eq i j) :=
-  fun h' => absurd (IScalar.toInt_eq_of_eq h') h
-
-theorem IScalar.ne_of_toInt_ne {ty} {i j : IScalar ty} (h : Not (Eq i.toInt j.toInt)) : Not (Eq i j) :=
-  fun h' => absurd (IScalar.toInt_eq_of_eq h') h
+  fun h' => absurd («%S».toInt_eq_of_eq h') h
 
 uscalar instance : DecidableEq «%S» :=
   fun i j =>
     match decEq i.toNat j.toNat with
-    | isTrue h  => isTrue (UScalar.eq_of_toNat_eq h)
-    | isFalse h => isFalse (UScalar.ne_of_toNat_ne h)
-
-instance (ty : UScalarTy) : DecidableEq (UScalar ty) :=
-  fun i j =>
-    match decEq i.toNat j.toNat with
-    | isTrue h  => isTrue (UScalar.eq_of_toNat_eq h)
-    | isFalse h => isFalse (UScalar.ne_of_toNat_ne h)
+    | isTrue h  => isTrue («%S».eq_of_toNat_eq h)
+    | isFalse h => isFalse («%S».ne_of_toNat_ne h)
 
 iscalar instance : DecidableEq «%S» :=
   fun i j =>
     match decEq i.toInt j.toInt with
-    | isTrue h  => isTrue (IScalar.eq_of_toInt_eq h)
-    | isFalse h => isFalse (IScalar.ne_of_toInt_ne h)
-
-instance (ty : IScalarTy) : DecidableEq (IScalar ty) :=
-  fun i j =>
-    match decEq i.toInt j.toInt with
-    | isTrue h  => isTrue (IScalar.eq_of_toInt_eq h)
-    | isFalse h => isFalse (IScalar.ne_of_toInt_ne h)
+    | isTrue h  => isTrue («%S».eq_of_toInt_eq h)
+    | isFalse h => isFalse («%S».ne_of_toInt_ne h)
 
 uscalar @[simp, scalar_tac_simps]
 theorem «%S».neq_to_neq_toNat :
