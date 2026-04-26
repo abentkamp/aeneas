@@ -947,7 +947,6 @@ theorem «%S».max_right_zero_eq (x : «%S»):
   Max.max x («%S».ofNat 0 (by simp)) = x := max_eq_left («%S».zero_le x)
 
 /-! Some conversions -/
-@[simp, scalar_tac_simps, simp_scalar_safe, bvify, grind, agrind] abbrev IScalar.toNat {ty} (x : IScalar ty) : Nat := x.toInt.toNat
 @[simp, scalar_tac_simps, simp_scalar_safe, bvify, grind, agrind] abbrev I8.toNat      (x : I8) : Nat := x.toInt.toNat
 @[simp, scalar_tac_simps, simp_scalar_safe, bvify, grind, agrind] abbrev I16.toNat     (x : I16) : Nat := x.toInt.toNat
 @[simp, scalar_tac_simps, simp_scalar_safe, bvify, grind, agrind] abbrev I32.toNat     (x : I32) : Nat := x.toInt.toNat
