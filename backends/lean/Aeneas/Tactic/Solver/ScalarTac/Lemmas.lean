@@ -32,14 +32,14 @@ local macro_rules
 | `(tactic|simp_scalar_consts) =>
   `(tactic|
       simp [
-      UScalar.rMax, UScalar.max,
+      UScalar.max,
       Usize.rMax, Usize.rMax, Usize.max,
       U8.rMax, U8.max, U16.rMax, U16.max, U32.rMax, U32.max,
       U64.rMax, U64.max, U128.rMax, U128.max,
       U8.numBits_def, U16.numBits_def, U32.numBits_def, U64.numBits_def, U128.numBits_def, Usize.numBits_def,
       U8.size, U16.size, U32.size, U64.size, U128.size, Usize.size,
-      IScalar.rMax, IScalar.max,
-      IScalar.rMin, IScalar.min,
+      IScalar.max,
+      IScalar.min,
       Isize.rMax, Isize.rMax, Isize.max,
       I8.rMax, I8.max, I16.rMax, I16.max, I32.rMax, I32.max,
       I64.rMax, I64.max, I128.rMax, I128.max,
@@ -61,7 +61,7 @@ theorem Usize.max_succ_eq_pow : Usize.max + 1 = 2^System.Platform.numBits := by
 
 @[scalar_tac Usize.max]
 theorem Usize.cMax_bound : UScalar.cMax .Usize ≤ Usize.max ∧ Usize.max + 1 = 2^System.Platform.numBits := by
-  simp [Usize.max, UScalar.cMax, UScalar.rMax, U32.rMax, Usize.numBits]
+  simp [Usize.max, UScalar.cMax, U32.rMax, Usize.numBits]
   have := System.Platform.numBits_eq; cases this <;> simp [*]
 
 grind_pattern Usize.cMax_bound => Usize.max
@@ -96,7 +96,7 @@ grind_pattern [agrind] Usize.cMax_bound'' => Usize.maxAbbrevPow'
 
 @[scalar_tac Isize.min]
 theorem Isize.cMin_bound : Isize.min ≤ IScalar.cMin .Isize ∧ Isize.min = - 2^(System.Platform.numBits - 1) := by
-  simp [Isize.min, IScalar.cMin, IScalar.rMin, I32.rMin, Isize.numBits]
+  simp [Isize.min, IScalar.cMin, I32.rMin, Isize.numBits]
   have := System.Platform.numBits_eq; cases this <;> simp [*]
 
 grind_pattern Isize.cMin_bound => Isize.min
@@ -121,7 +121,7 @@ grind_pattern [agrind] Isize.cMin_bound'' => Isize.minAbbrevPow'
 
 @[scalar_tac Isize.max]
 theorem Isize.cMax_bound : IScalar.cMax .Isize ≤ Isize.max ∧ Isize.max + 1 = 2^(System.Platform.numBits - 1) := by
-  simp [Isize.numBits, Isize.max, IScalar.cMax, IScalar.rMax, I32.rMax]
+  simp [Isize.numBits, Isize.max, IScalar.cMax, I32.rMax]
   have := System.Platform.numBits_eq; cases this <;> simp [*]
 
 grind_pattern Isize.cMax_bound => Isize.max

@@ -205,33 +205,6 @@ def I128.rMax : Int := 170141183460469231731687303715884105727
 def Isize.rMin : Int := -2^(System.Platform.numBits - 1)
 def Isize.rMax : Int := 2^(System.Platform.numBits - 1)-1
 
-def UScalar.rMax (ty : UScalarTy) : Nat :=
-  match ty with
-  | .Usize => Usize.rMax
-  | .U8    => U8.rMax
-  | .U16   => U16.rMax
-  | .U32   => U32.rMax
-  | .U64   => U64.rMax
-  | .U128  => U128.rMax
-
-def IScalar.rMin (ty : IScalarTy) : Int :=
-  match ty with
-  | .Isize => Isize.rMin
-  | .I8    => I8.rMin
-  | .I16   => I16.rMin
-  | .I32   => I32.rMin
-  | .I64   => I64.rMin
-  | .I128  => I128.rMin
-
-def IScalar.rMax (ty : IScalarTy) : Int :=
-  match ty with
-  | .Isize => Isize.rMax
-  | .I8    => I8.rMax
-  | .I16   => I16.rMax
-  | .I32   => I32.rMax
-  | .I64   => I64.rMax
-  | .I128  => I128.rMax
-
 /-! # Theorems -/
 
 uscalar theorem «%S».numBits_nonzero : «%S».numBits ≠ 0 := by
@@ -240,10 +213,6 @@ uscalar theorem «%S».numBits_nonzero : «%S».numBits ≠ 0 := by
 iscalar theorem «%S».numBits_nonzero : «%S».numBits ≠ 0 := by
   simp [numBits_def]
   cases System.Platform.numBits_eq <;> grind [IScalarTy.numBits]
-
-theorem IScalarTy.numBits_nonzero (ty : IScalarTy) : ty.numBits ≠ 0 := by
-  cases ty <;> simp [numBits]
-  cases System.Platform.numBits_eq <;> simp_all
 
 @[defeq, simp, scalar_tac_simps, simp_scalar_safe, bvify, grind =, agrind =] theorem UScalarTy.U8_numBits_eq    : UScalarTy.U8.numBits    = 8 := by rfl
 @[defeq, simp, scalar_tac_simps, simp_scalar_safe, bvify, grind =, agrind =] theorem UScalarTy.U16_numBits_eq   : UScalarTy.U16.numBits   = 16 := by rfl
@@ -286,14 +255,14 @@ local macro_rules
 | `(tactic|simp_bounds) =>
   `(tactic|
       simp [
-      UScalar.rMax, UScalar.max,
+      UScalar.max,
       Usize.rMax, Usize.rMax, Usize.max,
       U8.rMax, U8.max, U16.rMax, U16.max, U32.rMax, U32.max,
       U64.rMax, U64.max, U128.rMax, U128.max,
       U8.numBits, U16.numBits, U32.numBits, U64.numBits, U128.numBits, Usize.numBits,
       U8.size, U16.size, U32.size, U64.size, U128.size, Usize.size,
-      IScalar.rMax, IScalar.max,
-      IScalar.rMin, IScalar.min,
+      IScalar.max,
+      IScalar.min,
       Isize.rMax, Isize.rMax, Isize.max,
       I8.rMax, I8.max, I16.rMax, I16.max, I32.rMax, I32.max,
       I64.rMax, I64.max, I128.rMax, I128.max,
@@ -365,23 +334,14 @@ def IScalarTy.cNumBits (ty : IScalarTy) : Nat :=
 iscalar_no_isize def «%S».cNumBits : Nat := «%S».numBits
 def Isize.cNumBits : Nat := I32.numBits
 
-theorem UScalarTy.cNumBits_le (ty : UScalarTy) : ty.cNumBits ≤ ty.numBits := by
-  cases ty <;> simp only [cNumBits, U32.numBits, numBits, System.Platform.le_numBits, le_refl]
-
 uscalar theorem «%S».cNumBits_le : «%S».cNumBits ≤ «%S».numBits := by
   simp only [cNumBits, U32.numBits, «%S».numBits_def, UScalarTy.numBits, System.Platform.le_numBits, le_refl]
-
-theorem IScalarTy.cNumBits_le (ty : IScalarTy) : ty.cNumBits ≤ ty.numBits := by
-  cases ty <;> simp only [cNumBits, I32.numBits, numBits, System.Platform.le_numBits, le_refl]
 
 iscalar theorem «%S».cNumBits_le : «%S».cNumBits ≤ «%S».numBits := by
   simp only [cNumBits, I32.numBits, numBits, IScalarTy.numBits, System.Platform.le_numBits, le_refl, numBits_def]
 
 uscalar theorem «%S».cNumBits_nonzero : «%S».cNumBits ≠ 0 := by
   simp [cNumBits, U32.numBits, numBits_def]
-
-theorem IScalarTy.cNumBits_nonzero (ty : IScalarTy) : ty.cNumBits ≠ 0 := by
-  cases ty <;> simp [cNumBits, I32.numBits]
 
 iscalar theorem «%S».cNumBits_nonzero : «%S».cNumBits ≠ 0 := by
   simp [cNumBits, I32.numBits, numBits_def]
@@ -436,24 +396,11 @@ uscalar theorem «%S».hSize (x : «%S») : x.toNat < «%S».size := by
   cases h: x.toBitVec
   simp [h, toNat, size, numBits_def]
 
-theorem UScalar.rMax_eq_pow_numBits (ty : UScalarTy) : UScalar.rMax ty = 2^ty.numBits - 1 := by
-  cases ty <;> simp [rMax] <;> simp_bounds
-
 uscalar theorem «%S».rMax_eq_pow_numBits :  «%S».rMax = 2 ^ «%S».numBits - 1 := by
   simp [rMax]; simp_bounds
 
-theorem UScalar.cMax_eq_pow_cNumBits (ty : UScalarTy) : UScalar.cMax ty = 2^ty.cNumBits - 1 := by
-  cases ty <;> simp [cMax, UScalarTy.cNumBits] <;> simp_bounds
-
 uscalar theorem «%S».cMax_eq_pow_cNumBits : «%S».cMax = 2^«%S».cNumBits - 1 := by
   simp [cMax, cNumBits]; simp_bounds
-
-theorem UScalar.cMax_le_rMax (ty : UScalarTy) : UScalar.cMax ty ≤ UScalar.rMax ty := by
-  have := rMax_eq_pow_numBits ty
-  have := cMax_eq_pow_cNumBits ty
-  have := ty.cNumBits_le
-  have := @Nat.pow_le_pow_right 2 (by simp) ty.cNumBits ty.numBits ty.cNumBits_le
-  omega
 
 uscalar theorem «%S».cMax_le_rMax : «%S».cMax ≤ «%S».rMax := by
   have := rMax_eq_pow_numBits
@@ -496,26 +443,14 @@ theorem IScalar.hBounds {ty} (x : IScalar ty) :
 iscalar theorem «%S».rMin_eq_pow_numBits : «%S».rMin = -2^(«%S».numBits - 1) := by
   simp [numBits_def]; simp_bounds
 
-theorem IScalar.rMin_eq_pow_numBits (ty : IScalarTy) : IScalar.rMin ty = -2^(ty.numBits - 1) := by
-  cases ty <;> simp <;> simp_bounds
-
 iscalar theorem «%S».rMax_eq_pow_numBits : «%S».rMax = 2^(«%S».numBits - 1) - 1 := by
   simp [rMax]; simp_bounds
-
-theorem IScalar.rMax_eq_pow_numBits (ty : IScalarTy) : IScalar.rMax ty = 2^(ty.numBits - 1) - 1 := by
-  cases ty <;> simp [rMax] <;> simp_bounds
 
 iscalar theorem «%S».cMin_eq_pow_cNumBits : «%S».cMin = -2^(«%S».cNumBits - 1) := by
   simp [cMin, cNumBits]; simp_bounds
 
-theorem IScalar.cMin_eq_pow_cNumBits (ty : IScalarTy) : IScalar.cMin ty = -2^(ty.cNumBits - 1) := by
-  cases ty <;> simp [cMin, IScalarTy.cNumBits] <;> simp_bounds
-
 iscalar theorem «%S».cMax_eq_pow_cNumBits : cMax = 2^(cNumBits - 1) - 1 := by
   simp [cMax, cNumBits]; simp_bounds
-
-theorem IScalar.cMax_eq_pow_cNumBits (ty : IScalarTy) : IScalar.cMax ty = 2^(ty.cNumBits - 1) - 1 := by
-  cases ty <;> simp [cMax, IScalarTy.cNumBits] <;> simp_bounds
 
 iscalar theorem «%S».rMin_le_cMin : «%S».rMin ≤ «%S».cMin := by
   have := rMin_eq_pow_numBits
@@ -526,30 +461,12 @@ iscalar theorem «%S».rMin_le_cMin : «%S».rMin ≤ «%S».cMin := by
   zify at this
   omega
 
-theorem IScalar.rMin_le_cMin (ty : IScalarTy) : IScalar.rMin ty ≤ IScalar.cMin ty := by
-  have := rMin_eq_pow_numBits ty
-  have := cMin_eq_pow_cNumBits ty
-  have := ty.cNumBits_le
-  have := ty.cNumBits_nonzero
-  have := @Nat.pow_le_pow_right 2 (by simp) (ty.cNumBits - 1) (ty.numBits - 1) (by omega)
-  zify at this
-  omega
-
 iscalar theorem «%S».cMax_le_rMax : «%S».cMax ≤ «%S».rMax := by
   have := rMax_eq_pow_numBits
   have := cMax_eq_pow_cNumBits
   have := cNumBits_le
   have := cNumBits_nonzero
   have := @Nat.pow_le_pow_right 2 (by simp) (cNumBits - 1) (numBits - 1) (by omega)
-  zify at this
-  omega
-
-theorem IScalar.cMax_le_rMax (ty : IScalarTy) : IScalar.cMax ty ≤ IScalar.rMax ty := by
-  have := rMax_eq_pow_numBits ty
-  have := cMax_eq_pow_cNumBits ty
-  have := ty.cNumBits_le
-  have := ty.cNumBits_nonzero
-  have := @Nat.pow_le_pow_right 2 (by simp) (ty.cNumBits - 1) (ty.numBits - 1) (by omega)
   zify at this
   omega
 
@@ -594,35 +511,12 @@ attribute [coe] UScalar.toNat IScalar.toInt
 uscalar attribute [coe] «%S».toNat
 iscalar attribute [coe] «%S».toInt
 
-theorem UScalar.bound_suffices (ty : UScalarTy) (x : Nat) :
-  x ≤ UScalar.cMax ty -> x < 2^ty.numBits
-  := by
-  intro h
-  have := UScalar.rMax_eq_pow_numBits ty
-  have : 0 < 2^ty.numBits := by simp
-  have := cMax_le_rMax ty
-  omega
-
 uscalar theorem «%S».bound_suffices (x : Nat) :
   x ≤ cMax -> x < 2^numBits := by
   intro h
   have := rMax_eq_pow_numBits
   have : 0 < 2^numBits := by simp
   have := cMax_le_rMax
-  omega
-
-theorem IScalar.bound_suffices (ty : IScalarTy) (x : Int) :
-  IScalar.cMin ty ≤ x ∧ x ≤ IScalar.cMax ty ->
-  -2^(ty.numBits - 1) ≤ x ∧ x < 2^(ty.numBits - 1)
-  := by
-  intro h
-  have := ty.cNumBits_nonzero
-  have := ty.numBits_nonzero
-  have := ty.cNumBits_le
-  have := IScalar.rMin_eq_pow_numBits ty
-  have := IScalar.rMax_eq_pow_numBits ty
-  have := rMin_le_cMin ty
-  have := cMax_le_rMax ty
   omega
 
 iscalar theorem «%S».bound_suffices (x : Int) :
@@ -668,17 +562,9 @@ uscalar @[reducible] def «%S».ofNat (x : Nat)
   (hInBounds : x ≤ «%S».cMax := by decide) : «%S» :=
   «%S».ofNatCore x («%S».bound_suffices x hInBounds)
 
-@[reducible] def UScalar.ofNat {ty : UScalarTy} (x : Nat)
-  (hInBounds : x ≤ UScalar.cMax ty := by decide) : UScalar ty :=
-  UScalar.ofNatCore x (UScalar.bound_suffices ty x hInBounds)
-
 iscalar @[reducible] def «%S».ofInt (x : Int)
   (hInBounds : «%S».cMin ≤ x ∧ x ≤ «%S».cMax := by decide) : «%S» :=
   «%S».ofIntCore x («%S».bound_suffices x hInBounds)
-
-@[reducible] def IScalar.ofInt {ty : IScalarTy} (x : Int)
-  (hInBounds : IScalar.cMin ty ≤ x ∧ x ≤ IScalar.cMax ty := by decide) : IScalar ty :=
-  IScalar.ofIntCore x (IScalar.bound_suffices ty x hInBounds)
 
 @[simp] abbrev UScalar.inBounds (ty : UScalarTy) (x : Nat) : Prop :=
   x < 2^ty.numBits
@@ -849,14 +735,8 @@ theorem «%S».ofInt_toBitVec (x : Int) h : («%S».ofInt x h).toBitVec = BitVec
 uscalar instance : Inhabited «%S» := by
   constructor; apply («%S».ofNat 0 (by simp))
 
-instance (ty : UScalarTy) : Inhabited (UScalar ty) := by
-  constructor; cases ty <;> apply (UScalar.ofNat 0 (by simp))
-
 iscalar instance : Inhabited «%S» := by
   constructor; apply («%S».ofInt 0 (by simp [«%S».cMin, «%S».cMax]; simp_bounds))
-
-instance (ty : IScalarTy) : Inhabited (IScalar ty) := by
-  constructor; cases ty <;> apply (IScalar.ofInt 0 (by simp [IScalar.cMin, IScalar.cMax, IScalar.rMin, IScalar.rMax]; simp_bounds))
 
 uscalar @[simp, scalar_tac_simps, simp_scalar_safe, grind =, agrind =]
 theorem «%S».default_toNat : (default : «%S»).toNat = 0 := by
