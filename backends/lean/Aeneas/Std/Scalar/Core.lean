@@ -331,38 +331,11 @@ uscalar theorem «%S».cNumBits_nonzero : «%S».cNumBits ≠ 0 := by
 iscalar theorem «%S».cNumBits_nonzero : «%S».cNumBits ≠ 0 := by
   simp [cNumBits, I32.numBits, numBits_def]
 
-def UScalar.cMax (ty : UScalarTy) : Nat :=
-  match ty with
-  | .Usize => U32.rMax
-  | .U8    => U8.rMax
-  | .U16   => U16.rMax
-  | .U32   => U32.rMax
-  | .U64   => U64.rMax
-  | .U128  => U128.rMax
-
 uscalar_no_usize def «%S».cMax : Nat := «%S».rMax
 def Usize.cMax : Nat := U32.rMax
 
-def IScalar.cMin (ty : IScalarTy) : Int :=
-  match ty with
-  | .Isize => I32.rMin
-  | .I8    => I8.rMin
-  | .I16   => I16.rMin
-  | .I32   => I32.rMin
-  | .I64   => I64.rMin
-  | .I128  => I128.rMin
-
 iscalar_no_isize def «%S».cMin : Int := «%S».rMin
 def Isize.cMin : Int := I32.rMin
-
-def IScalar.cMax (ty : IScalarTy) : Int :=
-  match ty with
-  | .Isize => I32.rMax
-  | .I8    => I8.rMax
-  | .I16   => I16.rMax
-  | .I32   => I32.rMax
-  | .I64   => I64.rMax
-  | .I128  => I128.rMax
 
 iscalar_no_isize def «%S».cMax : Int := «%S».rMax
 def Isize.cMax : Int := I32.rMax
