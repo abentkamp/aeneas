@@ -203,12 +203,6 @@ grind_pattern [agrind] Isize.cMax_bound'' => Isize.maxAbbrevPow'
 @[scalar_tac_simps] theorem Isize.cMin_eq : cMin = -2147483648 := by simp_scalar_consts
 @[scalar_tac_simps] theorem Isize.cMax_eq : cMax = 2147483647 := by simp_scalar_consts
 
-@[scalar_tac_simps]
-theorem UScalarTy.USize.numBits_eq : UScalarTy.Usize.numBits = System.Platform.numBits := by simp_scalar_consts
-
-@[scalar_tac_simps]
-theorem IScalarTy.ISize.numBits_eq : IScalarTy.Isize.numBits = System.Platform.numBits := by simp_scalar_consts
-
 attribute [scalar_tac_simps] Bool.toNat_false Bool.toNat_true
 
 end Std
