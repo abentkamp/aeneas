@@ -237,10 +237,6 @@ def IScalar.rMax (ty : IScalarTy) : Int :=
 uscalar theorem «%S».numBits_nonzero : «%S».numBits ≠ 0 := by
   simp [numBits_def, UScalarTy.numBits] <;> cases System.Platform.numBits_eq <;> simp_all
 
-theorem UScalarTy.numBits_nonzero (ty : UScalarTy) : ty.numBits ≠ 0 := by
-  cases ty <;> simp [numBits]
-  cases System.Platform.numBits_eq <;> simp_all
-
 iscalar theorem «%S».numBits_nonzero : «%S».numBits ≠ 0 := by
   simp [numBits_def]
   cases System.Platform.numBits_eq <;> grind [IScalarTy.numBits]
@@ -380,9 +376,6 @@ theorem IScalarTy.cNumBits_le (ty : IScalarTy) : ty.cNumBits ≤ ty.numBits := b
 
 iscalar theorem «%S».cNumBits_le : «%S».cNumBits ≤ «%S».numBits := by
   simp only [cNumBits, I32.numBits, numBits, IScalarTy.numBits, System.Platform.le_numBits, le_refl, numBits_def]
-
-theorem UScalarTy.cNumBits_nonzero (ty : UScalarTy) : ty.cNumBits ≠ 0 := by
-  cases ty <;> simp [cNumBits, U32.numBits]
 
 uscalar theorem «%S».cNumBits_nonzero : «%S».cNumBits ≠ 0 := by
   simp [cNumBits, U32.numBits, numBits_def]
