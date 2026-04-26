@@ -819,10 +819,6 @@ uscalar theorem «%S».ofNatCore_toBitVec (x : Nat) h :
   («%S».ofNatCore x h).toBitVec = BitVec.ofNat _ x := by
   congr; rw [Nat.mod_eq_of_lt]; rwa [numBits_def] at *
 
-theorem UScalar.ofNatCore_toBitVec {ty : UScalarTy} (x : Nat) h :
-  (@UScalar.ofNatCore ty x h).toBitVec = BitVec.ofNat _ x := by
-  simp only [ofNatCore, BitVec.ofNat, Fin.Internal.ofNat, Nat.mod_eq_of_lt h]
-
 uscalar @[simp, scalar_tac_simps, simp_scalar_safe, bvify, grind =, agrind =]
 theorem «%S».ofNat_toBitVec (x : Nat) (h) : («%S».ofNat x h).toBitVec = BitVec.ofNat _ x := by
   apply «%S».ofNatCore_toBitVec
@@ -838,11 +834,6 @@ iscalar @[ext, grind ext, agrind ext] theorem «%S».toBitVec_eq_imp_eq (x y : �
 iscalar theorem «%S».ofIntCore_toBitVec (x : Int) h :
   («%S».ofIntCore x h).toBitVec = BitVec.ofInt _ x := by
   simp only [ofIntCore, BitVec.ofInt, Int.ofNat_eq_natCast, Nat.cast_pow, Nat.cast_ofNat, IScalarTy.numBits, numBits]
-  congr
-
-theorem IScalar.ofIntCore_toBitVec {ty : IScalarTy} (x : Int) h :
-  (@IScalar.ofIntCore ty x h).toBitVec = BitVec.ofInt _ x := by
-  simp only [ofIntCore, BitVec.ofInt, Int.ofNat_eq_natCast, Nat.cast_pow, Nat.cast_ofNat]
   congr
 
 iscalar @[simp, scalar_tac_simps, simp_scalar_safe, bvify, grind =, agrind =]
