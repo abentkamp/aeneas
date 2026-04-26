@@ -119,9 +119,6 @@ irreducible_def UScalar.max (ty : UScalarTy) : Nat := 2^ty.numBits-1
 irreducible_def IScalar.min (ty : IScalarTy) : Int := -2^(ty.numBits - 1)
 irreducible_def IScalar.max (ty : IScalarTy) : Int := 2^(ty.numBits - 1)-1
 
-irreducible_def UScalar.size (ty : UScalarTy) : Nat := 2^ty.numBits
-irreducible_def IScalar.size (ty : IScalarTy) : Int := 2^ty.numBits
-
 /-! ## Num Bits -/
 irreducible_def U8.numBits    : Nat := UScalarTy.U8.numBits
 irreducible_def U16.numBits   : Nat := UScalarTy.U16.numBits
@@ -298,7 +295,7 @@ local macro_rules
       U8.rMax, U8.max, U16.rMax, U16.max, U32.rMax, U32.max,
       U64.rMax, U64.max, U128.rMax, U128.max,
       U8.numBits, U16.numBits, U32.numBits, U64.numBits, U128.numBits, Usize.numBits,
-      UScalar.size, U8.size, U16.size, U32.size, U64.size, U128.size, Usize.size,
+      U8.size, U16.size, U32.size, U64.size, U128.size, Usize.size,
       IScalar.rMax, IScalar.max,
       IScalar.rMin, IScalar.min,
       Isize.rMax, Isize.rMax, Isize.max,
@@ -308,7 +305,7 @@ local macro_rules
       I8.rMin, I8.min, I16.rMin, I16.min, I32.rMin, I32.min,
       I64.rMin, I64.min, I128.rMin, I128.min,
       I8.numBits, I16.numBits, I32.numBits, I64.numBits, I128.numBits, Isize.numBits,
-      IScalar.size, I8.size, I16.size, I32.size, I64.size, I128.size, Isize.size])
+      I8.size, I16.size, I32.size, I64.size, I128.size, Isize.size])
 
 theorem Usize.bounds_eq :
   Usize.max = U32.max ∨ Usize.max = U64.max := by

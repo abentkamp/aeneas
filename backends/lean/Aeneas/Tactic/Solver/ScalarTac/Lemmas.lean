@@ -48,7 +48,6 @@ local macro_rules
       I64.rMin, I64.min, I128.rMin, I128.min,
       I8.numBits_def, I16.numBits_def, I32.numBits_def, I64.numBits_def, I128.numBits_def, Isize.numBits_def,
       I8.size, I16.size, I32.size, I64.size, I128.size, Isize.size,
-      UScalar.size, IScalar.size,
       UScalar.cMax, IScalar.cMin, IScalar.cMax,
       U8.cMax, U16.cMax, U32.cMax, U64.cMax, U128.cMax, Usize.cMax,
       I8.cMax, I16.cMax, I32.cMax, I64.cMax, I128.cMax, Isize.cMax,
