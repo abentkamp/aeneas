@@ -228,11 +228,6 @@ iscalar theorem «%S».numBits_nonzero : «%S».numBits ≠ 0 := by
 @[defeq, simp, scalar_tac_simps, simp_scalar_safe, bvify, grind =, agrind =] theorem IScalarTy.I128_numBits_eq  : IScalarTy.I128.numBits  = 128 := by rfl
 @[defeq, simp, scalar_tac_simps, simp_scalar_safe, bvify, grind =, agrind =] theorem IScalarTy.Isize_numBits_eq : IScalarTy.Isize.numBits = System.Platform.numBits := by rfl
 
-@[scalar_tac_simps, grind =, agrind =] theorem UScalar.max_USize_eq : UScalar.max .Usize = Usize.max := by simp [UScalar.max, Usize.max, Usize.numBits]
-
-@[scalar_tac_simps, grind =, agrind =] theorem IScalar.min_ISize_eq : IScalar.min .Isize = Isize.min := by simp [IScalar.min, Isize.min, Isize.numBits]
-@[scalar_tac_simps, grind =, agrind =] theorem IScalar.max_ISize_eq : IScalar.max .Isize = Isize.max := by simp [IScalar.max, Isize.max, Isize.numBits]
-
 @[scalar_tac_simps, grind =, agrind =] theorem U8.max_eq    : U8.max = 255 := by simp [U8.max, U8.numBits]
 @[scalar_tac_simps, grind =, agrind =] theorem U16.max_eq   : U16.max = 65535 := by simp [U16.max, U16.numBits]
 @[scalar_tac_simps, grind =, agrind =] theorem U32.max_eq   : U32.max = 4294967295 := by simp [U32.max, U32.numBits]
@@ -653,10 +648,6 @@ uscalar @[simp] theorem «%S».zero_in_cbounds : 0 < 2^numBits := by simp
 
 iscalar @[simp] theorem «%S».zero_in_cbounds :
   -2^(numBits - 1) ≤ 0 ∧ 0 < 2^(numBits - 1) := by simp
-
-@[simp] theorem IScalar.zero_in_cbounds {ty : IScalarTy} :
-  -2^(ty.numBits - 1) ≤ 0 ∧ 0 < 2^(ty.numBits - 1) := by
-  cases ty <;> simp
 
 uscalar @[simp, scalar_tac_simps, simp_scalar_safe, bvify, grind =, agrind =]
 theorem «%S».ofNatCore_toNat_eq {x} (h) :
