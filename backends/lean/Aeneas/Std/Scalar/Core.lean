@@ -318,18 +318,8 @@ This is useful for the various #asserts that we want to reduce at
 type-checking time, or when defining constants.
 -/
 
-def UScalarTy.cNumBits (ty : UScalarTy) : Nat :=
-  match ty with
-  | .Usize => U32.numBits
-  | _ => ty.numBits
-
 uscalar_no_usize def «%S».cNumBits : Nat := «%S».numBits
 def Usize.cNumBits : Nat := U32.numBits
-
-def IScalarTy.cNumBits (ty : IScalarTy) : Nat :=
-  match ty with
-  | .Isize => I32.numBits
-  | _ => ty.numBits
 
 iscalar_no_isize def «%S».cNumBits : Nat := «%S».numBits
 def Isize.cNumBits : Nat := I32.numBits
