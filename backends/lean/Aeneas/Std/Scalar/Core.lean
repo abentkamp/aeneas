@@ -982,16 +982,8 @@ uscalar @[simp, scalar_tac_simps, grind =, agrind =]
 theorem «%S».toBitVec_toNat (x : «%S») : x.toBitVec.toNat = x.toNat := by
   simp [toNat]
 
-@[simp, scalar_tac_simps, grind =, agrind =] theorem UScalar.toBitVec_toNat {ty : UScalarTy} (x : UScalar ty) :
-  (UScalar.toBitVec x).toNat  = x.toNat := by
-  simp [toNat]
-
 iscalar @[simp, scalar_tac_simps, grind =, agrind =]
 theorem «%S».toBitVec_toInt_eq (x : «%S») : x.toBitVec.toInt = x.toInt := by
-  simp [toInt]
-
-@[simp, scalar_tac_simps, grind =, agrind =] theorem IScalar.toBitVec_toInt_eq {ty : IScalarTy} (x : IScalar ty) :
-  (IScalar.toBitVec x).toInt  = x.toInt := by
   simp [toInt]
 
 @[bvify] theorem U8.lt_succ_max (x: U8) : x.toNat < 256 := by have := x.hBounds; simp [numBits_def] at this; omega
