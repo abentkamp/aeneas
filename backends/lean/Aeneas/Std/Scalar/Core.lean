@@ -372,11 +372,6 @@ def IScalar.cMax (ty : IScalarTy) : Int :=
 iscalar_no_isize def «%S».cMax : Int := «%S».rMax
 def Isize.cMax : Int := I32.rMax
 
-@[grind ., agrind .]
-theorem UScalar.hBounds {ty} (x : UScalar ty) : x.toNat < 2^ty.numBits := by
-  cases h: x.toBitVec
-  simp only [toNat, h, BitVec.toNat_ofFin, Fin.is_lt]
-
 uscalar @[grind ., agrind .]
 theorem «%S».hBounds (x : «%S») : x.toNat < 2^«%S».numBits := by
   cases h: x.toBitVec
@@ -416,18 +411,6 @@ iscalar theorem «%S».hBounds (x : «%S») :
     cases h: System.Platform.numBits_eq <;>
     simp_all only [IScalarTy.Isize_numBits_eq, true_or] <;>
     simp_all only [numBits_def, IScalarTy.numBits] <;>
-    omega
-
-theorem IScalar.hBounds {ty} (x : IScalar ty) :
-  -2^(ty.numBits - 1) ≤ x.toInt ∧ x.toInt < 2^(ty.numBits - 1) := by
-  match x with
-  | ⟨ ⟨ fin ⟩ ⟩ =>
-    simp [toInt, BitVec.toInt]
-    cases ty <;> simp at * <;> try omega
-
-    have hFinLt := fin.isLt
-    cases h: System.Platform.numBits_eq <;>
-    simp_all only [IScalarTy.Isize_numBits_eq, true_or, Nat.add_one_sub_one] <;>
     omega
 
 iscalar theorem «%S».rMin_eq_pow_numBits : «%S».rMin = -2^(«%S».numBits - 1) := by
