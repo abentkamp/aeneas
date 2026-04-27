@@ -49,7 +49,7 @@ uscalar theorem «%S».mul_equiv (x y : «%S») :
   have := tryMk_eq (x.toNat * y.toNat)
   split <;> simp_all only [inBounds, true_and, not_lt, gt_iff_lt]
   simp_all only [tryMk, ofOption, tryMkOpt, check_bounds, decide_true, dite_true, ok.injEq]
-  rename_i hEq; simp only [← hEq, UScalar.ofNatCore, toNat]
+  rename_i hEq; simp only [← hEq, «%S».ofNatCore, toNat]
   split_conjs
   . simp only [toBitVec_toNat, max]; scalar_tac
   . change @BitVec.ofFin _ _ = _
@@ -70,38 +70,18 @@ iscalar theorem «%S».mul_equiv (x y : «%S») :
   rw [this]
   simp only [mul, not_and, not_le]
   have := tryMk_eq (x.toInt * y.toInt)
-  split <;> simp_all only [inBounds, min, max, true_and, not_and, not_lt] <;>
+  split <;> simp_all only [inBounds, min, max, true_and, not_and, not_lt, numBits_def, IScalarTy.numBits] <;>
   simp_all only [tryMk, ofOption, tryMkOpt, check_bounds, and_self, decide_true, dite_true,
-    ok.injEq, Bool.decide_and, Bool.and_eq_true, decide_eq_true_eq] <;>
-  rename_i hEq <;> simp only [← hEq, IScalar.ofIntCore, toInt] <;>
-  simp only [toBitVec_toInt_eq, ← BitVec.toInt_inj, BitVec.toInt_mul]
+    ok.injEq, Bool.decide_and, Bool.and_eq_true, decide_eq_true_eq, numBits_def, IScalarTy.numBits] <;>
+  rename_i hEq <;> simp only [← hEq, «%S».ofIntCore, toInt] <;>
+  simp only [toBitVec_toInt_eq, ← BitVec.toInt_inj, BitVec.toInt_mul, IScalarTy.numBits]
   . split_conjs
     . scalar_tac
-    . scalar_tac
-    . rw [toInt]
-      simp only [Int.bmod, BitVec.toInt]
-      simp only [Nat.cast_pow, Nat.cast_ofNat, BitVec.toNat_ofFin, Int.ofNat_toNat]
-      have this : 2 * (x.toInt * y.toInt % 2 ^ %BitWidth).toNat < 2 ^ %BitWidth ↔
-            x.toInt * y.toInt % 2 ^ %BitWidth < (2 ^ %BitWidth + 1) / 2 := by
-        have hdiv : (2 : ℤ) ∣ 2 ^ %BitWidth := by
-          have : %BitWidth = (%BitWidth - 1) + 1 := by
-            have := System.Platform.numBits_eq
-            omega
-          rw [this, Int.pow_succ]; simp
-        have : (2^%BitWidth + 1 : Int) / 2 = 2^%BitWidth / 2 := by
-          rw [Int.add_ediv_of_dvd_left] <;> [simp; apply hdiv]
-        rw [this]; clear this
-        have heq := @Int.div_lt_div_iff_of_dvd_of_pos (↑x * ↑y % 2 ^ %BitWidth) 1 (2 ^ %BitWidth) 2
-          (by simp) (by simp) (by simp) hdiv
-        simp only [EuclideanDomain.div_one, mul_one] at heq
-        simp only [heq]
-        have : (x.toInt * y.toInt % 2 ^ %BitWidth).toNat = x.toInt * y.toInt % 2 ^ %BitWidth := by
-          scalar_tac
-        scalar_tac
-      simp only [IScalarTy.numBits] at *
-      simp only [this]
-      split <;>
-      simp_all only [iff_true, sup_eq_left, ge_iff_le, iff_false, not_lt, sub_left_inj] <;> omega
+    . rw [«%S».bmod_pow_numBits_eq_of_lt _ (by scalar_tac) (by scalar_tac)]
+      have h := ‹↑_ = _ ∧ _›.1
+      rw [← hEq] at h
+      simp only [«%S».ofIntCore, toInt] at h
+      exact h
   . scalar_tac
 
 /-!

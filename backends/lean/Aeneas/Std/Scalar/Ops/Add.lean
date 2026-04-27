@@ -44,8 +44,8 @@ uscalar theorem «%S».add_equiv (x y : «%S») :
   rw [this]
   simp [add]
   have h := tryMk_eq (↑x + ↑y)
-  simp [inBounds] at h
-  split at h <;> simp_all
+  simp [inBounds, numBits_def] at h
+  split at h <;> simp_all [numBits_def]
   zify
   zify at h
   have := @Int.emod_eq_of_lt (x.toNat + y.toNat) «%S».size (by omega) (by scalar_tac)
@@ -63,8 +63,8 @@ iscalar theorem «%S».add_equiv (x y : «%S») :
   rw [this]
   simp [add]
   have h := tryMk_eq (↑x + ↑y)
-  simp [inBounds] at h
-  split at h <;> simp_all
+  simp [inBounds, numBits_def] at h
+  split at h <;> simp_all [numBits_def]
   apply BitVec.eq_of_toInt_eq
   simp
   have := «%S».bmod_pow_numBits_eq_of_lt (x.toInt + y.toInt) (by omega) (by omega)

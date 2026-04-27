@@ -474,28 +474,16 @@ iscalar theorem «%S».bound_suffices (x : Int) :
   have := cMax_le_rMax
   omega
 
-def UScalar.ofNatCore {ty : UScalarTy} (x : Nat) (h : x < 2^ty.numBits) : UScalar ty :=
-  { toBitVec := ⟨ x, h ⟩ }
-
 uscalar def «%S».ofNatCore (x : Nat) (h : x < 2^numBits) : «%S» :=
   have h : x < 2 ^ UScalarTy.«%S».numBits := by grind [numBits_def]
   { toBitVec := ⟨ x, h ⟩ }
 
-def IScalar.ofIntCore {ty : IScalarTy} (x : Int) (_ : -2^(ty.numBits-1) ≤ x ∧ x < 2^(ty.numBits - 1)) : IScalar ty :=
-  -- TODO: we should leave `x` unchanged if it is positive, so that expressions like `(1#isize).toInt` can reduce to `1`
-  let x' := (x % 2^ty.numBits).toNat
-  have h : x' < 2^ty.numBits := by
-    zify
-    simp +zetaDelta only [Int.ofNat_toNat, sup_lt_iff, Nat.ofNat_pos, pow_pos, and_true]
-    apply Int.emod_lt_of_pos; simp
-  { toBitVec := ⟨ x', h ⟩ }
-
 iscalar def «%S».ofIntCore (x : Int) (_ : -2^(numBits-1) ≤ x ∧ x < 2^(numBits - 1)) : «%S» :=
   -- TODO: we should leave `x` unchanged if it is positive, so that expressions like `(1#isize).toInt` can reduce to `1`
-  let x' := (x % 2^numBits).toNat
-  have h : x' < 2^%BitWidth := by
+  let x' := (x % 2^IScalarTy.«%S».numBits).toNat
+  have h : x' < 2^IScalarTy.«%S».numBits := by
     zify
-    simp +zetaDelta only [Int.ofNat_toNat, sup_lt_iff, Nat.ofNat_pos, pow_pos, and_true, numBits_def]
+    simp +zetaDelta only [Int.ofNat_toNat, sup_lt_iff, Nat.ofNat_pos, pow_pos, and_true]
     apply Int.emod_lt_of_pos; simp
   { toBitVec := ⟨ x', h ⟩ }
 
@@ -507,34 +495,17 @@ iscalar @[reducible] def «%S».ofInt (x : Int)
   (hInBounds : «%S».cMin ≤ x ∧ x ≤ «%S».cMax := by decide) : «%S» :=
   «%S».ofIntCore x («%S».bound_suffices x hInBounds)
 
-@[simp] abbrev UScalar.inBounds (ty : UScalarTy) (x : Nat) : Prop :=
-  x < 2^ty.numBits
-
 uscalar @[simp] abbrev «%S».inBounds (x : Nat) : Prop :=
-  x < 2^%BitWidth
-
-@[simp] abbrev IScalar.inBounds (ty : IScalarTy) (x : Int) : Prop :=
-  - 2^(ty.numBits - 1) ≤ x ∧ x < 2^(ty.numBits - 1)
+  x < 2^numBits
 
 iscalar @[simp] abbrev «%S».inBounds (x : Int) : Prop :=
-  - 2^(%BitWidth - 1) ≤ x ∧ x < 2^(%BitWidth - 1)
-
-@[simp] abbrev UScalar.check_bounds (ty : UScalarTy) (x : Nat) : Bool :=
-  x < 2^ty.numBits
+  - 2^(numBits - 1) ≤ x ∧ x < 2^(numBits - 1)
 
 uscalar @[simp] abbrev «%S».check_bounds (x : Nat) : Bool :=
-  x < 2^%BitWidth
-
-@[simp] abbrev IScalar.check_bounds (ty : IScalarTy) (x : Int) : Bool :=
-  -2^(ty.numBits - 1) ≤ x ∧ x < 2^(ty.numBits - 1)
+  x < 2^numBits
 
 iscalar @[simp] abbrev «%S».check_bounds (x : Int) : Bool :=
-  - 2^(%BitWidth - 1) ≤ x ∧ x < 2^(%BitWidth - 1)
-
-theorem UScalar.check_bounds_imp_inBounds {ty : UScalarTy} {x : Nat}
-  (h: UScalar.check_bounds ty x) :
-  UScalar.inBounds ty x := by
-  simp at *; apply h
+  - 2^(numBits - 1) ≤ x ∧ x < 2^(numBits - 1)
 
 uscalar theorem «%S».check_bounds_imp_inBounds {x : Nat}
   (h: «%S».check_bounds x) :
@@ -546,11 +517,6 @@ uscalar theorem  «%S».check_bounds_eq_inBounds (x : Nat) :
   constructor <;> intro h
   . apply (check_bounds_imp_inBounds h)
   . simp_all
-
-theorem IScalar.check_bounds_imp_inBounds {ty : IScalarTy} {x : Int}
-  (h: IScalar.check_bounds ty x) :
-  IScalar.inBounds ty x := by
-  simp at *; apply h
 
 iscalar theorem «%S».check_bounds_imp_inBounds {x : Int}
   (h: «%S».check_bounds x) :
@@ -565,7 +531,7 @@ iscalar theorem «%S».check_bounds_eq_inBounds (x : Int) :
 
 uscalar def «%S».tryMkOpt (x : Nat) : Option «%S» :=
   if h:check_bounds x then
-    some (UScalar.ofNatCore x (UScalar.check_bounds_imp_inBounds h))
+    some («%S».ofNatCore x («%S».check_bounds_imp_inBounds h))
   else none
 
 uscalar def «%S».tryMk (x : Nat) : Result «%S» :=
@@ -573,7 +539,7 @@ uscalar def «%S».tryMk (x : Nat) : Result «%S» :=
 
 iscalar def «%S».tryMkOpt (x : Int) : Option «%S» :=
   if h:check_bounds x then
-    some (IScalar.ofIntCore x (IScalar.check_bounds_imp_inBounds h))
+    some («%S».ofIntCore x («%S».check_bounds_imp_inBounds h))
   else none
 
 iscalar def «%S».tryMk (x : Int) : Result «%S» :=
@@ -583,7 +549,7 @@ uscalar theorem «%S».tryMkOpt_eq (x : Nat) :
   match tryMkOpt x with
   | some y => y.toNat = x ∧ inBounds x
   | none => ¬ (inBounds x) := by
-  simp [tryMkOpt, UScalar.ofNatCore]
+  simp [tryMkOpt, «%S».ofNatCore]
   have h := check_bounds_eq_inBounds x
   split_ifs <;> simp_all
   simp [toNat] at *
@@ -601,9 +567,9 @@ iscalar theorem «%S».tryMkOpt_eq (x : Int) :
   match tryMkOpt x with
   | some y => y.toInt = x ∧ inBounds x
   | none => ¬ (inBounds x) := by
-  simp [tryMkOpt, IScalar.ofIntCore]
+  simp [tryMkOpt, «%S».ofIntCore]
   have h := check_bounds_eq_inBounds x
-  split_ifs <;> simp_all
+  split_ifs <;> simp_all [numBits_def]
   simp [toInt] at *
   simp [Int.bmod]; split <;> (try omega) <;>
   cases h: System.Platform.numBits_eq <;> simp_all <;> omega
@@ -693,8 +659,8 @@ iscalar theorem «%S».min_le_max : «%S».min ≤ «%S».max := by
 
 uscalar_no_usize @[reducible] def core.num.«%S».MIN : «%S» := «%S».ofNat 0
 uscalar_no_usize @[reducible] def core.num.«%S».MAX : «%S» := «%S».ofNat «%S».rMax
-@[reducible] def core.num.Usize.MIN : Usize := UScalar.ofNatCore 0 (by simp)
-@[reducible] def core.num.Usize.MAX : Usize := UScalar.ofNatCore Usize.max (by simp [Usize.max, Usize.numBits])
+@[reducible] def core.num.Usize.MIN : Usize := Usize.ofNatCore 0 (by simp)
+@[reducible] def core.num.Usize.MAX : Usize := Usize.ofNatCore Usize.max (by simp [Usize.max, Usize.numBits])
 
 iscalar_no_isize @[reducible] def core.num.«%S».MIN : «%S» := «%S».ofInt «%S».rMin
 iscalar_no_isize @[reducible] def core.num.«%S».MAX : «%S» := «%S».ofInt «%S».rMax

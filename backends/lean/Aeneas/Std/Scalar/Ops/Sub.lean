@@ -71,8 +71,8 @@ iscalar theorem «%S».sub_equiv (x y : «%S») :
   have : x -? y = «%S».sub x y := by rfl
   simp [this, «%S».sub]
   have h := «%S».tryMk_eq (↑x - ↑y)
-  simp [«%S».inBounds] at h
-  split at h <;> simp_all
+  simp [«%S».inBounds, numBits_def] at h
+  split at h <;> simp_all [numBits_def]
   apply BitVec.eq_of_toInt_eq
   simp
   have := «%S».bmod_pow_numBits_eq_of_lt (x.toInt - y.toInt) (by omega) (by omega)
