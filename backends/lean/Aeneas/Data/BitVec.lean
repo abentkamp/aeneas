@@ -434,36 +434,55 @@ termination_by i
 @[simp, simp_lists_safe, grind =, agrind =]
 theorem BitVec.fromLEBytes_getElem! (v : List Byte) (j : ℕ) :
   (BitVec.fromLEBytes v)[j]! = v[j / 8]!.testBit (j % 8) := by
-  unfold BitVec.fromLEBytes
-  match hv: v with
-  | [] => simp only [List.length_nil, Nat.mul_zero, zero_le, getElem!_eq_false,
-    List.getElem!_default, Byte.testBit_default]
+  match v with
+  | [] =>
+    rw [BitVec.fromLEBytes]
+    simp only [List.length_nil, Nat.mul_zero]
+    have hr : ([] : List Byte)[j / 8]!.testBit (j % 8) = false := by
+      rw [List.getElem!_nil]
+      exact Byte.testBit_default _
+    rw [hr]
+    exact BitVec.getElem!_eq_false _ _ (by omega)
   | x :: v' =>
-    simp only [List.length_cons, getElem!_or]
+    rw [BitVec.fromLEBytes]
+    refine (BitVec.getElem!_or _ _ _).trans ?_
+    have h1 := BitVec.getElem!_eq_testBit_toNat
+      (BitVec.setWidth (8 * (v'.length + 1)) x) j
+    have h2 := BitVec.getElem!_eq_testBit_toNat
+      ((BitVec.setWidth (8 * (v'.length + 1)) (BitVec.fromLEBytes v')) <<< 8) j
+    refine h1 ▸ h2 ▸ ?_
+    simp only [BitVec.toNat_setWidth, Nat.testBit_mod_two_pow, BitVec.toNat_shiftLeft,
+      Nat.testBit_shiftLeft, ge_iff_le]
     by_cases hj: j < 8
-    . have : j < 8 * (v'.length + 1) := by scalar_tac
-      simp_lists
-      simp only [getElem!_eq_testBit_toNat, toNat_setWidth, Nat.testBit_mod_two_pow, decide_true,
-        Bool.true_and, this]
-      have : j % 8 = j := by apply Nat.mod_eq_of_lt; omega
-      simp only [this]
-    . have : 0 < j / 8 := by scalar_tac +nonLin
-      simp_lists
-      simp only [getElem!_eq_testBit_toNat, toNat_setWidth, Nat.testBit_mod_two_pow,
-        toNat_shiftLeft, Nat.ofNat_pos, mul_lt_mul_iff_right₀, lt_add_iff_pos_right, Nat.lt_one_iff,
-        pos_of_gt, toNat_mod_cancel_of_lt, Nat.testBit_shiftLeft, ge_iff_le]
-      have : 8 ≤ j := by omega
-      simp only [this, decide_true, Bool.true_and]
-      have := BitVec.fromLEBytes_getElem! v' (j - 8)
-      simp only [getElem!_eq_testBit_toNat] at this
-      simp only [this]
-      simp_lists
-      by_cases hj': j < 8 * (v'.length + 1)
-      . simp [hj']
-        have h0 : (j - 8) / 8 = (j / 8) - 1 := by omega
-        have h1 : (j - 8) % 8 = j % 8 := by omega
-        simp only [h0, h1]
-      . simp_lists
+    . have hjlen : j < 8 * (v'.length + 1) := by scalar_tac
+      have hnot : ¬ (8 ≤ j) := by omega
+      have hjm : j % 8 = j := Nat.mod_eq_of_lt hj
+      have hj0 : j / 8 = 0 := Nat.div_eq_of_lt hj
+      simp only [hjlen, decide_true, Bool.true_and, hnot, decide_false, Bool.false_and,
+        Bool.or_false, hjm, hj0, List.getElem!_cons_zero, Byte.testBit]
+    . have hj8 : 8 ≤ j := by omega
+      have hxF : (BitVec.toNat x).testBit j = false :=
+        BitVec.getElem!_toNat_eq_false x j hj8
+      simp only [hj8, decide_true, Bool.true_and, hxF, Bool.and_false, Bool.false_or]
+      have hrec := BitVec.fromLEBytes_getElem! v' (j - 8)
+      simp only [getElem!_eq_testBit_toNat] at hrec
+      simp only [hrec]
+      have hd1 : (j - 8) / 8 = j / 8 - 1 := by omega
+      have hd2 : (j - 8) % 8 = j % 8 := by omega
+      simp only [hd1, hd2]
+      have hcons : (x :: v')[j / 8]! = v'[j / 8 - 1]! := by
+        have hpos : 0 < j / 8 := by scalar_tac +nonLin
+        simp_lists
+      simp only [hcons]
+      by_cases hjlen : j < 8 * (v'.length + 1)
+      . have hjlen' : j - 8 < 8 * (v'.length + 1) := by omega
+        simp only [hjlen, hjlen', decide_true, Bool.true_and]
+      . have hjlen_d : decide (j < 8 * (v'.length + 1)) = false :=
+          decide_eq_false (by omega)
+        simp only [hjlen_d, Bool.false_and]
+        have hbound : v'.length ≤ j / 8 - 1 := by omega
+        have hdef : v'[j / 8 - 1]! = (default : Byte) := by simp_lists
+        simp only [hdef, Byte.testBit_default]
 
 @[simp, simp_lists_safe, grind =, agrind =]
 theorem BitVec.fromLEBytes_toLEBytes {w : ℕ} (h : w % 8 = 0) (b : BitVec w) :

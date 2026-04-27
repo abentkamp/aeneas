@@ -51,7 +51,7 @@ theorem «%S».checked_rem_bv_spec (x y : «%S») :
   | none => y.val = 0 := by
   have := core.num.checked_rem_UScalar_bv_spec x y
   simp_all [«%S».checked_rem, «%S».bv]
-  cases h: core.num.checked_rem_UScalar x y <;> simp_all
+  cases h: core.num.checked_rem_UScalar x y <;> simp_all; rfl
 
 /-!
 Signed checked rem

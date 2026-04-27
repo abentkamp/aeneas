@@ -272,6 +272,6 @@ syntax "ring_eq_nf" (Lean.Parser.Tactic.location)? : tactic
 
 macro_rules
   | `(tactic| ring_eq_nf $[$loc]?) =>
-    `(tactic| ((try ring_nf $[$loc]?); try simp (config := {failIfUnchanged := false}) only [ringEqNfNat, ringEqNfInt] $[$loc]?))
+    `(tactic| ((try ring_nf $[$loc]?); try simp (config := {failIfUnchanged := false}) only [sub_eq_add_neg, ringEqNfNat, ringEqNfInt] $[$loc]?))
 
 end Aeneas.RingEqNF
