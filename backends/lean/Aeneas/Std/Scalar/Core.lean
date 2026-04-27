@@ -91,18 +91,18 @@ uscalar def «%S».toNat (x : «%S») : ℕ := x.toBitVec.toNat
 
 iscalar def «%S».toInt (x : «%S») : ℤ := x.toBitVec.toInt
 
-def U8.ofBitVec    (x : BitVec UScalarTy.U8.numBits)    : U8    := UScalar.mk x
-def U16.ofBitVec   (x : BitVec UScalarTy.U16.numBits)   : U16   := UScalar.mk x
-def U32.ofBitVec   (x : BitVec UScalarTy.U32.numBits)   : U32   := UScalar.mk x
-def U64.ofBitVec   (x : BitVec UScalarTy.U64.numBits)   : U64   := UScalar.mk x
-def U128.ofBitVec  (x : BitVec UScalarTy.U128.numBits)  : U128  := UScalar.mk x
-def Usize.ofBitVec (x : BitVec UScalarTy.Usize.numBits) : Usize := UScalar.mk x
-def I8.ofBitVec    (x : BitVec IScalarTy.I8.numBits)    : I8    := IScalar.mk x
-def I16.ofBitVec   (x : BitVec IScalarTy.I16.numBits)   : I16   := IScalar.mk x
-def I32.ofBitVec   (x : BitVec IScalarTy.I32.numBits)   : I32   := IScalar.mk x
-def I64.ofBitVec   (x : BitVec IScalarTy.I64.numBits)   : I64   := IScalar.mk x
-def I128.ofBitVec  (x : BitVec IScalarTy.I128.numBits)  : I128  := IScalar.mk x
-def Isize.ofBitVec (x : BitVec IScalarTy.Isize.numBits) : Isize := IScalar.mk x
+def U8.ofBitVec    (x : BitVec 8)                       : U8    := UScalar.mk x
+def U16.ofBitVec   (x : BitVec 16)                      : U16   := UScalar.mk x
+def U32.ofBitVec   (x : BitVec 32)                      : U32   := UScalar.mk x
+def U64.ofBitVec   (x : BitVec 64)                      : U64   := UScalar.mk x
+def U128.ofBitVec  (x : BitVec 128)                     : U128  := UScalar.mk x
+def Usize.ofBitVec (x : BitVec System.Platform.numBits) : Usize := UScalar.mk x
+def I8.ofBitVec    (x : BitVec 8)                       : I8    := IScalar.mk x
+def I16.ofBitVec   (x : BitVec 16)                      : I16   := IScalar.mk x
+def I32.ofBitVec   (x : BitVec 32)                      : I32   := IScalar.mk x
+def I64.ofBitVec   (x : BitVec 64)                      : I64   := IScalar.mk x
+def I128.ofBitVec  (x : BitVec 128)                     : I128  := IScalar.mk x
+def Isize.ofBitVec (x : BitVec System.Platform.numBits) : Isize := IScalar.mk x
 
 /-!
 # Bounds, Size
