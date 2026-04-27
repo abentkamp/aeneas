@@ -236,7 +236,7 @@ def preprocess (config : Config) : Tactic.TacticM Unit := do
   /- We simplify a first time before saturating the context.
      This is useful because simplifying often introduces expressions which are useful
      for the saturation phase, and it also often allows to get rid of some dependently
-     typed expressions such as `UScalar.ofNat`.
+     typed expressions such as `U32.ofNat`.
   -/
   traceGoalWithNode `ScalarTac "Original goal"
   let simpArgs : Simp.SimpArgs ← getSimpArgs
@@ -299,7 +299,7 @@ def partialPreprocess (config : Config) (simpArgs : Simp.SimpArgs) (state : Stat
   /- We simplify a first time before saturating the context.
      This is useful because simplifying often introduces expressions which are useful
      for the saturation phase, and it also often allows to get rid of some dependently
-     typed expressions such as `UScalar.ofNat`.
+     typed expressions such as `U32.ofNat`.
   -/
   traceGoalWithNode `ScalarTac "Original goal before preprocessing"
   let some assumptions ← Simp.simpAt true {dsimp := false, failIfUnchanged := false, maxDischargeDepth := 1}
@@ -509,8 +509,8 @@ def scalarTac (config : Config) : TacticM Unit := do
     `scalar_tac`. For instance:
     ```
     @[scalar_tac_simps]
-    theorem UScalar.ofNat_toNat (x : UScalar ty) (hInBounds : x.toNat ≤ UScalar.cMax ty) :
-      UScalar.ofNat x hInBounds = x
+    theorem U32.ofNatCore_toNat_eq {x} (h) :
+      (U32.ofNatCore x h).toNat = x
     ```
     allows reducing: `3#u32.toNat` to `3` during the preprocessing phase.
   - `scalar_tac`: registers a lemma as a forward reasoning rule to be used during the preprocessing
@@ -520,10 +520,10 @@ def scalarTac (config : Config) : TacticM Unit := do
     For instance:
     ```
     @[scalar_tac x.toNat]
-    theorem UScalar.bounds {ty : UScalarTy} (x : UScalar ty) : x.toNat ≤ UScalar.max ty := by
+    theorem U32.bounds (x : U32) : x.toNat ≤ U32.max := by
     ```
     states that whenever we have an expression of the shape `x.toNat` in the context, we can
-    introduce the bound `x.toNat ≤ UScalar.max ty`.
+    introduce the bound `x.toNat ≤ U32.max`.
 
   **Decreasing proofs**:
   When proving that a termination measure decreases (i.e., a `decreasing_by` clause) you may want

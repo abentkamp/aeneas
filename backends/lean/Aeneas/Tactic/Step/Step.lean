@@ -1043,7 +1043,7 @@ def evalStepCore (config : Config) (keepPretty : Option Name) (withArg : Option 
   let threadedGrindTac (gs : Step.StepGrindState) : TacticM Unit := do
     withTraceNode `Step (fun _ => pure m!"Attempting grind discharge (threaded e-graph)") do
     /- Preprocess: simplify only the TARGET with ScalarTac simpsets.
-       This resolves e.g. UScalar.cast and U128.max to their simplified forms.
+       This resolves e.g. ScalarCast.cast and U128.max to their simplified forms.
        We must NOT simplify the hypotheses here: the grind e-graph already has
        them internalized (with preprocess simpset normalization). Running simp on
        the hypotheses would create new fvar IDs that the e-graph hasn't seen. -/
@@ -1131,8 +1131,8 @@ h : 2 * (a.val + 1) < U32.max
 ```
 `step as ⟨ b ⟩` will lookup the theorem:
 ```lean
-theorem UScalar.add_spec (x y : UScalar ty) (h : x.toNat + y.toNat < UScalar.max ty) :
-  UScalar.add x y ⦃ z => z.toNat = x.toNat + y.toNat ⦄
+theorem U32.add_spec (x y : U32) (h : x.toNat + y.toNat < U32.max) :
+  U32.add x y ⦃ z => z.toNat = x.toNat + y.toNat ⦄
 
 ```
 instantiate it with `x := a` and `y := 1#u32`, (attempt to) prove the precondition
