@@ -867,19 +867,19 @@ theorem «%S».max_right_zero_eq (x : «%S»):
 @[simp, scalar_tac_simps, simp_scalar_safe, bvify, grind, agrind] abbrev I128.toNat    (x : I128) : Nat := x.toInt.toNat
 @[simp, scalar_tac_simps, simp_scalar_safe, bvify, grind, agrind] abbrev Isize.toNat   (x : Isize) : Nat := x.toInt.toNat
 
-abbrev U8.toBitVec (x : U8)   : BitVec 8 := UScalar.toBitVec x
-abbrev U16.toBitVec (x : U16) : BitVec 16 := UScalar.toBitVec x
-abbrev U32.toBitVec (x : U32) : BitVec 32 := UScalar.toBitVec x
-abbrev U64.toBitVec (x : U64) : BitVec 64 := UScalar.toBitVec x
-abbrev U128.toBitVec (x : U128) : BitVec 128 := UScalar.toBitVec x
-abbrev Usize.toBitVec (x : Usize) : BitVec System.Platform.numBits := UScalar.toBitVec x
+abbrev U8.toBitVec (x : U8)   : BitVec 8 := x.1
+abbrev U16.toBitVec (x : U16) : BitVec 16 := x.1
+abbrev U32.toBitVec (x : U32) : BitVec 32 := x.1
+abbrev U64.toBitVec (x : U64) : BitVec 64 := x.1
+abbrev U128.toBitVec (x : U128) : BitVec 128 := x.1
+abbrev Usize.toBitVec (x : Usize) : BitVec System.Platform.numBits := x.1
 
-abbrev I8.toBitVec (x : I8) : BitVec 8 := IScalar.toBitVec x
-abbrev I16.toBitVec (x : I16) : BitVec 16 := IScalar.toBitVec x
-abbrev I32.toBitVec (x : I32) : BitVec 32 := IScalar.toBitVec x
-abbrev I64.toBitVec (x : I64) : BitVec 64 := IScalar.toBitVec x
-abbrev I128.toBitVec (x : I128) : BitVec 128 := IScalar.toBitVec x
-abbrev Isize.toBitVec (x : Isize) : BitVec System.Platform.numBits := IScalar.toBitVec x
+abbrev I8.toBitVec (x : I8) : BitVec 8 := x.1
+abbrev I16.toBitVec (x : I16) : BitVec 16 := x.1
+abbrev I32.toBitVec (x : I32) : BitVec 32 := x.1
+abbrev I64.toBitVec (x : I64) : BitVec 64 := x.1
+abbrev I128.toBitVec (x : I128) : BitVec 128 := x.1
+abbrev Isize.toBitVec (x : Isize) : BitVec System.Platform.numBits := x.1
 
 uscalar @[simp, scalar_tac_simps, grind =, agrind =]
 theorem «%S».toBitVec_toNat (x : «%S») : x.toBitVec.toNat = x.toNat := by
