@@ -229,7 +229,11 @@ fun_name a b ⦃ result =>
 
 When you need to specify what happens on `fail` or `div` outcomes — not just
 on `ok` — use the pattern-match form. The leading `|` after `⦃` distinguishes
-this from the success-only form.
+this from the success-only form. **Both forms elaborate to the same `Std.WP.spec`
+constant**: the success-only form `f ⦃ x => P x ⦄` becomes
+`spec f (successPost (fun x => P x))`, while the pattern-match form
+`f ⦃ | ok x => P x | fail e => Q e ⦄` becomes
+`spec f (fun r => match r with | ok x => P x | fail e => Q e | _ => False)`.
 
 ```lean
 @[step]

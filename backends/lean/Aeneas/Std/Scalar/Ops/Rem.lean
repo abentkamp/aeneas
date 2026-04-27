@@ -104,18 +104,16 @@ Theorems with a specification which only uses integers
 /-- Generic theorem - shouldn't be used much -/
 theorem UScalar.rem_spec {ty} (x : UScalar ty) {y : UScalar ty} (hzero : y.val ≠ 0) :
   x % y ⦃ z => (↑z : Nat) = ↑x % ↑y ⦄ := by
-  apply spec_mono
-  · apply rem_bv_spec x hzero
-  · intros x' h
-    exact h.1
+  apply spec_mono (rem_bv_spec x hzero)
+  intros x' h
+  cases x' <;> simp [successPost] at * <;> grind
 
 /-- Generic theorem - shouldn't be used much -/
 theorem IScalar.rem_spec {ty} (x : IScalar ty) {y : IScalar ty} (hzero : y.val ≠ 0) :
   x % y ⦃ z => (↑z : Int) = Int.tmod ↑x ↑y ⦄ := by
-  apply spec_mono
-  · apply rem_bv_spec x hzero
-  · intros x' h
-    exact h.1
+  apply spec_mono (rem_bv_spec x hzero)
+  intros x' h
+  cases x' <;> simp [successPost] at * <;> grind
 
 uscalar @[step] theorem «%S».rem_spec (x : «%S») {y : «%S»} (hnz : y.val ≠ 0) :
   x % y ⦃ z => (↑z : Nat) = ↑x % ↑y ⦄ :=

@@ -19,24 +19,42 @@ def wp_bind (m:Wp α) (k:α -> Wp β) : Wp β :=
 def wp_ord (wp1 wp2:Wp α) :=
   forall p, wp1 p → wp2 p
 
-def theta (m:Result α) : Wp α :=
-  match m with
-  | ok x => wp_return x
-  | fail _ => fun _ => False
-  | div => fun _ => False
+/-- The unified `spec` combinator: a postcondition is a predicate over the
+    whole `Result α`, so it can constrain the `ok`, `fail`, and `div`
+    branches separately.
 
-def p2wp (post:Post α) : Wp α :=
-  fun p => forall r, post r → p r
+    The two surface forms both elaborate to this:
+    - `f ⦃ x => P x ⦄` (success-only) → `spec f (fun r => match r with | ok x => P x | _ => False)`
+    - `f ⦃ | ok x => P x | fail e => Q e ⦄` (branch-by-branch) →
+      `spec f (fun r => match r with | ok x => P x | fail e => Q e | _ => False)`
+-/
+def spec {α} (x : Result α) (p : Result α → Prop) : Prop := p x
 
-def spec_general (x:Result α) (p:Post α) :=
-  wp_ord (p2wp p) (theta x)
+/-- Lift a value-level postcondition (`α → Prop`) to a Result-level
+    postcondition (`Result α → Prop`) by treating non-`ok` outcomes as
+    forbidden (`False`). This is the canonical wrapping for the historical
+    success-only spec syntax `f ⦃ x => P x ⦄`, which elaborates into
+    `spec f (successPost (fun x => P x))`. -/
+def successPost {α} (P : α → Prop) : Result α → Prop :=
+  fun r => match r with | ok x => P x | _ => False
 
-def spec {α} (x:Result α) (p:Post α) :=
-  theta x p
+/-- A value-level postcondition `α → Prop` is automatically coerced to a
+    Result-level postcondition `Result α → Prop` as `successPost P`. This
+    lets callers continue to pass success-only predicates to `spec`. -/
+instance {α} : Coe (α → Prop) (Result α → Prop) where
+  coe P := successPost P
 
-/-- Spec combinator that takes a predicate over the whole `Result α`, allowing
-    the postcondition to constrain the `ok`, `fail`, and `div` branches. -/
-def specMatch {α} (x : Result α) (p : Result α → Prop) : Prop := p x
+@[simp, grind =, agrind =]
+theorem successPost_ok {α} (v : α) (P : α → Prop) :
+  successPost P (ok v) ↔ P v := by simp [successPost]
+
+@[simp, grind =, agrind =]
+theorem successPost_fail {α} (e : Error) (P : α → Prop) :
+  successPost P (fail e : Result α) ↔ False := by simp [successPost]
+
+@[simp, grind =, agrind =]
+theorem successPost_div {α} (P : α → Prop) :
+  successPost P (Result.div : Result α) ↔ False := by simp [successPost]
 
 /-- Auxiliary helper that we use to decompose tuples in post-conditions.
 
@@ -68,69 +86,64 @@ def predn {α β} (p : α → β → Prop) : α × β → Prop :=
 @[simp] theorem predn_pair x y (p : α → β → Prop) : predn p (x, y) = p x y := by simp [predn]
 @[defeq] theorem predn_eq x (p : α → β → Prop) : predn p x = p x.fst x.snd := by simp [predn]
 
+/-- Spec reduction on `ok`: stated specifically for the success-only post
+    `successPost p`, so it directly recovers the historical `spec (ok x) p ↔
+    p x` form for callers that simp on `spec_ok`. -/
 @[simp, grind =, agrind =]
-theorem spec_ok (x : α) : spec (ok x) p ↔ p x := by simp [spec, theta, wp_return]
-
-@[simp, grind =, agrind =]
-theorem spec_fail (e : Error) : spec (fail e) p ↔ False := by simp [spec, theta]
-
-@[simp, grind =, agrind =]
-theorem spec_div : spec div p ↔ False := by simp [spec, theta]
+theorem spec_ok {α} (v : α) (p : α → Prop) :
+  spec (ok v) (successPost p) ↔ p v := by simp [spec, successPost]
 
 @[simp, grind =, agrind =]
-theorem specMatch_ok {α} (v : α) (p : Result α → Prop) :
-  specMatch (ok v) p ↔ p (ok v) := by simp [specMatch]
+theorem spec_fail {α} (e : Error) (p : α → Prop) :
+  spec (fail e : Result α) (successPost p) ↔ False := by simp [spec, successPost]
 
 @[simp, grind =, agrind =]
-theorem specMatch_fail {α} (e : Error) (p : Result α → Prop) :
-  specMatch (fail e) p ↔ p (fail e) := by simp [specMatch]
+theorem spec_div {α} (p : α → Prop) :
+  spec (Result.div : Result α) (successPost p) ↔ False := by simp [spec, successPost]
 
-@[simp, grind =, agrind =]
-theorem specMatch_div {α} (p : Result α → Prop) :
-  specMatch (Result.div : Result α) p ↔ p div := by simp [specMatch]
+/-- Spec reduction on the general (Result-level) post: unfolds `spec` to its
+    definitional form `p v`. Not registered as `@[simp]` to keep the `spec`
+    head visible to the `step` tactic; users can fold/unfold by
+    `simp only [spec_apply]` or directly `simp only [spec]`. -/
+theorem spec_apply {α} (v : Result α) (p : Result α → Prop) :
+  spec v p ↔ p v := by simp [spec]
 
-/-- A `spec` is exactly a `specMatch` whose non-`ok` branches are `False`. -/
-theorem spec_iff_specMatch {α} (m : Result α) (p : α → Prop) :
-  spec m p ↔ specMatch m (fun r => match r with | ok x => p x | _ => False) := by
-  cases m <;> simp [specMatch]
-
-theorem specMatch_mono {α} {m : Result α} {P₀ P₁ : Result α → Prop}
-  (h : specMatch m P₀) (hmono : ∀ r, P₀ r → P₁ r) : specMatch m P₁ := by
-  unfold specMatch at *; apply hmono; exact h
-
-theorem specMatch_bind {α β} {m : Result α} {k : α → Result β}
-  {Pₘ : Result α → Prop} {Pₖ : Result β → Prop} :
-  specMatch m Pₘ →
-  (∀ x, Pₘ (ok x) → specMatch (k x) Pₖ) →
-  (∀ e, Pₘ (fail e) → Pₖ (fail e)) →
-  (Pₘ div → Pₖ div) →
-  specMatch (Std.bind m k) Pₖ := by
-  intro Hm Hok Hfail Hdiv
-  cases m
-  · simp [specMatch] at *; apply Hok; exact Hm
-  · simp [specMatch] at *; apply Hfail; exact Hm
-  · simp [specMatch] at *; apply Hdiv; exact Hm
-
-theorem spec_mono {α} {P₁ : Post α} {m : Result α} {P₀ : Post α} (h : spec m P₀):
-  (∀ x, P₀ x → P₁ x) → spec m P₁ := by
-  intros HMonPost
-  revert h
-  unfold spec theta wp_return
+/-- Monotonicity for the success-only spec form. -/
+theorem spec_mono {α} {P₁ : α → Prop} {m : Result α} {P₀ : α → Prop}
+  (h : spec m (successPost P₀)) (hmono : ∀ x, P₀ x → P₁ x) :
+  spec m (successPost P₁) := by
+  unfold spec successPost at *
   cases m <;> grind
 
-theorem spec_bind {α β} {k : α -> Result β} {Pₖ : Post β} {m : Result α} {Pₘ : Post α} :
-  spec m Pₘ →
-  (forall x, Pₘ x → spec (k x) Pₖ) →
-  spec (Std.bind m k) Pₖ := by
+/-- Bind for the success-only spec form. -/
+theorem spec_bind {α β} {k : α → Result β} {Pₖ : β → Prop} {m : Result α} {Pₘ : α → Prop} :
+  spec m (successPost Pₘ) →
+  (∀ x, Pₘ x → spec (k x) (successPost Pₖ)) →
+  spec (Std.bind m k) (successPost Pₖ) := by
   intro Hm Hk
   cases m
-  · simp
-    apply Hk
-    apply Hm
-  · simp
-    apply Hm
-  · simp
-    apply Hm
+  · simp [spec, successPost] at *; apply Hk; exact Hm
+  · simp [spec, successPost] at *
+  · simp [spec, successPost] at *
+
+/-- Monotonicity for the general (Result-level) spec form. -/
+theorem spec_mono_g {α} {P₁ : Result α → Prop} {m : Result α} {P₀ : Result α → Prop}
+  (h : spec m P₀) (hmono : ∀ r, P₀ r → P₁ r) : spec m P₁ := by
+  unfold spec at *; apply hmono; exact h
+
+/-- Bind for the general (Result-level) spec form. -/
+theorem spec_bind_g {α β} {m : Result α} {k : α → Result β}
+  {Pₘ : Result α → Prop} {Pₖ : Result β → Prop} :
+  spec m Pₘ →
+  (∀ x, Pₘ (ok x) → spec (k x) Pₖ) →
+  (∀ e, Pₘ (fail e) → Pₖ (fail e)) →
+  (Pₘ div → Pₖ div) →
+  spec (Std.bind m k) Pₖ := by
+  intro Hm Hok Hfail Hdiv
+  cases m
+  · simp [spec] at *; apply Hok; exact Hm
+  · simp [spec] at *; apply Hfail; exact Hm
+  · simp [spec] at *; apply Hdiv; exact Hm
 
 /-- Small helper to currify functions -/
 def curry {α β γ} (f : α × β → γ) (x : α) : β → γ := fun y => f (x, y)
@@ -141,8 +154,10 @@ def imp (P Q : Prop) : Prop := P → Q
 @[simp]
 theorem imp_and_iff (P0 P1 Q : Prop) : imp (P0 ∧ P1) Q ↔ P0 → imp P1 Q := by simp [imp]
 
-/-- Implication with quantifier -/
-def qimp {α} (P₀ P₁ : Post α) : Prop := ∀ x, P₀ x → P₁ x
+/-- Implication with quantifier. The carrier type is generic, so this works
+    for both value-level postconditions (`α → Prop`) and Result-level
+    postconditions (`Result α → Prop`). -/
+def qimp {α} (P₀ P₁ : α → Prop) : Prop := ∀ x, P₀ x → P₁ x
 
 /-- We use this lemma to decompose nested `predn` predicates into a sequence of universal quantifiers. -/
 @[simp]
@@ -151,60 +166,35 @@ def qimp_predn {α₀ α₁} (P : α₀ → α₁ → Prop) (Q : α₀ × α₁ 
   simp [qimp, curry]
 
 /-- We use this lemma to eliminate `imp` after we decomposed the nested `predn` -/
-theorem qimp_iff {α} (P₀ P₁ : Post α) : qimp P₀ P₁ ↔ ∀ x, imp (P₀ x) (P₁ x) := by simp [qimp, imp]
+theorem qimp_iff {α} (P₀ P₁ : α → Prop) : qimp P₀ P₁ ↔ ∀ x, imp (P₀ x) (P₁ x) := by simp [qimp, imp]
 
-/-- Alternative to `spec_mono`: we control the introduction of universal quantifiers by introducing `imp`. -/
-theorem spec_mono' {α} {P₁ : Post α} {m : Result α} {P₀ : Post α} (h : spec m P₀):
-  qimp P₀ P₁ → spec m P₁ := by
-  intros HMonPost
-  revert h
-  unfold spec theta wp_return
+/-- Alternative to `spec_mono` (success-only): introduces a `qimp` between the
+    inner value-level postconditions. -/
+theorem spec_mono' {α} {P₁ : α → Prop} {m : Result α} {P₀ : α → Prop}
+  (h : spec m (successPost P₀)) : qimp P₀ P₁ → spec m (successPost P₁) := by
+  intro HMonPost
+  unfold spec successPost at *
   cases m <;> grind [qimp]
 
-/-- Monotonicity for `specMatch`, mirroring `spec_mono'`. The `qimp` predicate
-    is generic in the carrier type, so we reuse it at `Result α`. -/
-theorem specMatch_mono' {α} {P₁ : Result α → Prop} {m : Result α} {P₀ : Result α → Prop}
-  (h : specMatch m P₀) : qimp P₀ P₁ → specMatch m P₁ := by
-  intro HMonPost
-  unfold specMatch at *
-  apply HMonPost; exact h
-
-/-- Bind for `specMatch`: like `spec_bind'` but the post-conditions speak about
-    the whole `Result α`, so the continuation on `fail`/`div` must explicitly
-    transport the inner predicate. -/
-theorem specMatch_bind' {α β} {k : α → Result β}
-  {Pₖ : Result β → Prop} {m : Result α} {Pₘ : Result α → Prop} :
-  specMatch m Pₘ →
-  (∀ x, Pₘ (ok x) → specMatch (k x) Pₖ) →
-  (∀ e, Pₘ (fail e) → Pₖ (fail e)) →
-  (Pₘ div → Pₖ div) →
-  specMatch (Std.bind m k) Pₖ := by
-  intro Hm Hok Hfail Hdiv
-  cases m
-  · simp [specMatch] at *; apply Hok; exact Hm
-  · simp [specMatch] at *; apply Hfail; exact Hm
-  · simp [specMatch] at *; apply Hdiv; exact Hm
-
-/-- Implication of a `spec` predicate with quantifier -/
+/-- Implication of a `spec` predicate with quantifier (value-level form). -/
 def qimp_spec {α β} (P : α → Prop) (k : α → Result β) (Q : β → Prop) : Prop :=
-  ∀ x, P x → spec (k x) Q
+  ∀ x, P x → spec (k x) (successPost Q)
 
-/-- This alternative to `spec_bind` controls the introduction of universal quantifiers with `imp_spec`. -/
-theorem spec_bind' {α β} {k : α -> Result β} {Pₖ : Post β} {m : Result α} {Pₘ : Post α} :
-  spec m Pₘ →
-  (qimp_spec Pₘ k Pₖ) →
-  spec (Std.bind m k) Pₖ := by
+/-- This alternative to `spec_bind` controls the introduction of universal
+    quantifiers with `imp_spec` (success-only). -/
+theorem spec_bind' {α β} {k : α → Result β} {Pₖ : β → Prop}
+  {m : Result α} {Pₘ : α → Prop} :
+  spec m (successPost Pₘ) →
+  qimp_spec Pₘ k Pₖ →
+  spec (Std.bind m k) (successPost Pₖ) := by
   intro Hm Hk
   cases m
-  · simp
-    apply Hk
-    apply Hm
-  · simp
-    apply Hm
-  · simp
-    apply Hm
+  · simp [spec, successPost] at *; apply Hk; exact Hm
+  · simp [spec, successPost] at *
+  · simp [spec, successPost] at *
 
-/-- We use this lemma to decompose nested `predn` predicates into a sequence of universal quantifiers. -/
+/-- We use this lemma to decompose nested `predn` predicates into a sequence
+    of universal quantifiers. -/
 @[simp]
 def qimp_spec_predn {α₀ α₁ β} (P : α₀ → α₁ → Prop) (k : α₀ × α₁ → Result β) (Q : β → Prop) :
   qimp_spec (predn P) k Q ↔ ∀ x, qimp_spec (P x) (curry k x) Q := by
@@ -212,19 +202,11 @@ def qimp_spec_predn {α₀ α₁ β} (P : α₀ → α₁ → Prop) (k : α₀ �
 
 /-- We use this lemma to eliminate `imp_spec` after we decomposed the nested `predn` -/
 def qimp_spec_iff {α β} (P : α → Prop) (k : α → Result β) (Q : β → Prop) :
-  qimp_spec P k Q ↔ ∀ x, imp (P x) (spec (k x) Q) := by
+  qimp_spec P k Q ↔ ∀ x, imp (P x) (spec (k x) (successPost Q)) := by
   simp [qimp_spec, imp]
 
-/--
-error: unsolved goals
-⊢ ∀ (x : Nat), qimp_spec (fun y => 0 < x + y) (curry (fun x => ok (x.fst + x.snd)) x) fun z => 0 < z
--/
-#guard_msgs in
-example : qimp_spec (predn fun x y => x + y > 0) (fun (x, y) => .ok (x + y)) (fun z => z > 0) := by
-  simp
-
 @[simp]
-theorem qimp_exists {α β} (P₀ : β → Post α) (P₁ : Post α) :
+theorem qimp_exists {α β} (P₀ : β → α → Prop) (P₁ : α → Prop) :
   qimp (fun x => ∃ y, P₀ y x) P₁ ↔ ∀ x, qimp (P₀ x) P₁ := by
   simp only [qimp, forall_exists_index]; grind
 
@@ -233,16 +215,19 @@ theorem qimp_spec_exists {α β γ} (P : γ → α → Prop) (k : α → Result 
   qimp_spec (fun x => ∃ y, P y x) k Q ↔ ∀ x, qimp_spec (P x) k Q := by
   simp only [qimp_spec, forall_exists_index]; grind
 
-theorem spec_equiv_exists (m:Result α) (P:Post α) :
-  spec m P ↔ (∃ y, m = ok y ∧ P y) := by
-  cases m <;> simp [spec, theta, wp_return]
+/-- For the success-only spec form, `spec m (successPost P)` is equivalent to
+    "m succeeds and the value satisfies P". This recovers the historical
+    `∃ y, m = ok y ∧ ...` reading. -/
+theorem spec_equiv_exists {α} (m : Result α) (P : α → Prop) :
+  spec m (successPost P) ↔ (∃ y, m = ok y ∧ P y) := by
+  cases m <;> simp [spec, successPost]
 
-theorem spec_imp_exists {m:Result α} {P:Post α} :
-  spec m P → (∃ y, m = ok y ∧ P y) := by
+theorem spec_imp_exists {α} {m : Result α} {P : α → Prop} :
+  spec m (successPost P) → (∃ y, m = ok y ∧ P y) := by
   exact (spec_equiv_exists m P).1
 
-theorem exists_imp_spec {m:Result α} {P:Post α} :
-  (∃ y, m = ok y ∧ P y) → spec m P := by
+theorem exists_imp_spec {α} {m : Result α} {P : α → Prop} :
+  (∃ y, m = ok y ∧ P y) → spec m (successPost P) := by
   exact (spec_equiv_exists m P).2
 
 end Aeneas.Std.WP
@@ -277,11 +262,14 @@ scoped syntax:54 (name := specMatchTriple) term:55 " ⦃ " specMatchAlt+ " ⦄" 
 
 open Lean PrettyPrinter
 
-/-- Macro expansion for a single element -/
+/-- Macro expansion for the success-only form `e ⦃ x => p ⦄`: wraps the
+    predicate in `successPost`, which forbids `fail`/`div`. -/
 macro_rules (kind := specBoundTriple)
-  | `($e ⦃ $x => $p ⦄) => do `(_root_.Aeneas.Std.WP.spec $e fun $x => $p)
+  | `($e ⦃ $x => $p ⦄) => do
+    `(_root_.Aeneas.Std.WP.spec $e (_root_.Aeneas.Std.WP.successPost (fun $x => $p)))
 
-/-- Macro expansion for multiple elements -/
+/-- Macro expansion for the multi-binder form `e ⦃ x y z => p ⦄`: same as
+    above, with `predn` decomposing the tuple value inside `ok`. -/
 macro_rules (kind := specBoundTriple)
   | `($e ⦃ $x $xs:term* => $p ⦄) => do
     let mut xs : List (TSyntax `term) := x :: xs.toList
@@ -293,11 +281,13 @@ macro_rules (kind := specBoundTriple)
         let xs ← run xs
         `(_root_.Aeneas.Std.WP.predn fun $x => $xs)
     let post ← run xs
-    `(Aeneas.Std.WP.spec $e $post)
+    `(_root_.Aeneas.Std.WP.spec $e (_root_.Aeneas.Std.WP.successPost $post))
 
-/-- Macro expansion for predicate with no arrow -/
+/-- Macro expansion for the bare-predicate form `e ⦃ p ⦄`: the predicate is
+    a value-level `α → Prop`, wrapped via `successPost`. -/
 macro_rules (kind := specPredTriple)
-  | `($e ⦃ $p ⦄) => do `(_root_.Aeneas.Std.WP.spec $e $p)
+  | `($e ⦃ $p ⦄) => do
+    `(_root_.Aeneas.Std.WP.spec $e (_root_.Aeneas.Std.WP.successPost $p))
 
 /-- Macro expansion for the pattern-match form. Unmentioned branches default to
     `False` (forbidden) via the appended catch-all `| _ => False` (skipped if
@@ -323,7 +313,7 @@ macro_rules (kind := specMatchTriple)
       let defaultArm : TSyntax ``Lean.Parser.Term.matchAlt ←
         `(Lean.Parser.Term.matchAltExpr| | _ => False) <&> fun s => ⟨s.raw⟩
       pure (arms.push defaultArm)
-    `(_root_.Aeneas.Std.WP.specMatch $e
+    `(_root_.Aeneas.Std.WP.spec $e
         (fun __r => match __r with $arms:matchAlt*))
 
 /-!
@@ -362,44 +352,43 @@ partial def telescopePredn (vars : Array SubExpr) (e : SubExpr) (k : Array SubEx
 
 def elabSubExpr (e : SubExpr) : Delab := withTheReader SubExpr (fun _ => e) delab
 
+/-- Delaborator for the unified `spec`. Reverses the macro expansion:
+
+    - If the post is `successPost f` (the canonical success-only form),
+      decompose any nested `predn` and emit the historical form
+      `e ⦃ x => P x ⦄` or `e ⦃ x y z => P x y z ⦄`.
+    - Otherwise (branch-by-branch form), emit `e ⦃ | ok x => P x | ... ⦄`,
+      stripping the macro's trailing `| _ => False` catch-all.
+
+    Falls back to default printing if no shape matches. -/
 @[scoped delab app.Aeneas.Std.WP.spec]
 def delabSpec : Delab := do
   let e ← getExpr
+  guard $ e.isAppOfArity' ``spec 3
   let pos ← getPos
-  guard $ e.isAppOfArity' ``spec 3 -- only delab full applications this way
-  let args := e.getAppArgs
-  let monadExpr ← elabSubExpr { expr := args[1]!, pos := (pos.push 0).push 1 }
-  let post : SubExpr := { expr := args[2]!, pos := pos.push 1 }
-  telescopePredn #[] post fun vars post => do
-  let vars ← vars.mapM elabSubExpr
-  let post ← elabSubExpr post
-  if vars.size = 0 then
-    -- This is the case where the post-condition doesn't have a lambda
-    `($monadExpr ⦃ $post:term ⦄)
+  let monadExpr ← elabSubExpr { expr := e.getAppArgs[1]!, pos := (pos.push 0).push 1 }
+  let postExpr := e.getAppArgs[2]!
+  -- Handle the success-only form: post = `successPost f`.
+  if postExpr.consumeMData.isAppOfArity ``successPost 2 then
+    let postArgs := postExpr.consumeMData.getAppArgs
+    let fSub : SubExpr := { expr := postArgs[1]!, pos := (pos.push 1).push 1 }
+    telescopePredn #[] fSub fun vars body => do
+      let vars ← vars.mapM elabSubExpr
+      let body ← elabSubExpr body
+      if vars.size = 0 then
+        `($monadExpr ⦃ $body:term ⦄)
+      else
+        let var := vars[0]!
+        let vars := vars.drop 1
+        `($monadExpr ⦃ $var $vars* => $body ⦄)
   else
-    --
-    let var := vars[0]!
-    let vars := vars.drop 1
-    `($monadExpr ⦃ $var $vars* => $post ⦄)
-
-/-- Delaborator for `specMatch`. Reverses the macro expansion so that
-    `specMatch e (fun r => match r with | ok z => P | _ => False)` prints
-    back as `e ⦃ | ok z => P ⦄`. The trailing `| _ => False` catch-all arm
-    that the macro inserts is stripped (when present). -/
-@[scoped delab app.Aeneas.Std.WP.specMatch]
-def delabSpecMatch : Delab := do
-  let e ← getExpr
-  guard $ e.isAppOfArity' ``specMatch 3
-  let monadExpr ← withNaryArg 1 delab
-  -- The post is `fun __r => match __r with | ... | _ => False`.
-  let body ← withNaryArg 2 delab
-  let alts ← extractMatchAlts body
-  -- Strip the trailing `| _ => False` arm that the macro inserts.
-  let alts := stripFalseCatchall alts
-  guard !alts.isEmpty
-  -- Convert each `matchAlt` to a `specMatchAlt` and emit the surface syntax.
-  let specAlts ← alts.mapM altToSpecAlt
-  `($monadExpr ⦃ $specAlts:specMatchAlt* ⦄)
+    -- Branch-by-branch form: post = `fun r => match r with | ... | _ => False`.
+    let body ← withNaryArg 2 delab
+    let alts ← extractMatchAlts body
+    let alts := stripFalseCatchall alts
+    guard !alts.isEmpty
+    let specAlts ← alts.mapM altToSpecAlt
+    `($monadExpr ⦃ $specAlts:specMatchAlt* ⦄)
 where
   extractMatchAlts (stx : Term) : DelabM (Array (TSyntax ``Lean.Parser.Term.matchAlt)) := do
     match stx with
@@ -428,28 +417,28 @@ where
 -/
 
 example : ok 0 ⦃ r => r = 0 ⦄ := by simp
-example : spec (ok 0) fun _ => True := by simp
+example : spec (ok 0) (fun r => match r with | .ok x => x = 0 | _ => False) := by simp [spec]
 example : ok 0 ⦃ _ => True ⦄ := by simp
-example : spec (ok (0, 1)) fun (x, y) => x = 0 ∧ y = 1 := by simp
+example : spec (ok (0, 1)) (fun r => match r with | .ok (x, y) => x = 0 ∧ y = 1 | _ => False) := by simp [spec]
 example : ok (0, 1) ⦃ (x, y) => x = 0 ∧ y = 1 ⦄ := by simp
 example : ok (0, 1) ⦃ x y => x = 0 ∧ y = 1 ⦄ := by simp
 example : ok (0, 1, 2) ⦃ x y z => x = 0 ∧ y = 1 ∧ z = 2 ⦄ := by simp
-example : ok (0, 1, true) ⦃ x y z => x = 0 ∧ y = 1 ∧ z ⦄ := by simp
+example : ok (0, 1, true) ⦃ x y z => x = 0 ∧ y = 1 ∧ z = true ⦄ := by simp
 example : let P (x : Nat) := x = 0; ok 0 ⦃ P ⦄ := by simp
 
 /-! Tests for the pattern-match form `⦃ | ok ... | fail ... ⦄`. -/
 
-example : ok 0 ⦃ | ok r => r = 0 ⦄ := by simp
-example : (ok 0 : Result Nat) ⦃ | ok r => r = 0 | fail _ => True ⦄ := by simp
+example : ok 0 ⦃ | ok r => r = 0 ⦄ := by simp [spec]
+example : (ok 0 : Result Nat) ⦃ | ok r => r = 0 | fail _ => True ⦄ := by simp [spec]
 example : (fail .integerOverflow : Result Nat)
-    ⦃ | fail .integerOverflow => True ⦄ := by simp
+    ⦃ | fail .integerOverflow => True ⦄ := by simp [spec]
 example : (fail .integerOverflow : Result Nat)
-    ⦃ | ok _ => False | fail .integerOverflow => True | _ => False ⦄ := by simp
+    ⦃ | ok _ => False | fail .integerOverflow => True | _ => False ⦄ := by simp [spec]
 -- The default `| _ => False` makes unmentioned cases impossible:
-example : ¬ ((fail .panic : Result Nat) ⦃ | ok _ => True ⦄) := by simp
-example : ¬ ((Result.div : Result Nat) ⦃ | ok _ => True ⦄) := by simp
+example : ¬ ((fail .panic : Result Nat) ⦃ | ok _ => True ⦄) := by simp [spec]
+example : ¬ ((Result.div : Result Nat) ⦃ | ok _ => True ⦄) := by simp [spec]
 -- Use `| _ => True` to leave a branch unconstrained.
-example : (fail .panic : Result Nat) ⦃ | ok _ => False | _ => True ⦄ := by simp
+example : (fail .panic : Result Nat) ⦃ | ok _ => False | _ => True ⦄ := by simp [spec]
 
 end Aeneas
 
@@ -473,90 +462,13 @@ def add1 (x : Nat) := Result.ok (x + 1)
 theorem  add1_spec (x : Nat) : add1 x ⦃ y => y = x + 1⦄ :=
   by simp [add1]
 
-/-- Example without `imp` -/
-example (x : Nat) :
-  (do
-    let y ← add1 x
-    add1 y) ⦃ y => y = x + 2 ⦄ := by
-    -- step as ⟨ y, z ⟩
-    apply spec_bind (add1_spec _)
-    intro y h
-    -- step as ⟨ y1, z1⟩
-    apply spec_mono (add1_spec _)
-    intro y' h
-    --
-    grind
-
-/-- Example with `imp` -/
-example (x : Nat) :
-  (do
-    let y ← add1 x
-    add1 y) ⦃ y => y = x + 2 ⦄ := by
-    -- step as ⟨ y, z ⟩
-    apply spec_bind' (add1_spec _)
-    simp -failIfUnchanged only -- introduce the quantifiers
-    simp only [qimp_spec_iff] -- eliminate `qimp_spec`
-    intro y h
-    -- step as ⟨ y1, z1⟩
-    apply spec_mono' (add1_spec _)
-    simp -failIfUnchanged only -- introduce the quantifiers
-    simp only [qimp_iff] -- eliminate `qimp_spec`
-    simp only [imp] -- eliminate `imp`
-    intro y' h
-    --
-    grind
-
 def add2 (x : Nat) := Result.ok (x + 1, x + 2)
 
 theorem  add2_spec (x : Nat) : add2 x ⦃ (y, z) => y = x + 1 ∧ z = x + 2⦄ :=
   by simp [add2]
 
-/-- Example without `imp` -/
-example (x : Nat) :
-  (do
-    let (y, _) ← add2 x
-    add2 y) ⦃ (y, _) => y = x + 2 ⦄ := by
-    -- step as ⟨ y, z ⟩
-    apply spec_bind
-    . apply add2_spec
-    intro tmp h
-    split at h
-    rename_i tmp y z
-    clear tmp
-    -- step as ⟨ y1, z1⟩
-    apply spec_mono
-    . apply add2_spec
-    intro tmp h
-    split at h
-    rename_i tmp y1 z1
-    clear tmp
-    --
-    grind
-
 theorem  add2_spec' (x : Nat) : add2 x ⦃ y z => y = x + 1 ∧ z = x + 2⦄ :=
   by simp [add2]
-
-/-- Example with `imp` -/
-example (x : Nat) :
-  (do
-    let (y, _) ← add2 x
-    add2 y) ⦃ y _ => y = x + 2 ⦄ := by
-    -- step as ⟨ y, z ⟩
-    apply spec_bind'
-    . apply add2_spec'
-    simp -failIfUnchanged only [qimp_spec_predn] -- introduce the quantifiers
-    simp only [qimp_spec_iff, curry] -- eliminate `qimp_spec` and `curry`
-    simp only [imp] -- eliminate `imp`
-    intro y z h0
-    -- step as ⟨ y1, z1⟩
-    apply spec_mono'
-    . apply add2_spec'
-    simp -failIfUnchanged only [qimp_predn] -- introduce the quantifiers
-    simp only [qimp_iff, curry, predn] -- eliminate `qimp_spec` and `curry`
-    simp only [imp]
-    intros y z h
-    --
-    grind
 
 private theorem massert_spec' (b : Prop) [Decidable b] (h : b) :
   massert b ⦃ _ => True ⦄ := by
@@ -571,22 +483,6 @@ theorem qimp_spec_unit {α} (P : Unit → Prop) (k : Unit → Result α) (Q : α
 theorem qimp_unit (P Q : Unit → Prop) :
   qimp P Q ↔ (P () → Q ()) := by
   grind [qimp]
-
-/-- Example with a function outputting `()` (we need to eliminate the quantifier) -/
-example :
-  (do
-    massert (0 < 1);
-    massert (1 < 2)
-    ) ⦃ _ => True ⦄
-  := by
-  --
-  apply spec_bind'
-  · apply massert_spec'; omega
-  simp -failIfUnchanged only [qimp_spec_unit, forall_const]
-  --
-  apply spec_mono'
-  · apply massert_spec'; omega
-  simp -failIfUnchanged only [qimp_unit, forall_const]
 
 end Aeneas.Std.WP
 

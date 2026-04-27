@@ -51,7 +51,7 @@ elab "spec_split": tactic => do setGoals (← esplitMatchAtSpecTac (← mkFreshU
 elab "spec_split" "as" h:ident : tactic => do setGoals (← esplitMatchAtSpecTac h.getId (some []))
 
 example {α} (x : Option α) :
-  Std.WP.spec (match x with | none => .ok 0 | some _ => .ok 1) (fun _ => True) := by
+  Std.WP.spec (match x with | none => .ok 0 | some _ => .ok 1) (Std.WP.successPost (fun _ => True)) := by
   spec_split <;> simp
 
 theorem dite_true: (dite True t e) = t (by simp) := by simp
@@ -115,7 +115,8 @@ h : ¬b = true
 ⊢ Std.Result.ok 1 ⦃ x✝ => True ⦄
 -/
 #guard_msgs in
-example (b : Bool) : Std.WP.spec (if b then .ok 0 else .ok 1) (fun _ => True) := by
+example (b : Bool) :
+    Std.WP.spec (if b then .ok 0 else .ok 1) (Std.WP.successPost (fun _ => True)) := by
   spec_split_if as h
 
 /--
@@ -131,7 +132,8 @@ h : ¬b = true
 ⊢ Std.Result.ok 1 ⦃ x✝ => True ⦄
 -/
 #guard_msgs in
-example (b : Bool) : Std.WP.spec (if h: b then .ok 0 else .ok 1) (fun _ => True) := by
+example (b : Bool) :
+    Std.WP.spec (if h: b then .ok 0 else .ok 1) (Std.WP.successPost (fun _ => True)) := by
   spec_split_if as h
 
 /-- Given a goal of the shape `spec (match ... with ...) post` or `spec (if ... then ... else ...)`,

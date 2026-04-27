@@ -212,22 +212,18 @@ section Methods
     withLocalDeclsD ⟨ tys ⟩ k
 end Methods
 
-/-- Returns true if `f` is one of the recognized spec-head constants:
-    `Std.WP.spec` for total-correctness specs, or `Std.WP.specMatch` for
-    branch-by-branch (`ok`/`fail`/`div`) specs. Both have arity 3 with the
-    same argument layout (`_, monadic value, postcondition`). -/
+/-- Returns true if `f` is the spec-head constant `Std.WP.spec`. The
+    unified `spec` combinator handles both total-correctness specs and
+    branch-by-branch (`ok`/`fail`/`div`) specs through the same head; the
+    distinction lives in the postcondition. -/
 def isSpecHead (f : Expr) : Bool :=
-  f.isConstOf ``Std.WP.spec ∨ f.isConstOf ``Std.WP.specMatch
+  f.isConstOf ``Std.WP.spec
 
 /- Analyze a goal or a step theorem to decompose its arguments.
 
   StepSpec theorems should be of the following shape:
   ```
   ∀ x1 ... xn, H1 → ... Hn → spec (f x1 ... xn) P
-  ```
-  or, for branch-by-branch specs:
-  ```
-  ∀ x1 ... xn, H1 → ... Hn → specMatch (f x1 ... xn) P
   ```
 -/
 def getStepSpecFunArgsExpr (ty : Expr) :
@@ -238,11 +234,11 @@ def getStepSpecFunArgsExpr (ty : Expr) :
   -- ty == ∀ xs, spec (f x1 ... xn) P
   let (xs, xs_bi, ty₂) ← forallMetaTelescope ty
   trace[Step] "Universally quantified arguments and assumptions: {xs}"
-  -- ty₂ == spec (f x1 ... xn) P  or  specMatch (f x1 ... xn) P
+  -- ty₂ == spec (f x1 ... xn) P
   let (spec?, args) := ty₂.consumeMData.withApp (fun f args => (f, args))
   if isSpecHead spec? ∧ args.size = 3
   then pure args[1]! -- this is `f x1 ... xn`
-  else throwError "Expected to be a `spec (f x1 ... xn) P` or `specMatch (f x1 ... xn) P`, got {ty₂}"
+  else throwError "Expected to be a `spec (f x1 ... xn) P`, got {ty₂}"
 
 structure Rules where
   rules : DiscrTree Name
@@ -394,8 +390,8 @@ namespace Test
 end Test
 
 theorem spec_lift {α : Type} (x : α) (P : α → Prop) (h : P x) :
-  Std.WP.spec (Std.lift x) P := by
-  simp [Std.lift]
+  Std.WP.spec (Std.lift x) (Std.WP.successPost P) := by
+  simp [Std.lift, Std.WP.successPost]
   apply h
 
 def reduceProdProjs (e : Expr) : MetaM Expr := do
@@ -423,8 +419,9 @@ theorem intro_predn (p : α × β → Prop) : p = predn (fun x y => p (x, y)) :=
   unfold predn
   simp only
 
-theorem lift_to_spec x (p0 p1 : α → Prop) (h0 : p0 x) (h1 : p0 = p1) : spec (Std.lift x) p1 := by
-  grind [spec, Std.lift]
+theorem lift_to_spec x (p0 p1 : α → Prop) (h0 : p0 x) (h1 : p0 = p1) :
+    spec (Std.lift x) (successPost p1) := by
+  grind [spec, Std.lift, successPost]
 
 namespace Test
 
@@ -522,9 +519,11 @@ def liftThmType (thmTy : Expr) (pat : Option Syntax)
       mkAppM ``predn #[← mkLambdaFVars #[x] thm]
   let thmTy ← mkPredn patFVars.toList
   trace[Step] "result of mkPredn: {thmTy}"
-  /- Add the `spec` -/
+  /- Add the `spec` (wrapped in `successPost` to match the success-only
+     macro expansion) -/
   let liftExpr ← mkAppM ``Std.lift #[pat]
   trace[Step] "liftExpr: {liftExpr}"
+  let thmTy ← mkAppM ``successPost #[thmTy]
   let thmTy ← mkAppM ``spec #[liftExpr, thmTy]
   trace[Step] "thmTy after introducing `spec`: {thmTy}"
   /- Reintroduce the universal quantifiers -/
@@ -880,8 +879,9 @@ structure StepPureDefSpecAttr where
   attr : AttributeImpl
   deriving Inhabited
 
-theorem specLiftDef {α} (x : α) : Std.WP.spec (Std.lift x) (fun y => y = x) := by
-  simp only [Std.lift, Std.WP.spec_ok]
+theorem specLiftDef {α} (x : α) :
+    Std.WP.spec (Std.lift x) (Std.WP.successPost (fun y => y = x)) := by
+  simp only [Std.lift, Std.WP.spec_ok, Std.WP.successPost_ok]
 
 def mkStepPureDefThm (stx : Syntax) (pat : Option (TSyntax `term)) (n : Name)
   (suffix : String := "step_spec") : MetaM Name := do
@@ -903,7 +903,9 @@ def mkStepPureDefThm (stx : Syntax) (pat : Option (TSyntax `term)) (n : Name)
   let tacticStx ←
     `(tactic|
         simp only
-          [_root_.Aeneas.Std.lift, _root_.Aeneas.Std.WP.spec_ok, _root_.Aeneas.Std.WP.predn, _root_.implies_true])
+          [_root_.Aeneas.Std.lift, _root_.Aeneas.Std.WP.spec_ok,
+           _root_.Aeneas.Std.WP.predn, _root_.Aeneas.Std.WP.successPost_ok,
+           _root_.implies_true])
   liftThm stx n pat mkPat mkPred suffix (tacticStx := some tacticStx)
 
 local elab "#step_pure_def" id:ident pat:(term)? : command => do

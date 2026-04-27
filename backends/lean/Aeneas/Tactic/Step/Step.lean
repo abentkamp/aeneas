@@ -230,7 +230,7 @@ def getFirstBind (goalTy : Expr) : MetaM (Bool × Expr) := do
   let (spec?, args) := goalTy.consumeMData.withApp (fun f args => (f, args))
   let compTy ← if isSpecHead spec? ∧ args.size = 3
                then pure (args[1]!)
-               else throwError "Goal is not a `spec m P` or `specMatch m P`"
+               else throwError "Goal is not a `spec m P`"
 
   trace[Step] "compTy: {compTy}"
 
@@ -272,7 +272,10 @@ def getBindVarName : TacticM (Option Name) := do
 -/
 partial def getPostNames (e : Expr) : MetaM (Array (Option Name)) := do
   let e := e.consumeMData
-  if e.isLambda then
+  -- Strip the success-only `successPost` wrapper inserted by the macro.
+  if e.isAppOfArity ``Std.WP.successPost 2 then
+    getPostNames e.appArg!
+  else if e.isLambda then
     lambdaTelescope e fun vars body => do
       let vars ← vars.filterMapM fun x => do
         let ty ← x.fvarId!.getType
@@ -366,31 +369,29 @@ def tryMatch (isLet : Bool) (th : Expr) :
   let th := mkAppN th mvars
   trace[Step] "Uninstantiated theorem: {th}: {← inferType th}"
 
-  -- `thTy` should be of the shape `spec program post` or
-  -- `specMatch program post`: we need to retrieve `program` and pick the
-  -- corresponding mono/bind lemma.
+  -- `thTy` should be of the shape `spec program post` (where `post` is the
+  -- success-only `successPost P` produced by the macro): retrieve `program`
+  -- and the inner value-level `P` to feed to `spec_mono'`/`spec_bind'`.
   let (thHead, thArgs) := thTy.consumeMData.withApp (fun f args => (f, args))
-  if !thHead.isConst then
+  if !thHead.isConst || thHead.constName! != ``Std.WP.spec then
     throwError "Not a spec theorem"
-  let isSpecMatch ←
-    match thHead.constName! with
-    | ``Std.WP.spec => pure false
-    | ``Std.WP.specMatch => pure true
-    | _ => throwError "Not a spec theorem"
-  let (program, P) ←
+  let (program, postExpr) ←
     if h: thArgs.size = 3
-    then pure (thArgs[1], thArgs[2])
+    then pure (thArgs[1]!, thArgs[2]!)
     else throwError "Not a spec theorem"
+  -- If the post is `successPost P`, extract `P` (the value-level predicate).
+  -- The mono/bind lemmas (`spec_mono'`/`spec_bind'`) take value-level posts,
+  -- so we need to unwrap the canonical success-only wrapper.
+  let P ←
+    if postExpr.consumeMData.isAppOfArity ``Std.WP.successPost 2 then
+      pure postExpr.consumeMData.appArg!
+    else
+      throwError "Step lemma post is not in the success-only `successPost _` form: {postExpr}"
 
   let (specMonoBindName, varNum) :=
-    if isSpecMatch then
-      if isLet
-      then (``Std.WP.specMatch_bind', 4)
-      else (``Std.WP.specMatch_mono', 2)
-    else
-      if isLet
-      then (``Std.WP.spec_bind', 4)
-      else (``Std.WP.spec_mono', 2)
+    if isLet
+    then (``Std.WP.spec_bind', 4)
+    else (``Std.WP.spec_mono', 2)
   let specMonoBind ← Term.mkConst specMonoBindName
   let specMonoBindTy ← inferType specMonoBind
   trace[Step] "specMonoBind (isLet:{isLet}): {specMonoBind}: {← inferType specMonoBind}"

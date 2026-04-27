@@ -919,7 +919,7 @@ theorem Slice.mapM_spec {α β} {f : α → Result β} {s : Slice α} {post : Na
       apply this; intro i hi
       let i' : Usize := Usize.ofNatCore i (by scalar_tac)
       have hf' := hf i' (by scalar_tac)
-      simp [spec, theta] at hf'
+      simp [spec] at hf'
       show ∃ b, f s[i'] = ok b
       cases hfi : f s[i'] <;> simp_all
     intro l; induction l with
@@ -936,7 +936,7 @@ theorem Slice.mapM_spec {α β} {f : α → Result β} {s : Slice α} {post : Na
     refine ⟨by grind [List.mapM_Result_length], fun i hi => ?_⟩
     have hlen : i < s.len := by have := List.mapM_Result_length heq; simp [Slice.len] at *; omega
     have : f s[i] = ok xs[↑i] := List.mapM_Result_ok heq (↑i) (by scalar_tac)
-    specialize hf i hlen; simp [spec, theta, this] at hf
+    specialize hf i hlen; simp [spec, this] at hf
     convert hf using 1
   case h_2 e heq => simp [hl'] at heq
   case h_3 heq => simp [hl'] at heq

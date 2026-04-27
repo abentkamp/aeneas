@@ -137,18 +137,18 @@ Theorems with a specification which only use integers
 theorem UScalar.mul_spec {ty} {x y : UScalar ty}
   (hmax : ↑x * ↑y ≤ UScalar.max ty) :
   x * y ⦃ z => (↑z : Nat) = ↑x * ↑y ⦄ := by
-  apply spec_mono
-  apply mul_bv_spec hmax
-  grind
+  apply spec_mono (mul_bv_spec hmax)
+  intros r h
+  cases r <;> simp [successPost] at * <;> grind
 
 /-- Generic theorem - shouldn't be used much -/
 theorem IScalar.mul_spec {ty} {x y : IScalar ty}
   (hmin : IScalar.min ty ≤ ↑x * ↑y)
   (hmax : ↑x * ↑y ≤ IScalar.max ty) :
   x * y ⦃ z => (↑z : Int) = ↑x * ↑y ⦄ := by
-  apply spec_mono
-  apply @mul_bv_spec ty x y (by scalar_tac) (by scalar_tac)
-  grind
+  apply spec_mono (@mul_bv_spec ty x y (by scalar_tac) (by scalar_tac))
+  intros r h
+  cases r <;> simp [successPost] at * <;> grind
 
 uscalar @[step] theorem «%S».mul_spec {x y : «%S»} (hmax : x.val * y.val ≤ «%S».max) :
   x * y ⦃ z => (↑z : Nat) = ↑x * ↑y ⦄ :=

@@ -15,7 +15,8 @@ theorem massert_spec (b : Prop) [Decidable b] (h : b) :
 theorem massert_ok (b : Prop) [Decidable b] : massert b = ok () ↔ b := by simp [massert]
 
 @[simp, step_pre_simps, bvify]
-theorem spec_massert (b : Prop) [Decidable b] : Std.WP.spec (massert b) P ↔ (b ∧ P ()) := by
+theorem spec_massert (b : Prop) [Decidable b] (P : Unit → Prop) :
+    Std.WP.spec (massert b) (Std.WP.successPost P) ↔ (b ∧ P ()) := by
   simp [massert]
   split <;> simp <;> grind
 
