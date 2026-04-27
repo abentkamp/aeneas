@@ -32,14 +32,11 @@ local macro_rules
 | `(tactic|simp_scalar_consts) =>
   `(tactic|
       simp [
-      UScalar.max,
       Usize.rMax, Usize.rMax, Usize.max,
       U8.rMax, U8.max, U16.rMax, U16.max, U32.rMax, U32.max,
       U64.rMax, U64.max, U128.rMax, U128.max,
       U8.numBits_def, U16.numBits_def, U32.numBits_def, U64.numBits_def, U128.numBits_def, Usize.numBits_def,
       U8.size, U16.size, U32.size, U64.size, U128.size, Usize.size,
-      IScalar.max,
-      IScalar.min,
       Isize.rMax, Isize.rMax, Isize.max,
       I8.rMax, I8.max, I16.rMax, I16.max, I32.rMax, I32.max,
       I64.rMax, I64.max, I128.rMax, I128.max,
