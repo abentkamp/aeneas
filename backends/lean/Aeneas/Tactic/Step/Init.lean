@@ -212,11 +212,22 @@ section Methods
     withLocalDeclsD ⟨ tys ⟩ k
 end Methods
 
+/-- Returns true if `f` is one of the recognized spec-head constants:
+    `Std.WP.spec` for total-correctness specs, or `Std.WP.specMatch` for
+    branch-by-branch (`ok`/`fail`/`div`) specs. Both have arity 3 with the
+    same argument layout (`_, monadic value, postcondition`). -/
+def isSpecHead (f : Expr) : Bool :=
+  f.isConstOf ``Std.WP.spec ∨ f.isConstOf ``Std.WP.specMatch
+
 /- Analyze a goal or a step theorem to decompose its arguments.
 
   StepSpec theorems should be of the following shape:
   ```
   ∀ x1 ... xn, H1 → ... Hn → spec (f x1 ... xn) P
+  ```
+  or, for branch-by-branch specs:
+  ```
+  ∀ x1 ... xn, H1 → ... Hn → specMatch (f x1 ... xn) P
   ```
 -/
 def getStepSpecFunArgsExpr (ty : Expr) :
@@ -227,11 +238,11 @@ def getStepSpecFunArgsExpr (ty : Expr) :
   -- ty == ∀ xs, spec (f x1 ... xn) P
   let (xs, xs_bi, ty₂) ← forallMetaTelescope ty
   trace[Step] "Universally quantified arguments and assumptions: {xs}"
-  -- ty₂ == spec (f x1 ... xn) P
+  -- ty₂ == spec (f x1 ... xn) P  or  specMatch (f x1 ... xn) P
   let (spec?, args) := ty₂.consumeMData.withApp (fun f args => (f, args))
-  if h: spec?.isConstOf ``Std.WP.spec ∧ args.size = 3
-  then pure args[1] -- this is `f x1 ... xn`
-  else throwError "Expected to be a `spec (f x1 ... xn) P`, got {ty₂}"
+  if isSpecHead spec? ∧ args.size = 3
+  then pure args[1]! -- this is `f x1 ... xn`
+  else throwError "Expected to be a `spec (f x1 ... xn) P` or `specMatch (f x1 ... xn) P`, got {ty₂}"
 
 structure Rules where
   rules : DiscrTree Name

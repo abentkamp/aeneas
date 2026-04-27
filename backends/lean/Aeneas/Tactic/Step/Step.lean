@@ -228,9 +228,9 @@ def getFirstBind (goalTy : Expr) : MetaM (Bool × Expr) := do
   forallTelescope goalTy fun nvars goalTy => do
 
   let (spec?, args) := goalTy.consumeMData.withApp (fun f args => (f, args))
-  let compTy ← if h: spec?.isConstOf ``Std.WP.spec ∧ args.size = 3
-               then pure (args[1])
-               else throwError "Goal is not a `spec m P`"
+  let compTy ← if isSpecHead spec? ∧ args.size = 3
+               then pure (args[1]!)
+               else throwError "Goal is not a `spec m P` or `specMatch m P`"
 
   trace[Step] "compTy: {compTy}"
 
@@ -250,8 +250,8 @@ def getBindVarName : TacticM (Option Name) := do
     let goalTy ← instantiateMVars goalTy
     forallTelescope goalTy fun _ goalTy => do
     let (spec?, args) := goalTy.consumeMData.withApp (fun f args => (f, args))
-    if h : spec?.isConstOf ``Std.WP.spec ∧ args.size = 3 then
-      let e := args[1]
+    if isSpecHead spec? ∧ args.size = 3 then
+      let e := args[1]!
       let bargs := e.getAppArgs
       let fn := e.getAppFn
       if h2 : (fn.isConstOf ``Bind.bind ∨ fn.isConstOf ``bind) ∧ bargs.size = 6 then
@@ -297,7 +297,7 @@ def getPostNamesFromGoal : TacticM (Array (Option Name)) := do
     let goalTy ← (← getMainGoal).getType
     let goalTy ← instantiateMVars goalTy
     goalTy.consumeMData.withApp fun spec? args => do
-    if spec?.isConstOf ``Std.WP.spec ∧ args.size = 3 then
+    if isSpecHead spec? ∧ args.size = 3 then
       getPostNames args[2]!
     else pure #[]
   catch _ => pure #[]
@@ -366,19 +366,31 @@ def tryMatch (isLet : Bool) (th : Expr) :
   let th := mkAppN th mvars
   trace[Step] "Uninstantiated theorem: {th}: {← inferType th}"
 
-  -- `thTy` should be of the shape `spec program post`: we need to retrieve `program`
+  -- `thTy` should be of the shape `spec program post` or
+  -- `specMatch program post`: we need to retrieve `program` and pick the
+  -- corresponding mono/bind lemma.
   let (thHead, thArgs) := thTy.consumeMData.withApp (fun f args => (f, args))
-  if !thHead.isConst || thHead.constName! != ``Std.WP.spec then
+  if !thHead.isConst then
     throwError "Not a spec theorem"
+  let isSpecMatch ←
+    match thHead.constName! with
+    | ``Std.WP.spec => pure false
+    | ``Std.WP.specMatch => pure true
+    | _ => throwError "Not a spec theorem"
   let (program, P) ←
     if h: thArgs.size = 3
     then pure (thArgs[1], thArgs[2])
     else throwError "Not a spec theorem"
 
   let (specMonoBindName, varNum) :=
-    if isLet
-    then (``Std.WP.spec_bind', 4)
-    else (``Std.WP.spec_mono', 2)
+    if isSpecMatch then
+      if isLet
+      then (``Std.WP.specMatch_bind', 4)
+      else (``Std.WP.specMatch_mono', 2)
+    else
+      if isLet
+      then (``Std.WP.spec_bind', 4)
+      else (``Std.WP.spec_mono', 2)
   let specMonoBind ← Term.mkConst specMonoBindName
   let specMonoBindTy ← inferType specMonoBind
   trace[Step] "specMonoBind (isLet:{isLet}): {specMonoBind}: {← inferType specMonoBind}"

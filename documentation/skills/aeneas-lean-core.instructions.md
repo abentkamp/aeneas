@@ -225,6 +225,39 @@ fun_name a b ⦃ result =>
   result.1.val < 100 ∧ result.2.length = a.length ⦄
 ```
 
+### Branch-by-branch specs: `⦃ | ok ... | fail ... ⦄`
+
+When you need to specify what happens on `fail` or `div` outcomes — not just
+on `ok` — use the pattern-match form. The leading `|` after `⦃` distinguishes
+this from the success-only form.
+
+```lean
+@[step]
+theorem U32.add_spec_partial (x y : U32) :
+  x + y ⦃
+    | ok z => z.val = x.val + y.val
+    | fail .integerOverflow => x.val + y.val > U32.max
+  ⦄ := by ...
+```
+
+Semantics: each arm is a `match` branch on the outer `Result α` constructor.
+**Unmentioned cases default to `False`** (i.e., the spec asserts those outcomes
+are impossible). To leave a branch unconstrained, write `| _ => True`
+explicitly:
+
+```lean
+foo x ⦃
+  | ok z => z.val = ...
+  | _ => True   -- explicitly silent on fail/div
+⦄
+```
+
+The pattern-match form is a strict generalization of the success-only form:
+`f ⦃ x => P x ⦄` is equivalent to `f ⦃ | ok x => P x ⦄` (with the implicit
+`| _ => False` default forbidding the other branches). Use the success-only
+form for total-correctness specs and the pattern-match form when you need to
+characterize specific failure modes.
+
 ### Recursive loop proofs: `unfold` + `step`, never `partial_fixpoint_induct`
 
 Aeneas-generated loops can produce recursive functions (e.g., `foo_loop0`). To prove

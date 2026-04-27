@@ -12,7 +12,7 @@ def esplitMatchAtSpec (h : Name) (names : Option (List (List (Option Name)))) :
   focus do withMainContext do
   let tgt ← getMainTarget
   tgt.consumeMData.withApp fun spec? args => do
-  if ¬ (spec?.isConstOf ``Std.WP.spec) ∨ args.size ≠ 3 then throwError "Not a valid spec goal"
+  if ¬ Step.isSpecHead spec? ∨ args.size ≠ 3 then throwError "Not a valid spec goal"
   let prog := args[1]!
   -- Check that we have a matcher
   let some ma ← Meta.matchMatcherApp? prog (alsoCasesOn := true)
@@ -64,7 +64,7 @@ def esplitIteAtSpec (h : Name) : TacticM (List (FVarId × MVarId)) := do
   focus do withMainContext do
   let tgt ← getMainTarget
   tgt.consumeMData.withApp fun spec? args => do
-  if ¬ (spec?.isConstOf ``Std.WP.spec) ∨ args.size ≠ 3 then throwError "Not a valid spec goal"
+  if ¬ Step.isSpecHead spec? ∨ args.size ≠ 3 then throwError "Not a valid spec goal"
   let prog := args[1]!
   -- Check that we have an if then else
   prog.withApp fun ite? args => do
@@ -141,7 +141,7 @@ def esplitAtSpec (h : Name) (names : Option (List (List (Option Name)))) : Tacti
   focus do withMainContext do
   let tgt ← getMainTarget
   tgt.consumeMData.withApp fun spec? args => do
-  if ¬ (spec?.isConstOf ``Std.WP.spec) ∨ args.size ≠ 3 then throwError "Not a valid spec goal"
+  if ¬ Step.isSpecHead spec? ∨ args.size ≠ 3 then throwError "Not a valid spec goal"
   let prog := args[1]!
   -- Check whether we have a matcher
   let ma ← Meta.matchMatcherApp? prog (alsoCasesOn := true)
@@ -388,9 +388,9 @@ def analyzeTarget : TacticM TargetKind := do
     let goalTy ← (← getMainGoal).getType
     -- Dive into the `spec program post`
     goalTy.consumeMData.withApp fun spec? args => do
-    if h: spec?.isConstOf ``Std.WP.spec ∧ args.size = 3 then
-      trace[Step] "application of `spec` with arity 3"
-      let program := args[1]
+    if Step.isSpecHead spec? ∧ args.size = 3 then
+      trace[Step] "application of `spec`/`specMatch` with arity 3"
+      let program := args[1]!
       -- Check if this is a bind
       let e ← Utils.normalizeLetBindings program
       if let .const ``Bind.bind .. := e.getAppFn then
@@ -404,7 +404,7 @@ def analyzeTarget : TacticM TargetKind := do
       else
         pure .result
     else
-      trace[Step] "not an application of `spec` with arity 3"
+      trace[Step] "not an application of `spec`/`specMatch` with arity 3"
       pure .result
   catch _ =>
     trace[Step] "exception caught"
@@ -730,7 +730,7 @@ where
                 | e => e
               let innerTy := stripForall precTy
               let isSpec := innerTy.consumeMData.withApp fun f args =>
-                f.isConstOf ``Std.WP.spec && args.size == 3
+                Step.isSpecHead f && args.size == 3
               if isSpec then
                 let tag ← mvarId.getTag
                 -- Recursively process this spec precondition

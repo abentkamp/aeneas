@@ -34,6 +34,10 @@ def spec_general (x:Result α) (p:Post α) :=
 def spec {α} (x:Result α) (p:Post α) :=
   theta x p
 
+/-- Spec combinator that takes a predicate over the whole `Result α`, allowing
+    the postcondition to constrain the `ok`, `fail`, and `div` branches. -/
+def specMatch {α} (x : Result α) (p : Result α → Prop) : Prop := p x
+
 /-- Auxiliary helper that we use to decompose tuples in post-conditions.
 
 Example: `f 0 ⦃ x y z => ... ⦄` desugars to `spec (f 0) (predn fun x => predn fun y z => ...)`.
@@ -72,6 +76,40 @@ theorem spec_fail (e : Error) : spec (fail e) p ↔ False := by simp [spec, thet
 
 @[simp, grind =, agrind =]
 theorem spec_div : spec div p ↔ False := by simp [spec, theta]
+
+@[simp, grind =, agrind =]
+theorem specMatch_ok {α} (v : α) (p : Result α → Prop) :
+  specMatch (ok v) p ↔ p (ok v) := by simp [specMatch]
+
+@[simp, grind =, agrind =]
+theorem specMatch_fail {α} (e : Error) (p : Result α → Prop) :
+  specMatch (fail e) p ↔ p (fail e) := by simp [specMatch]
+
+@[simp, grind =, agrind =]
+theorem specMatch_div {α} (p : Result α → Prop) :
+  specMatch (Result.div : Result α) p ↔ p div := by simp [specMatch]
+
+/-- A `spec` is exactly a `specMatch` whose non-`ok` branches are `False`. -/
+theorem spec_iff_specMatch {α} (m : Result α) (p : α → Prop) :
+  spec m p ↔ specMatch m (fun r => match r with | ok x => p x | _ => False) := by
+  cases m <;> simp [specMatch]
+
+theorem specMatch_mono {α} {m : Result α} {P₀ P₁ : Result α → Prop}
+  (h : specMatch m P₀) (hmono : ∀ r, P₀ r → P₁ r) : specMatch m P₁ := by
+  unfold specMatch at *; apply hmono; exact h
+
+theorem specMatch_bind {α β} {m : Result α} {k : α → Result β}
+  {Pₘ : Result α → Prop} {Pₖ : Result β → Prop} :
+  specMatch m Pₘ →
+  (∀ x, Pₘ (ok x) → specMatch (k x) Pₖ) →
+  (∀ e, Pₘ (fail e) → Pₖ (fail e)) →
+  (Pₘ div → Pₖ div) →
+  specMatch (Std.bind m k) Pₖ := by
+  intro Hm Hok Hfail Hdiv
+  cases m
+  · simp [specMatch] at *; apply Hok; exact Hm
+  · simp [specMatch] at *; apply Hfail; exact Hm
+  · simp [specMatch] at *; apply Hdiv; exact Hm
 
 theorem spec_mono {α} {P₁ : Post α} {m : Result α} {P₀ : Post α} (h : spec m P₀):
   (∀ x, P₀ x → P₁ x) → spec m P₁ := by
@@ -122,6 +160,30 @@ theorem spec_mono' {α} {P₁ : Post α} {m : Result α} {P₀ : Post α} (h : s
   revert h
   unfold spec theta wp_return
   cases m <;> grind [qimp]
+
+/-- Monotonicity for `specMatch`, mirroring `spec_mono'`. The `qimp` predicate
+    is generic in the carrier type, so we reuse it at `Result α`. -/
+theorem specMatch_mono' {α} {P₁ : Result α → Prop} {m : Result α} {P₀ : Result α → Prop}
+  (h : specMatch m P₀) : qimp P₀ P₁ → specMatch m P₁ := by
+  intro HMonPost
+  unfold specMatch at *
+  apply HMonPost; exact h
+
+/-- Bind for `specMatch`: like `spec_bind'` but the post-conditions speak about
+    the whole `Result α`, so the continuation on `fail`/`div` must explicitly
+    transport the inner predicate. -/
+theorem specMatch_bind' {α β} {k : α → Result β}
+  {Pₖ : Result β → Prop} {m : Result α} {Pₘ : Result α → Prop} :
+  specMatch m Pₘ →
+  (∀ x, Pₘ (ok x) → specMatch (k x) Pₖ) →
+  (∀ e, Pₘ (fail e) → Pₖ (fail e)) →
+  (Pₘ div → Pₖ div) →
+  specMatch (Std.bind m k) Pₖ := by
+  intro Hm Hok Hfail Hdiv
+  cases m
+  · simp [specMatch] at *; apply Hok; exact Hm
+  · simp [specMatch] at *; apply Hfail; exact Hm
+  · simp [specMatch] at *; apply Hdiv; exact Hm
 
 /-- Implication of a `spec` predicate with quantifier -/
 def qimp_spec {α β} (P : α → Prop) (k : α → Result β) (Q : β → Prop) : Prop :=
@@ -199,17 +261,28 @@ open Std WP Result
 
 /- We use a priority of 55 for the inner term, which is exactly the priority for `|||`.
 This way we can expressions like: `x + y ⦃ z => ... ⦄` without having to put parentheses around `x + y`. -/
-scoped syntax:54 term:55 " ⦃ " term+ " => " term " ⦄" : term
-scoped syntax:54 term:55 " ⦃ " term " ⦄" : term
+scoped syntax:54 (name := specBoundTriple) term:55 " ⦃ " term+ " => " term " ⦄" : term
+scoped syntax:54 (name := specPredTriple) term:55 " ⦃ " term " ⦄" : term
+
+/-- Single alternative in the pattern-match form `⦃ | pat => post | ... ⦄`. -/
+declare_syntax_cat specMatchAlt
+
+scoped syntax (name := specMatchAltStx) "| " term " => " term : specMatchAlt
+
+/-- Pattern-match form: lets the user specify what happens on `ok`, `fail` and
+    `div` branches. The leading `|` after `⦃` distinguishes this from the other
+    forms. Unmentioned branches default to `False` (forbidden); use
+    `| _ => True` to leave a branch unconstrained. -/
+scoped syntax:54 (name := specMatchTriple) term:55 " ⦃ " specMatchAlt+ " ⦄" : term
 
 open Lean PrettyPrinter
 
 /-- Macro expansion for a single element -/
-macro_rules
+macro_rules (kind := specBoundTriple)
   | `($e ⦃ $x => $p ⦄) => do `(_root_.Aeneas.Std.WP.spec $e fun $x => $p)
 
 /-- Macro expansion for multiple elements -/
-macro_rules
+macro_rules (kind := specBoundTriple)
   | `($e ⦃ $x $xs:term* => $p ⦄) => do
     let mut xs : List (TSyntax `term) := x :: xs.toList
     let rec run (xs : List (TSyntax `term)) : MacroM (TSyntax `term) := do
@@ -223,8 +296,35 @@ macro_rules
     `(Aeneas.Std.WP.spec $e $post)
 
 /-- Macro expansion for predicate with no arrow -/
-macro_rules
+macro_rules (kind := specPredTriple)
   | `($e ⦃ $p ⦄) => do `(_root_.Aeneas.Std.WP.spec $e $p)
+
+/-- Macro expansion for the pattern-match form. Unmentioned branches default to
+    `False` (forbidden) via the appended catch-all `| _ => False` (skipped if
+    the user already wrote a wildcard arm `| _ => ...`, to avoid redundancy). -/
+macro_rules (kind := specMatchTriple)
+  | `($e ⦃ $alts:specMatchAlt* ⦄) => do
+    let arms : Array (TSyntax ``Lean.Parser.Term.matchAlt) ← alts.mapM fun alt =>
+      match alt with
+      | `(specMatchAlt| | $pat:term => $rhs:term) =>
+          `(Lean.Parser.Term.matchAltExpr| | $pat => $rhs) <&> fun s => ⟨s.raw⟩
+      | _ => Macro.throwUnsupported
+    -- Detect whether the user already provided a wildcard `_` pattern. If so,
+    -- skip the auto-appended `| _ => False` so Lean doesn't warn about a
+    -- redundant arm.
+    let userHasWildcard ← alts.anyM fun alt => do
+      match alt with
+      | `(specMatchAlt| | $pat:term => $_) =>
+          match pat with
+          | `(_) => pure true
+          | _ => pure false
+      | _ => pure false
+    let arms ← if userHasWildcard then pure arms else do
+      let defaultArm : TSyntax ``Lean.Parser.Term.matchAlt ←
+        `(Lean.Parser.Term.matchAltExpr| | _ => False) <&> fun s => ⟨s.raw⟩
+      pure (arms.push defaultArm)
+    `(_root_.Aeneas.Std.WP.specMatch $e
+        (fun __r => match __r with $arms:matchAlt*))
 
 /-!
 # Pretty-printing
@@ -275,12 +375,53 @@ def delabSpec : Delab := do
   let post ← elabSubExpr post
   if vars.size = 0 then
     -- This is the case where the post-condition doesn't have a lambda
-    `($monadExpr ⦃ $post ⦄)
+    `($monadExpr ⦃ $post:term ⦄)
   else
     --
     let var := vars[0]!
     let vars := vars.drop 1
     `($monadExpr ⦃ $var $vars* => $post ⦄)
+
+/-- Delaborator for `specMatch`. Reverses the macro expansion so that
+    `specMatch e (fun r => match r with | ok z => P | _ => False)` prints
+    back as `e ⦃ | ok z => P ⦄`. The trailing `| _ => False` catch-all arm
+    that the macro inserts is stripped (when present). -/
+@[scoped delab app.Aeneas.Std.WP.specMatch]
+def delabSpecMatch : Delab := do
+  let e ← getExpr
+  guard $ e.isAppOfArity' ``specMatch 3
+  let monadExpr ← withNaryArg 1 delab
+  -- The post is `fun __r => match __r with | ... | _ => False`.
+  let body ← withNaryArg 2 delab
+  let alts ← extractMatchAlts body
+  -- Strip the trailing `| _ => False` arm that the macro inserts.
+  let alts := stripFalseCatchall alts
+  guard !alts.isEmpty
+  -- Convert each `matchAlt` to a `specMatchAlt` and emit the surface syntax.
+  let specAlts ← alts.mapM altToSpecAlt
+  `($monadExpr ⦃ $specAlts:specMatchAlt* ⦄)
+where
+  extractMatchAlts (stx : Term) : DelabM (Array (TSyntax ``Lean.Parser.Term.matchAlt)) := do
+    match stx with
+    | `(fun $_ : $_ => match $scrut:term with $alts:matchAlt*) =>
+        if scrut.raw.isIdent then pure alts else failure
+    | `(fun $_ => match $scrut:term with $alts:matchAlt*) =>
+        if scrut.raw.isIdent then pure alts else failure
+    | `(fun $alts:matchAlt*) => pure alts
+    | _ => failure
+  stripFalseCatchall (alts : Array (TSyntax ``Lean.Parser.Term.matchAlt)) :
+      Array (TSyntax ``Lean.Parser.Term.matchAlt) :=
+    if alts.size > 0 then
+      match alts[alts.size - 1]! with
+      | `(Lean.Parser.Term.matchAltExpr| | _ => False) => alts.pop
+      | _ => alts
+    else alts
+  altToSpecAlt (alt : TSyntax ``Lean.Parser.Term.matchAlt) :
+      DelabM (TSyntax `specMatchAlt) := do
+    match alt with
+    | `(Lean.Parser.Term.matchAltExpr| | $pat:term => $rhs:term) =>
+        `(specMatchAlt| | $pat => $rhs)
+    | _ => failure
 
 /-!
 # Tests
@@ -295,6 +436,20 @@ example : ok (0, 1) ⦃ x y => x = 0 ∧ y = 1 ⦄ := by simp
 example : ok (0, 1, 2) ⦃ x y z => x = 0 ∧ y = 1 ∧ z = 2 ⦄ := by simp
 example : ok (0, 1, true) ⦃ x y z => x = 0 ∧ y = 1 ∧ z ⦄ := by simp
 example : let P (x : Nat) := x = 0; ok 0 ⦃ P ⦄ := by simp
+
+/-! Tests for the pattern-match form `⦃ | ok ... | fail ... ⦄`. -/
+
+example : ok 0 ⦃ | ok r => r = 0 ⦄ := by simp
+example : (ok 0 : Result Nat) ⦃ | ok r => r = 0 | fail _ => True ⦄ := by simp
+example : (fail .integerOverflow : Result Nat)
+    ⦃ | fail .integerOverflow => True ⦄ := by simp
+example : (fail .integerOverflow : Result Nat)
+    ⦃ | ok _ => False | fail .integerOverflow => True | _ => False ⦄ := by simp
+-- The default `| _ => False` makes unmentioned cases impossible:
+example : ¬ ((fail .panic : Result Nat) ⦃ | ok _ => True ⦄) := by simp
+example : ¬ ((Result.div : Result Nat) ⦃ | ok _ => True ⦄) := by simp
+-- Use `| _ => True` to leave a branch unconstrained.
+example : (fail .panic : Result Nat) ⦃ | ok _ => False | _ => True ⦄ := by simp
 
 end Aeneas
 
