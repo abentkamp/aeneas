@@ -215,8 +215,8 @@ theorem «%S».bounds (x : «%S») : x.toNat ≤ «%S».max := by
   simp only [«%S».max, «%S».numBits, UScalarTy.numBits] at *
   omega
 
-uscalar grind_pattern «%S».bounds => UScalar.toNat x
-uscalar grind_pattern [agrind] «%S».bounds => UScalar.toNat x
+uscalar grind_pattern «%S».bounds => «%S».toNat x
+uscalar grind_pattern [agrind] «%S».bounds => «%S».toNat x
 
 iscalar @[scalar_tac x.toInt]
 theorem «%S».bounds (x : «%S») :
@@ -225,8 +225,8 @@ theorem «%S».bounds (x : «%S») :
   have := x.hBounds
   scalar_tac
 
-iscalar grind_pattern «%S».bounds => IScalar.toInt x
-iscalar grind_pattern [agrind] «%S».bounds => IScalar.toInt x
+iscalar grind_pattern «%S».bounds => «%S».toInt x
+iscalar grind_pattern [agrind] «%S».bounds => «%S».toInt x
 
 attribute [scalar_tac a.toNat] Int.toNat_eq_max
 

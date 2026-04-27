@@ -87,10 +87,8 @@ abbrev  I32   := IScalar .I32
 abbrev  I64   := IScalar .I64
 abbrev  I128  := IScalar .I128
 
-def UScalar.toNat {ty} (x : UScalar ty) : ℕ := x.toBitVec.toNat
 uscalar def «%S».toNat (x : «%S») : ℕ := x.toBitVec.toNat
 
-def IScalar.toInt {ty} (x : IScalar ty) : ℤ := x.toBitVec.toInt
 iscalar def «%S».toInt (x : «%S») : ℤ := x.toBitVec.toInt
 
 def U8.ofBitVec    (x : BitVec UScalarTy.U8.numBits)    : U8    := UScalar.mk x
@@ -428,20 +426,13 @@ instance {ty} : LawfulBEq (IScalar ty) where
   eq_of_beq {a b} := by cases a; cases b; simp[BEq.beq]
   rfl {a} := by cases a; simp [BEq.beq]
 
-instance (priority := 1) (ty : UScalarTy) : CoeOut (UScalar ty) Nat where
-  coe := λ v => v.toNat
-
 uscalar instance : CoeOut «%S» Nat where
   coe := λ v => v.toNat
-
-instance (priority := 1) (ty : IScalarTy) : CoeOut (IScalar ty) Int where
-  coe := λ v => v.toInt
 
 iscalar instance : CoeOut «%S» Int where
   coe := λ v => v.toInt
 
 /- Activate the ↑ notation -/
-attribute [coe] UScalar.toNat IScalar.toInt
 uscalar attribute [coe] «%S».toNat
 iscalar attribute [coe] «%S».toInt
 
@@ -662,16 +653,6 @@ iscalar_no_isize @[reducible] def core.num.«%S».MAX : «%S» := «%S».ofInt �
 
 
 /-! # Comparisons -/
-instance {ty} : LT (UScalar ty) where
-  lt a b := LT.lt a.toNat b.toNat
-
-instance {ty} : LE (UScalar ty) where le a b := LE.le a.toNat b.toNat
-
-instance {ty} : LT (IScalar ty) where
-  lt a b := LT.lt a.toInt b.toInt
-
-instance {ty} : LE (IScalar ty) where le a b := LE.le a.toInt b.toInt
-
 uscalar instance : LT «%S» where
   lt a b := LT.lt a.toNat b.toNat
 
@@ -781,22 +762,22 @@ iscalar instance : DecidableEq «%S» :=
 uscalar @[simp, scalar_tac_simps]
 theorem «%S».neq_to_neq_toNat :
   ∀ {i j : «%S»}, (¬ i = j) ↔ ¬ i.toNat = j.toNat := by
-  simp [«%S».eq_equiv, toNat, UScalar.toNat]
+  simp [«%S».eq_equiv, toNat]
 
 iscalar @[simp, scalar_tac_simps]
 theorem «%S».neq_to_neq_toInt :
   ∀ {i j : «%S»}, (¬ i = j) ↔ ¬ i.toInt = j.toInt := by
-  simp [«%S».eq_equiv, toInt, IScalar.toInt]
+  simp [«%S».eq_equiv, toInt]
 
 uscalar @[simp]
 theorem «%S».toNat_not_eq_imp_not_eq (x y : «%S») (h : Nat.not_eq x.toNat y.toNat) :
   ¬ x = y := by
-  simp_all [toNat, UScalar.toNat]; scalar_tac
+  simp_all [toNat]; scalar_tac
 
 iscalar @[simp]
 theorem «%S».toInt_not_eq_imp_not_eq (x y : «%S») (h : Int.not_eq x.toInt y.toInt) :
   ¬ x = y := by
-  simp_all [toInt, IScalar.toInt]; scalar_tac
+  simp_all [toInt]; scalar_tac
 
 uscalar instance : Preorder «%S» where
   le_refl := fun a => by simp
@@ -863,7 +844,7 @@ theorem «%S».coe_max (a b : «%S»): ↑(Max.max a b) = (Max.max (↑a) (↑b)
 iscalar @[simp, norm_cast, scalar_tac_simps, grind =, agrind =]
 theorem «%S».coe_max (a b : «%S»): ↑(Max.max a b) = (Max.max (↑a) (↑b): ℤ) := by
   rw[_root_.max_def, _root_.max_def]
-  split_ifs <;> simp_all [IScalar.toInt, toInt]; omega
+  split_ifs <;> simp_all [toInt]; omega
 
 /-! Max theory -/
 -- TODO: do the min theory later on.
