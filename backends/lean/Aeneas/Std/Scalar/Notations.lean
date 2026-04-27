@@ -72,8 +72,8 @@ def unexpIsizeofInt : Unexpander | `($_ $n $_) => `($n#isize) | _ => throw ()
 
 -- Notation for pattern matching
 -- We make the precedence looser than the negation.
-notation:70 a:70 "#uscalar" => UScalar.mk (a)
-notation:70 a:70 "#iscalar" => IScalar.mk (a)
+notation:70 a:70 "#uscalar" => ⟨a⟩
+notation:70 a:70 "#iscalar" => ⟨a⟩
 
 /- Testing the notations -/
 example := 0#u32
