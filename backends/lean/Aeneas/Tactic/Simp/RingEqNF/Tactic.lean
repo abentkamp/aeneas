@@ -62,18 +62,28 @@ private def exprToNat? (e : Expr) : Option Nat :=
   else if let some n := e.rawNatLit? then some n
   else none
 
-/-- Flatten a left-associated addition tree into a list of additive terms
-  (e.g., `((x₀ + x₁) + ... xₙ)` to `[x₀, x₁, ..., xₙ]` -/
-private partial def flattenAdd (e : Expr) : List Expr :=
+/-- A parsed additive summand: an expression together with a sign (`true` for negative).
+    `ring_nf` in Lean 4.29+ produces explicit subtractions (`a - b`) instead of
+    `a + -b`, so we track the sign separately. -/
+private structure SignedExpr where
+  expr : Expr
+  neg : Bool
+  deriving Inhabited
+
+/-- Flatten a left-associated addition/subtraction tree into a list of signed additive
+    terms (e.g., `((x₀ + x₁) - x₂ + x₃)` to `[+x₀, +x₁, -x₂, +x₃]`). -/
+private partial def flattenAdd (e : Expr) (neg : Bool := false) : List SignedExpr :=
   match e.consumeMData.getAppFnArgs with
   | (``HAdd.hAdd, #[_, _, _, _, lhs, rhs]) =>
-    flattenAdd lhs ++ [rhs]
-  | _ => [e]
+    flattenAdd lhs neg ++ [{ expr := rhs, neg }]
+  | (``HSub.hSub, #[_, _, _, _, lhs, rhs]) =>
+    flattenAdd lhs neg ++ [{ expr := rhs, neg := !neg }]
+  | _ => [{ expr := e, neg }]
 
 /-- A parsed monomial of the form `coeff * base` extracted from a `ring_nf`-normalized
     additive term.
 
-    - `coeff` — the natural-number coefficient.
+    - `coeff` — the integer coefficient (may be negative when parsed from a subtraction).
     - `coeffExpr` — the original `Expr` for the coefficient when it was present in the
       input expression. `none` when the coefficient is implicit (the term is just `base`
       with coefficient 1) or was computed during cancellation rather than read from the
@@ -88,33 +98,35 @@ private partial def flattenAdd (e : Expr) : List Expr :=
     - `7`      →  `{ coeff := 7, coeffExpr := some ‹7›, base := none }`
     - `x`      →  `{ coeff := 1, coeffExpr := none,     base := some ‹x› }` -/
 private structure CMonomial where
-  coeff : Nat
+  coeff : Int
   coeffExpr : Option Expr
   base : Option Expr
   deriving Inhabited
 
-/-- Parse a single additive term (as produced by `ring_nf`) into a `CMonomial`.
+/-- Parse a signed additive term (as produced by `ring_nf` and flattened through
+    subtraction) into a `CMonomial`.
 
     `ring_nf` normalises products so that the numeric coefficient is on the left
     (`n * base`). We also handle the `base * n` case for robustness. When no
     numeric factor is found, the coefficient defaults to 1. -/
-private def parseTerm (e : Expr) : CMonomial :=
-  let e := e.consumeMData
+private def parseTerm (s : SignedExpr) : CMonomial :=
+  let signed (n : Nat) : Int := if s.neg then -(n : Int) else (n : Int)
+  let e := s.expr.consumeMData
   match e.getAppFnArgs with
   | (``HMul.hMul, #[_, _, _, _, a, b]) =>
     match exprToNat? a with
-    | some n => { coeff := n, coeffExpr := some a, base := some b }
+    | some n => { coeff := signed n, coeffExpr := some a, base := some b }
     | none =>
       match exprToNat? b with
-      | some n => { coeff := n, coeffExpr := some b, base := some a }
-      | none => { coeff := 1, coeffExpr := none, base := some e }
+      | some n => { coeff := signed n, coeffExpr := some b, base := some a }
+      | none => { coeff := signed 1, coeffExpr := none, base := some e }
   | _ =>
     match exprToNat? e with
-    | some n => { coeff := n, coeffExpr := some e, base := none }
-    | none => { coeff := 1, coeffExpr := none, base := some e }
+    | some n => { coeff := signed n, coeffExpr := some e, base := none }
+    | none => { coeff := signed 1, coeffExpr := none, base := some e }
 
-/-- Flatten a `ring_nf`-normalized expression (a left-associated sum) and parse each
-    summand into a `CMonomial`. -/
+/-- Flatten a `ring_nf`-normalized expression (a left-associated sum, possibly with
+    subtractions) and parse each summand into a `CMonomial`. -/
 private def parseNormExpr (e : Expr) : List CMonomial :=
   (flattenAdd e).map parseTerm
 
@@ -151,21 +163,29 @@ private def cancelCommon (lhs rhs : List CMonomial) : MetaM CancelResult := do
     let mut found := false
     let mut newRhsRem : List CMonomial := []
     for rm in rhsRem do
-      if !found && (← sameBase lm rm) then
+      -- Only cancel when the bases match AND the signs match (cancelling `+x` against
+      -- `-x` would require negation in the common part, which is more complex than
+      -- the test cases need).
+      if !found && (← sameBase lm rm) && (lm.coeff.sign == rm.coeff.sign) then
         found := true
-        let minC := min lm.coeff rm.coeff
+        let lAbs := lm.coeff.natAbs
+        let rAbs := rm.coeff.natAbs
+        let minC := min lAbs rAbs
+        let signed (n : Nat) : Int := if lm.coeff < 0 then -(n : Int) else (n : Int)
         -- Move the shared portion to `common`
         if minC > 0 then
           -- Reuse the original coefficient expr from whichever side had the smaller
           -- (or equal) coefficient, so the proof term stays close to the input.
-          let cExpr := if lm.coeff ≤ rm.coeff then lm.coeffExpr else rm.coeffExpr
-          common := common ++ [{ coeff := minC, coeffExpr := cExpr, base := lm.base }]
+          let cExpr := if lAbs ≤ rAbs then lm.coeffExpr else rm.coeffExpr
+          common := common ++ [{ coeff := signed minC, coeffExpr := cExpr, base := lm.base }]
         -- Keep the excess on the LHS
-        if lm.coeff > minC then
-          lhsRem := lhsRem ++ [{ coeff := lm.coeff - minC, coeffExpr := none, base := lm.base }]
+        if lAbs > minC then
+          lhsRem := lhsRem ++
+            [{ coeff := signed (lAbs - minC), coeffExpr := none, base := lm.base }]
         -- Keep the excess on the RHS
-        if rm.coeff > minC then
-          newRhsRem := newRhsRem ++ [{ coeff := rm.coeff - minC, coeffExpr := none, base := rm.base }]
+        if rAbs > minC then
+          newRhsRem := newRhsRem ++
+            [{ coeff := signed (rAbs - minC), coeffExpr := none, base := rm.base }]
       else
         newRhsRem := newRhsRem ++ [rm]
     if found then
@@ -183,16 +203,17 @@ private def mkOfNat (ty : Expr) (n : Nat) : MetaM Expr :=
 private def getCoeffExpr (ty : Expr) (m : CMonomial) : MetaM Expr :=
   match m.coeffExpr with
   | some e => return e
-  | none => mkOfNat ty m.coeff
+  | none => mkOfNat ty m.coeff.natAbs
 
 private def buildMonomialExpr (ty : Expr) (m : CMonomial) : MetaM Expr := do
-  match m.base with
-  | none => getCoeffExpr ty m
-  | some base =>
-    if m.coeff == 1 then return base
-    else
-      let coeffExpr ← getCoeffExpr ty m
-      mkAppM ``HMul.hMul #[base, coeffExpr]
+  let posExpr ← match m.base with
+    | none => getCoeffExpr ty m
+    | some base =>
+      if m.coeff.natAbs == 1 then pure base
+      else
+        let coeffExpr ← getCoeffExpr ty m
+        mkAppM ``HMul.hMul #[base, coeffExpr]
+  if m.coeff < 0 then mkAppM ``Neg.neg #[posExpr] else pure posExpr
 
 private def buildSumExpr (ty : Expr) (terms : List CMonomial) : MetaM Expr := do
   match terms with

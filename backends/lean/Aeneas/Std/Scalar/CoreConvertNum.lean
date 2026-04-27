@@ -576,17 +576,25 @@ open ScalarElab
 # To Little-Endian
 -/
 uscalar_no_usize def core.num.«%S».to_le_bytes (x : «%S») : Array U8 (%Size)#usize := ⟨ x.bv.toLEBytes.map UScalar.mk, by
-  simp only [List.length_map, UScalar.ofNatCore_val_eq, @BitVec.toLEBytes_length ((%Size) * 8)] ⟩
+  have hlen : x.bv.toLEBytes.length = (%Size) := by
+    rw [BitVec.toLEBytes_length x.bv (by decide)]
+  simp [hlen] ⟩
 iscalar_no_isize def core.num.«%S».to_le_bytes (x : «%S») : Array I8 (%Size)#usize := ⟨ x.bv.toLEBytes.map IScalar.mk, by
-  simp only [List.length_map, UScalar.ofNatCore_val_eq, @BitVec.toLEBytes_length ((%Size) * 8)] ⟩
+  have hlen : x.bv.toLEBytes.length = (%Size) := by
+    rw [BitVec.toLEBytes_length x.bv (by decide)]
+  simp [hlen] ⟩
 
 /-!
 # To Big-Endian
 -/
 uscalar_no_usize def core.num.«%S».to_be_bytes (x : «%S») : Array U8 (%Size)#usize := ⟨ x.bv.toBEBytes.map UScalar.mk, by
-  simp only [List.length_map, UScalar.ofNatCore_val_eq, @BitVec.toBEBytes_length ((%Size) * 8)] ⟩
+  have hlen : x.bv.toBEBytes.length = (%Size) := by
+    rw [BitVec.toBEBytes_length x.bv (by decide)]
+  simp [hlen] ⟩
 iscalar_no_isize def core.num.«%S».to_be_bytes (x : «%S») : Array I8 (%Size)#usize := ⟨ x.bv.toBEBytes.map IScalar.mk, by
-  simp only [List.length_map, UScalar.ofNatCore_val_eq, @BitVec.toBEBytes_length ((%Size) * 8)] ⟩
+  have hlen : x.bv.toBEBytes.length = (%Size) := by
+    rw [BitVec.toBEBytes_length x.bv (by decide)]
+  simp [hlen] ⟩
 
 /-!
 # From Little-Endian
@@ -625,12 +633,12 @@ theorem core.num.«%S».to_le_bytes.step_spec (x : «%S») :
 uscalar_no_usize @[step]
 theorem core.num.«%S».from_le_bytes.step_spec (x : Array U8 (%Size)#usize) :
   lift (core.num.«%S».from_le_bytes x) ⦃ y => y.bv = (BitVec.fromLEBytes (x.val.map U8.bv)).cast (by simp) ⦄ := by
-  simp only [spec_ok, lift, from_le_bytes]
+  simp only [spec_ok, lift, from_le_bytes]; rfl
 
 iscalar_no_isize @[step]
 theorem core.num.«%S».from_le_bytes.step_spec (x : Array I8 (%Size)#usize) :
   lift (core.num.«%S».from_le_bytes x) ⦃ y => y.bv = (BitVec.fromLEBytes (x.val.map I8.bv)).cast (by simp) ⦄  := by
-  simp only [spec_ok, lift, from_le_bytes]
+  simp only [spec_ok, lift, from_le_bytes]; rfl
 
 end Std
 
