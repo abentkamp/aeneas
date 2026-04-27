@@ -108,7 +108,7 @@ def State.extract
   (self : State) (result : Slice Std.U64) (count : Std.Usize) :
   Result (State × (Slice Std.U64))
   := do
-  let lane_index ← lift (UScalar.cast .Usize self.index)
+  let lane_index ← lift (ScalarCast.cast Usize self.index)
   let (a, i, result1) ←
     State.extract_loop { start := 0#usize, «end» := count } self.data
       self.index self.limit result lane_index

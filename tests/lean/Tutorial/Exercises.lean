@@ -726,15 +726,15 @@ def add_with_carry_loop
     let i2 ←
       alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice
         U32) x i
-    let i3 := UScalar.cast .U32 c0
+    let i3 := ScalarCast.cast U32 c0
     let p := core.num.U32.overflowing_add i2 i3
     let (sum, c1) := p
     let i4 ←
       alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice U32) y i
     let p1 := core.num.U32.overflowing_add sum i4
     let (sum1, c2) := p1
-    let i5 := UScalar.cast_fromBool .U8 c1
-    let i6 := UScalar.cast_fromBool .U8 c2
+    let i5 := ScalarCast.cast U8 c1
+    let i6 := ScalarCast.cast U8 c2
     let c01 ← i5 + i6
     let (_, index_mut_back) ←
       alloc.vec.Vec.index_mut (core.slice.index.SliceIndexUsizeSlice U32) x i
@@ -812,13 +812,13 @@ def add_loop
     let yi ← get_or_zero y i
     let i1 ←
       alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice U32) x i
-    let i2 := UScalar.cast .U32 c0
+    let i2 := ScalarCast.cast U32 c0
     let p := core.num.U32.overflowing_add i1 i2
     let (sum, c1) := p
     let p1 := core.num.U32.overflowing_add sum yi
     let (sum1, c2) := p1
-    let i3 := UScalar.cast_fromBool .U8 c1
-    let i4 := UScalar.cast_fromBool .U8 c2
+    let i3 := ScalarCast.cast U8 c1
+    let i4 := ScalarCast.cast U8 c2
     let c01 ← i3 + i4
     let (_, index_mut_back) ←
       alloc.vec.Vec.index_mut (core.slice.index.SliceIndexUsizeSlice U32) x i
@@ -828,7 +828,7 @@ def add_loop
   else
     if c0 != 0#u8
     then do
-         let i1 := UScalar.cast .U32 c0
+         let i1 := ScalarCast.cast U32 c0
          alloc.vec.Vec.push x i1
     else Result.ok x
 partial_fixpoint

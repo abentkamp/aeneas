@@ -298,7 +298,7 @@ theorem insert_in_list_spec_aux {α : Type} (l : Nat) (key: Usize) (value: α) (
         simp [*]
       -- TODO: canonize addition by default?
       simp_all only [hash_mod_key_eq, AList.v, slot_s_inv_hash_cons, distinct_keys_cons,
-        UScalar.neq_to_neq_toNat, and_true, AList.lookup, ne_eq, length, true_and, not_false_eq_true,
+        Usize.neq_to_neq_toNat, and_true, AList.lookup, ne_eq, length, true_and, not_false_eq_true,
         and_self, List.lookup, implies_true, List.length_cons,
         Nat.add_right_cancel_iff, List.allP_cons]
       grind

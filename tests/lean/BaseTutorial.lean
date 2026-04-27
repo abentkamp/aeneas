@@ -73,9 +73,9 @@ def mul2_add1 (x : U32) : Result U32 := do
    results explicit.
  -/
 def mul2_add1_desugared (x : U32) : Result U32 :=
-  match UScalar.add x x with
+  match U32.add x x with
   | ok x1 => -- Success case
-    match UScalar.add x1 (U32.ofNat 1) with
+    match U32.add x1 (U32.ofNat 1) with
     | ok x2 => ok x2
     | error => error
   | error => error -- Propagating the errors

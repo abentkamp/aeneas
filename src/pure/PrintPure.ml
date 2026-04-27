@@ -3,6 +3,23 @@
 open Pure
 open PureUtils
 
+(** Concrete name of an integer type (e.g. [U8], [I32], [Usize]). Mirrors
+    [ExtractBase.int_name] but lives here to avoid a [pure -> extract] dep. *)
+let int_name_for_print (int_ty : integer_type) : string =
+  match int_ty with
+  | Signed Isize -> "Isize"
+  | Signed I8 -> "I8"
+  | Signed I16 -> "I16"
+  | Signed I32 -> "I32"
+  | Signed I64 -> "I64"
+  | Signed I128 -> "I128"
+  | Unsigned Usize -> "Usize"
+  | Unsigned U8 -> "U8"
+  | Unsigned U16 -> "U16"
+  | Unsigned U32 -> "U32"
+  | Unsigned U64 -> "U64"
+  | Unsigned U128 -> "U128"
+
 (** The formatting context for pure definitions uses non-pure definitions to
     lookup names. The main reason is that when building the pure definitions
     like in [SymbolicToPure] we don't have a pure context available, while at
@@ -1048,8 +1065,10 @@ and app_to_string ?(span : Meta.span option = None) (env : fmt_env)
               ( ConstStrings.constructor_prefix ^ adt_s ^ "?." ^ field_s,
                 [],
                 false )
-          | ScalarValProj (Signed _) -> ("IScalar.toInt", [], false)
-          | ScalarValProj (Unsigned _) -> ("UScalar.toNat", [], false)
+          | ScalarValProj (Signed ty) ->
+              (int_name_for_print (Signed ty) ^ ".toInt", [], false)
+          | ScalarValProj (Unsigned ty) ->
+              (int_name_for_print (Unsigned ty) ^ ".toNat", [], false)
           | TraitConst (trait_ref, const_name) ->
               let trait_ref = trait_ref_to_string env true trait_ref in
               let qualif = trait_ref ^ "." ^ const_name in

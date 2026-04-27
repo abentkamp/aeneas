@@ -310,7 +310,7 @@ def assert_or_in_loop_loop.body
     let c ← Array.index_usize a i
     massert (c < 100#u32)
     let c1 ← lift (core.num.U32.wrapping_sub c 200#u32)
-    let i1 ← lift (IScalar.hcast .U32 (-200)#i32)
+    let i1 ← lift (ScalarCast.cast U32 (-200)#i32)
     let iter2 ←
       do
       massert ((c1 >= i1) || (c1 < 100#u32))
@@ -320,7 +320,7 @@ def assert_or_in_loop_loop.body
     let i2 ← c1 >>> 16#i32
     let i3 ← lift (100#u32 &&& i2)
     let c2 ← lift (core.num.U32.wrapping_add c1 i3)
-    let i4 ← lift (IScalar.hcast .U32 (-100)#i32)
+    let i4 ← lift (ScalarCast.cast U32 (-100)#i32)
     if c2 >= i4
     then ok ()
     else massert (c2 < 100#u32)

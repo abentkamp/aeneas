@@ -32,6 +32,6 @@ instance : OrdSpecLinearOrderEq I32.Insts.AvlOrd where
     unfold Ord.cmp
     unfold I32.Insts.AvlOrd
     unfold I32.Insts.AvlOrd.cmp
-    grind [IScalar.neq_to_neq_toInt]
+    grind [I32.neq_to_neq_toInt]
 
 end avl
