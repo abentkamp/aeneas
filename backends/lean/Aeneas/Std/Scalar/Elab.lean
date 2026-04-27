@@ -16,13 +16,11 @@ We do this because we often need to write a lot of very similar definitions for
 all the scalars kinds. For instance:
 
 ```
-theorem U8.add_toBitVec_spec {x y : U8} (hmax : x.toNat + y.toNat ≤ U8.max) :
-  ∃ z, x + y = ok z ∧ (↑z : Nat) = ↑x + ↑y ∧ z.toBitVec = x.toBitVec + y.toBitVec :=
-  UScalar.add_toBitVec_spec (by scalar_tac)
+theorem U8.add_bv_spec {x y : U8} (hmax : x.toNat + y.toNat ≤ U8.max) :
+  ∃ z, x + y = ok z ∧ (↑z : Nat) = ↑x + ↑y ∧ z.toBitVec = x.toBitVec + y.toBitVec := ...
 
-theorem U16.add_toBitVec_spec {x y : U16} (hmax : x.toNat + y.toNat ≤ U16.max) :
-  ∃ z, x + y = ok z ∧ (↑z : Nat) = ↑x + ↑y ∧ z.toBitVec = x.toBitVec + y.toBitVec :=
-  UScalar.add_toBitVec_spec (by scalar_tac)
+theorem U16.add_bv_spec {x y : U16} (hmax : x.toNat + y.toNat ≤ U16.max) :
+  ∃ z, x + y = ok z ∧ (↑z : Nat) = ↑x + ↑y ∧ z.toBitVec = x.toBitVec + y.toBitVec := ...
 
 ... -- etc.
 ```
@@ -30,8 +28,7 @@ theorem U16.add_toBitVec_spec {x y : U16} (hmax : x.toNat + y.toNat ≤ U16.max)
 Instead, we want to write something like this:
 ```
 uscalar theorem «%S».add_bv_spec {x y : «%S»} (hmax : x.toNat + y.toNat ≤ «%S».max) :
-  ∃ z, x + y = ok z ∧ (↑z : Nat) = ↑x + ↑y ∧ z.toBitVec = x.toBitVec + y.toBitVec :=
-  UScalar.add_toBitVec_spec (by scalar_tac)
+  ∃ z, x + y = ok z ∧ (↑z : Nat) = ↑x + ↑y ∧ z.toBitVec = x.toBitVec + y.toBitVec := ...
 ```
 
 and have all the theorems generated at once.
