@@ -214,6 +214,43 @@ def qimp_spec_iff {α β} (P : α → Prop) (k : α → Result β) (Q : β → P
   qimp_spec P k Q ↔ ∀ x, imp (P x) (spec (k x) (successPost Q)) := by
   simp [qimp_spec, imp]
 
+/-- Implication of a `spec` predicate with quantifier (Result-level form).
+    Used by the `step` tactic to compose a partial-spec lemma in `let`-bind
+    position: the ok branch has to chain into the continuation `k`, while
+    the fail and div branches just need to propagate to the outer post. -/
+def qimp_spec_g {α β} (Pₘ : Result α → Prop) (k : α → Result β)
+    (Pₖ : Result β → Prop) : Prop :=
+  (∀ x, Pₘ (ok x) → spec (k x) Pₖ) ∧
+  (∀ e, Pₘ (fail e) → Pₖ (fail e)) ∧
+  (Pₘ div → Pₖ div)
+
+/-- Bind for the general (Result-level) spec form, with the second hypothesis
+    packaged as `qimp_spec_g`. Used by the `step` tactic to apply partial-spec
+    lemmas (whose post is not wrapped in `successPost`) at `let`-bind position.
+
+    Argument order mirrors `spec_bind'` (k, Pₖ, m, Pₘ) so the `step` dispatch
+    can use the same `forallMetaBoundedTelescope ... 4` and `mkAppN` shape. -/
+theorem spec_bind_g' {α β} {k : α → Result β} {Pₖ : Result β → Prop}
+    {m : Result α} {Pₘ : Result α → Prop} :
+    spec m Pₘ → qimp_spec_g Pₘ k Pₖ → spec (Std.bind m k) Pₖ := by
+  intro Hm ⟨Hok, Hfail, Hdiv⟩
+  cases m
+  · simp [spec] at *; apply Hok; exact Hm
+  · simp [spec] at *; apply Hfail; exact Hm
+  · simp [spec] at *; apply Hdiv; exact Hm
+
+/-- Eliminate `qimp_spec_g` into three independent obligations
+    (ok-continuation, fail-propagation, div-propagation), each guarded by an
+    `imp` so the existing `imp_and_iff` / `forall_unit` / `true_imp_iff` simp
+    set can decompose nested `∧` posts uniformly with the success-only path. -/
+theorem qimp_spec_g_iff {α β} (P : Result α → Prop) (k : α → Result β)
+    (Q : Result β → Prop) :
+    qimp_spec_g P k Q ↔
+      (∀ x, imp (P (ok x)) (spec (k x) Q)) ∧
+      (∀ e, imp (P (fail e)) (Q (fail e))) ∧
+      imp (P div) (Q div) := by
+  simp [qimp_spec_g, imp]
+
 @[simp]
 theorem qimp_exists {α β} (P₀ : β → α → Prop) (P₁ : α → Prop) :
   qimp (fun x => ∃ y, P₀ y x) P₁ ↔ ∀ x, qimp (P₀ x) P₁ := by

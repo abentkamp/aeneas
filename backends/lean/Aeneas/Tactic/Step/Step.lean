@@ -386,16 +386,15 @@ def tryMatch (isLet : Bool) (th : Expr) :
     if isSuccessPost then pure postExpr.consumeMData.appArg!
     else pure postExpr
 
-  let (specMonoBindName, varNum) ←
-    if isSuccessPost then pure <|
+  let (specMonoBindName, varNum) :=
+    if isSuccessPost then
       if isLet
       then (``Std.WP.spec_bind', 4)
       else (``Std.WP.spec_mono', 2)
     else
-      if isLet then
-        throwError "Step does not yet support partial-spec lemmas in `let`-bind position. \
-                    Theorem post: {postExpr}"
-      else pure (``Std.WP.spec_mono_g', 2)
+      if isLet
+      then (``Std.WP.spec_bind_g', 4)
+      else (``Std.WP.spec_mono_g', 2)
   let specMonoBind ← Term.mkConst specMonoBindName
   let specMonoBindTy ← inferType specMonoBind
   trace[Step] "specMonoBind (isLet:{isLet}): {specMonoBind}: {← inferType specMonoBind}"
@@ -502,7 +501,7 @@ def introOutputs (args : Args) (fExpr : Expr) (stepState : StepState) :
     Simp.simpAt true { maxDischargeDepth := 1, failIfUnchanged := false, iota := false}
             { declsToUnfold := #[``Std.WP.curry, ``Std.WP.predn]
               addSimpThms :=
-                #[``Std.WP.qimp_spec_iff, ``Std.WP.qimp_iff,
+                #[``Std.WP.qimp_spec_iff, ``Std.WP.qimp_spec_g_iff, ``Std.WP.qimp_iff,
                   ``Std.WP.imp_and_iff, ``forall_unit, ``true_imp_iff] }
             (.targets #[] true)
     | trace[Step] "The main goal was solved!"; return none

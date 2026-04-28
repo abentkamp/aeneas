@@ -79,4 +79,22 @@ example (x y : U32) (h : x.val * y.val ≤ U32.max) :
   step with UScalar.mul_spec_partial
   rcases z with _ | e | _ <;> simp_all [Std.WP.successPost] <;> scalar_tac
 
+/-- Test: `step with X_spec_partial` fires in `let`-bind position. After
+    `step`, the user is left with three sub-goals (ok-continuation,
+    fail-propagation, div-propagation) packaged as a single conjunction
+    via `qimp_spec_g_iff`. -/
+example (x y : U32) (h1 : x.val + y.val ≤ U32.max)
+    (h2 : x.val + y.val + 1 ≤ U32.max) :
+    (do let z ← x + y; z + 1#u32) ⦃ w => w.val = x.val + y.val + 1 ⦄ := by
+  step with UScalar.add_spec_partial
+  refine ⟨?_, ?_, ?_⟩
+  · -- ok branch: continue with another step + case-split on the inner Result
+    intro z ⟨_, hz⟩
+    step with UScalar.add_spec_partial
+    rcases w with _ | e | _ <;> simp_all [Std.WP.successPost] <;> scalar_tac
+  · -- fail branch: the partial spec gives `U32.max < x.val + y.val`; contradicts h1
+    intro e hF; simp [Std.WP.successPost]; scalar_tac
+  · -- div branch: vacuous (Pₘ div = False)
+    intro hD; exact hD.elim
+
 end partial_spec_tests
