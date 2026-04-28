@@ -444,11 +444,52 @@ theorem BitVec.fromLEBytes_getElem! (v : List Byte) (j : ℕ) :
     rw [hr]
     exact BitVec.getElem!_eq_false _ _ (by omega)
   | x :: v' =>
-    -- TODO(Lean 4.29 upgrade): the original proof relied on `simp only [getElem!_or]`
-    -- and `getElem!_eq_testBit_toNat` matching directly against the unfolded
-    -- `BitVec.fromLEBytes`. With 4.29's stricter typeclass elaboration, neither
-    -- pattern matches the resulting expression. The case is left for a follow-up.
-    sorry
+    rw [BitVec.fromLEBytes]
+    -- In Lean 4.29 the typical `simp only [getElem!_or, getElem!_eq_testBit_toNat]`
+    -- chain no longer fires here: the ambient `GetElem` instance produced by
+    -- elaborating `[j]!` on the unfolded `BitVec.fromLEBytes` differs from the
+    -- one stored in those simp lemmas (`rw` reports "did not find an occurrence
+    -- of the pattern" even though the printed expressions are identical). We
+    -- bypass the matcher by applying the lemmas via `Eq.trans` / `(· ▸ ·)` and
+    -- then finishing in `Nat.testBit` form.
+    refine (BitVec.getElem!_or _ _ _).trans ?_
+    have h1 := BitVec.getElem!_eq_testBit_toNat
+      (BitVec.setWidth (8 * (v'.length + 1)) x) j
+    have h2 := BitVec.getElem!_eq_testBit_toNat
+      ((BitVec.setWidth (8 * (v'.length + 1)) (BitVec.fromLEBytes v')) <<< 8) j
+    refine h1 ▸ h2 ▸ ?_
+    simp only [BitVec.toNat_setWidth, Nat.testBit_mod_two_pow, BitVec.toNat_shiftLeft,
+      Nat.testBit_shiftLeft, ge_iff_le]
+    by_cases hj: j < 8
+    . have hjlen : j < 8 * (v'.length + 1) := by scalar_tac
+      have hnot : ¬ (8 ≤ j) := by omega
+      have hjm : j % 8 = j := Nat.mod_eq_of_lt hj
+      have hj0 : j / 8 = 0 := Nat.div_eq_of_lt hj
+      simp only [hjlen, decide_true, Bool.true_and, hnot, decide_false, Bool.false_and,
+        Bool.or_false, hjm, hj0, List.getElem!_cons_zero, Byte.testBit]
+    . have hj8 : 8 ≤ j := by omega
+      have hxF : (BitVec.toNat x).testBit j = false :=
+        BitVec.getElem!_toNat_eq_false x j hj8
+      simp only [hj8, decide_true, Bool.true_and, hxF, Bool.and_false, Bool.false_or]
+      have hrec := BitVec.fromLEBytes_getElem! v' (j - 8)
+      simp only [getElem!_eq_testBit_toNat] at hrec
+      simp only [hrec]
+      have hd1 : (j - 8) / 8 = j / 8 - 1 := by omega
+      have hd2 : (j - 8) % 8 = j % 8 := by omega
+      simp only [hd1, hd2]
+      have hcons : (x :: v')[j / 8]! = v'[j / 8 - 1]! := by
+        have hpos : 0 < j / 8 := by scalar_tac +nonLin
+        simp_lists
+      simp only [hcons]
+      by_cases hjlen : j < 8 * (v'.length + 1)
+      . have hjlen' : j - 8 < 8 * (v'.length + 1) := by omega
+        simp only [hjlen, hjlen', decide_true, Bool.true_and]
+      . have hjlen_d : decide (j < 8 * (v'.length + 1)) = false :=
+          decide_eq_false (by omega)
+        simp only [hjlen_d, Bool.false_and]
+        have hbound : v'.length ≤ j / 8 - 1 := by omega
+        have hdef : v'[j / 8 - 1]! = (default : Byte) := by simp_lists
+        simp only [hdef, Byte.testBit_default]
 
 @[simp, simp_lists_safe, grind =, agrind =]
 theorem BitVec.fromLEBytes_toLEBytes {w : ℕ} (h : w % 8 = 0) (b : BitVec w) :
