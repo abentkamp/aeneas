@@ -163,4 +163,44 @@ iscalar @[step] theorem «%S».mul_spec {x y : «%S»}
   (x * y) ⦃ z => (↑z : Int) = ↑x * ↑y ⦄ :=
   IScalar.mul_spec (by scalar_tac) (by scalar_tac)
 
+/-!
+Partial-spec form for multiplication. Follows the same convention as `add` /
+`sub`: the post covers both branches, lemma is *not* tagged with `@[step]`,
+and is invoked explicitly via `step with mul_spec_partial`.
+
+Note: the underlying `UScalar.mul`/`IScalar.mul` operations are defined in
+terms of the value-level multiplication; the equivalence lemmas already
+handle the bit-vector case, but for these partial-spec lemmas we drop the
+bv equality from the post (matching the existing `mul_spec` convention).
+-/
+
+theorem UScalar.mul_spec_partial {ty} (x y : UScalar ty) :
+  x * y ⦃
+    | ok z => x.val * y.val ≤ UScalar.max ty ∧ z.val = x.val * y.val
+    | fail _ => UScalar.max ty < x.val * y.val
+  ⦄ := by
+  have h : x * y = mul x y := by rfl
+  rw [h]
+  have h := mul_equiv x y
+  simp only [Std.WP.spec, max] at h ⊢
+  have hpow : 0 < 2^ty.numBits := by simp
+  split at h
+  · obtain ⟨h1, h2, _⟩ := h
+    exact ⟨by omega, h2⟩
+  · omega
+  · exact h.elim
+
+theorem IScalar.mul_spec_partial {ty} (x y : IScalar ty) :
+  x * y ⦃
+    | ok z =>
+      IScalar.min ty ≤ x.val * y.val ∧ x.val * y.val ≤ IScalar.max ty ∧
+      z.val = x.val * y.val
+    | fail _ => ¬ (IScalar.min ty ≤ x.val * y.val ∧ x.val * y.val ≤ IScalar.max ty)
+  ⦄ := by
+  have heq : x * y = mul x y := by rfl
+  rw [heq]
+  have h := mul_equiv x y
+  simp only [Std.WP.spec] at h ⊢
+  split at h <;> simp_all
+
 end Aeneas.Std

@@ -145,4 +145,43 @@ iscalar @[step] theorem «%S».add_spec {x y : «%S»}
   x + y ⦃ z => (↑z : Int) = ↑x + ↑y ⦄ :=
   IScalar.add_spec (by scalar_tac) (by scalar_tac)
 
+/-!
+Partial-spec form: covers both the success branch (with the bound implied as
+part of the postcondition) and the failure branch (overflow). Useful when the
+caller wants to reason about both outcomes without committing up front to a
+bound. **Not** tagged with `@[step]` — to avoid conflicting with the existing
+success-only `add_spec` (and the `step?` regression tests that pin specific
+lemma names), users invoke these explicitly via `step with add_spec_partial`.
+-/
+
+theorem UScalar.add_spec_partial {ty} (x y : UScalar ty) :
+  x + y ⦃
+    | ok z => x.val + y.val ≤ UScalar.max ty ∧ z.val = x.val + y.val
+    | fail _ => UScalar.max ty < x.val + y.val
+  ⦄ := by
+  have h := @add_equiv ty x y
+  simp only [Std.WP.spec, max, inBounds] at h ⊢
+  have hpow : 0 < 2^ty.numBits := by simp
+  split at h
+  · obtain ⟨h1, h2, _⟩ := h
+    exact ⟨by omega, h2⟩
+  · omega
+  · exact h.elim
+
+theorem IScalar.add_spec_partial {ty} (x y : IScalar ty) :
+  x + y ⦃
+    | ok z =>
+      IScalar.min ty ≤ x.val + y.val ∧ x.val + y.val ≤ IScalar.max ty ∧
+      z.val = x.val + y.val
+    | fail _ => ¬ (IScalar.min ty ≤ x.val + y.val ∧ x.val + y.val ≤ IScalar.max ty)
+  ⦄ := by
+  have h := @add_equiv ty x y
+  simp only [Std.WP.spec] at h ⊢
+  split at h <;> simp_all [min, max, inBounds] <;> omega
+
+/- Per-type wrappers (e.g. `U32.add_spec_partial`) are intentionally omitted
+   for now: the generic `UScalar.add_spec_partial` / `IScalar.add_spec_partial`
+   lemmas tagged with `@[step]` are picked up by the `step` tactic via
+   type-class resolution on `«%S»`. -/
+
 end Aeneas.Std

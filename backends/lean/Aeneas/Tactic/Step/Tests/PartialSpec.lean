@@ -59,4 +59,24 @@ example (b : Bool) (hb : b = true) : succOrPanic b ⦃ x => x = 1 ⦄ := by
   rcases x with _ | e | _ <;> [skip; cases e; skip] <;>
     simp_all [Std.WP.successPost]
 
+/-- Test: explicitly invoke the partial-spec arithmetic lemma
+    `UScalar.add_spec_partial` in leaf position. The user gets the partial
+    post and case-splits to handle each branch. -/
+example (x y : U32) (h : x.val + y.val ≤ U32.max) :
+    x + y ⦃ z => z.val = x.val + y.val ⦄ := by
+  step with UScalar.add_spec_partial
+  rcases z with _ | e | _ <;> simp_all [Std.WP.successPost] <;> scalar_tac
+
+/-- Test: same for subtraction. -/
+example (x y : U32) (h : y.val ≤ x.val) :
+    x - y ⦃ z => z.val = x.val - y.val ⦄ := by
+  step with UScalar.sub_spec_partial
+  rcases z with _ | e | _ <;> simp_all [Std.WP.successPost] <;> scalar_tac
+
+/-- Test: same for multiplication. -/
+example (x y : U32) (h : x.val * y.val ≤ U32.max) :
+    x * y ⦃ z => z.val = x.val * y.val ⦄ := by
+  step with UScalar.mul_spec_partial
+  rcases z with _ | e | _ <;> simp_all [Std.WP.successPost] <;> scalar_tac
+
 end partial_spec_tests

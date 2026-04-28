@@ -166,4 +166,33 @@ iscalar @[step] theorem «%S».sub_spec {x y : «%S»}
   x - y ⦃ z => (↑z : Int) = ↑x - ↑y ⦄ :=
   IScalar.sub_spec (by scalar_tac) (by scalar_tac)
 
+/-!
+Partial-spec form: see comment on `add_spec_partial` for the design rationale.
+Not tagged with `@[step]`; invoke explicitly via `step with sub_spec_partial`.
+-/
+
+theorem UScalar.sub_spec_partial {ty} (x y : UScalar ty) :
+  x - y ⦃
+    | ok z => y.val ≤ x.val ∧ z.val = x.val - y.val
+    | fail _ => x.val < y.val
+  ⦄ := by
+  have h := @sub_equiv ty x y
+  simp only [Std.WP.spec] at h ⊢
+  split at h
+  · obtain ⟨h1, h2, _⟩ := h
+    exact ⟨h1, by omega⟩
+  · exact h
+  · exact h.elim
+
+theorem IScalar.sub_spec_partial {ty} (x y : IScalar ty) :
+  x - y ⦃
+    | ok z =>
+      IScalar.min ty ≤ x.val - y.val ∧ x.val - y.val ≤ IScalar.max ty ∧
+      z.val = x.val - y.val
+    | fail _ => ¬ (IScalar.min ty ≤ x.val - y.val ∧ x.val - y.val ≤ IScalar.max ty)
+  ⦄ := by
+  have h := @sub_equiv ty x y
+  simp only [Std.WP.spec] at h ⊢
+  split at h <;> simp_all [min, max, inBounds] <;> omega
+
 end Aeneas.Std
