@@ -79,22 +79,31 @@ example (x y : U32) (h : x.val * y.val ≤ U32.max) :
   step with UScalar.mul_spec_partial
   rcases z with _ | e | _ <;> simp_all [Std.WP.successPost] <;> scalar_tac
 
-/-- Test: `step with X_spec_partial` fires in `let`-bind position. After
-    `step`, the user is left with three sub-goals (ok-continuation,
-    fail-propagation, div-propagation) packaged as a single conjunction
-    via `qimp_spec_g_iff`. -/
+/-- Test: `step with X_spec_partial` fires in `let`-bind position. With
+    `trySplitPartialBind` in `stepWith`, the fail / div obligations are
+    automatically discharged when the input bounds imply success; only the
+    ok-continuation remains and `step`'s normal `introOutputs` pipeline
+    introduces the bound output and post-condition. The post is the
+    partial-form ok-branch (a conjunction including the bound). -/
 example (x y : U32) (h1 : x.val + y.val ≤ U32.max)
     (h2 : x.val + y.val + 1 ≤ U32.max) :
     (do let z ← x + y; z + 1#u32) ⦃ w => w.val = x.val + y.val + 1 ⦄ := by
   step with UScalar.add_spec_partial
-  refine ⟨?_, ?_, ?_⟩
-  · -- ok branch: continue with another step + case-split on the inner Result
-    intro z ⟨_, hz⟩
-    step with UScalar.add_spec_partial
-    rcases w with _ | e | _ <;> simp_all [Std.WP.successPost] <;> scalar_tac
-  · -- fail branch: the partial spec gives `U32.max < x.val + y.val`; contradicts h1
-    intro e hF; simp [Std.WP.successPost]; scalar_tac
-  · -- div branch: vacuous (Pₘ div = False)
-    intro hD; exact hD.elim
+  -- Only ok-continuation remains; `z` and `z_post` already introduced.
+  step with UScalar.add_spec_partial
+  rcases w with _ | e | _ <;> simp_all [Std.WP.successPost] <;> scalar_tac
+
+/-- Test: `let* ⟨ z, h ⟩ ← X_spec_partial` works against partial-spec
+    lemmas. The default fail/div discharge in `trySplitPartialBind` makes
+    `let*` partial-aware: the ok-continuation is left as the main goal,
+    `z` and `h` are introduced from the ok-continuation's `∀ z, P (ok z) →
+    spec (k z) Q` shape. Note that `h` is a *conjunction* including the
+    bound condition (`x.val + y.val ≤ U32.max ∧ z.val = ...`). -/
+example (x y : U32) (h1 : x.val + y.val ≤ U32.max)
+    (h2 : x.val + y.val + 1 ≤ U32.max) :
+    (do let z ← x + y; z + 1#u32) ⦃ w => w.val = x.val + y.val + 1 ⦄ := by
+  let* ⟨ z, hz ⟩ ← UScalar.add_spec_partial
+  step with UScalar.add_spec_partial
+  rcases w with _ | e | _ <;> simp_all [Std.WP.successPost] <;> scalar_tac
 
 end partial_spec_tests

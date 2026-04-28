@@ -706,6 +706,52 @@ def postprocessMainGoal (mainGoal : Option MainGoal) : TacticM (Option MainGoal)
         pure (some ({goal := ← getMainGoal, outputs, stepState := mainGoal.stepState} : MainGoal))
       else pure none
 
+/-- After `tryMatch` for a partial-spec lemma in `let`-bind position, the
+    main goal has shape `qimp_spec_g Pₘ k Pₖ`. Split it into the three
+    independent obligations (ok-continuation, fail-propagation,
+    div-propagation) and try a default discharge on the latter two so the
+    user is left with the same single-goal UX as the success-only path.
+
+    The ok-continuation goal becomes the new main goal; any fail/div
+    obligations that the default discharge couldn't close remain as
+    additional unfocused goals the user must close themselves.
+
+    Returns `true` if a partial-form split was applied, `false` if the goal
+    was not in `qimp_spec_g` shape (the success-only case). -/
+def trySplitPartialBind : TacticM Bool := do
+  withMainContext do
+  let goal ← getMainGoal
+  let goalType ← instantiateMVars (← goal.getType)
+  -- `qimp_spec_g {α β} Pₘ k Pₖ` has 5 args including the two implicit type parameters.
+  unless goalType.consumeMData.isAppOfArity ``Std.WP.qimp_spec_g 5 do return false
+  trace[Step] "trySplitPartialBind: detected `qimp_spec_g` goal, splitting"
+  /- Unfold `qimp_spec_g` (a `def`, not a theorem) to expose the
+     right-nested `∧` structure, then split with the anonymous constructor. -/
+  let splitTac ← `(tactic|
+    (simp only [Std.WP.qimp_spec_g]; refine ⟨?_, ?_, ?_⟩))
+  Tactic.evalTactic splitTac
+  -- After the split, goals are [ok, fail, div]. Try defaults on fail and div.
+  match ← getUnsolvedGoals with
+  | [okG, failG, divG] =>
+    -- div: typically `Pₘ div = False`, so `intro h; exact h.elim` works.
+    setGoals [divG]
+    let divDischarge ← `(tactic|
+      try (intro hD; first | exact hD.elim | exact False.elim hD | trivial))
+    try Tactic.evalTactic divDischarge catch _ => pure ()
+    -- fail: try scalar_tac after intro; preconditions in scope often imply success.
+    let remainingDiv ← getUnsolvedGoals
+    setGoals [failG]
+    let failDischarge ← `(tactic|
+      try (intro _ _; first | (exfalso; scalar_tac) | scalar_tac | grind))
+    try Tactic.evalTactic failDischarge catch _ => pure ()
+    let remainingFail ← getUnsolvedGoals
+    -- Set goals to: [okG, ...remaining fail goals, ...remaining div goals]
+    setGoals (okG :: remainingFail ++ remainingDiv)
+    return true
+  | _ =>
+    trace[Step] "trySplitPartialBind: unexpected goal count after split"
+    return true
+
 def stepWith (args : Args) (isLet:Bool) (fExpr : Expr) (th : Expr) :
   TacticM Goals := do
   withTraceNode `Step (fun _ => pure m!"stepWith") do
@@ -732,6 +778,10 @@ def stepWith (args : Args) (isLet:Bool) (fExpr : Expr) (th : Expr) :
   /- Process the main goal -/
   -- Introduce the outputs, including the post-conditions, into the context
   setGoals [mainGoal]
+  /- If the main goal is in partial-spec bind shape (`qimp_spec_g`), split it
+     into three obligations and attempt to discharge fail / div with
+     defaults, so the rest of the pipeline sees a success-shaped main goal. -/
+  let _ ← trySplitPartialBind
   let mainGoal ← introOutputs args fExpr stepState
   /- Simplify the post-conditions in the main goal - note that we waited until now
       because by solving the preconditions we may have instantiated meta-variables.
