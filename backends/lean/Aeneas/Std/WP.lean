@@ -176,6 +176,15 @@ theorem spec_mono' {α} {P₁ : α → Prop} {m : Result α} {P₀ : α → Prop
   unfold spec successPost at *
   cases m <;> grind [qimp]
 
+/-- Alternative to `spec_mono_g` (partial-correctness): introduces a `qimp`
+    between the Result-level postconditions. Used by the `step` tactic to
+    apply partial-spec lemmas (whose post is not wrapped in `successPost`). -/
+theorem spec_mono_g' {α} {P₁ : Result α → Prop} {m : Result α} {P₀ : Result α → Prop}
+  (h : spec m P₀) : qimp P₀ P₁ → spec m P₁ := by
+  intro HMonPost
+  unfold spec at *
+  apply HMonPost; exact h
+
 /-- Implication of a `spec` predicate with quantifier (value-level form). -/
 def qimp_spec {α β} (P : α → Prop) (k : α → Result β) (Q : β → Prop) : Prop :=
   ∀ x, P x → spec (k x) (successPost Q)

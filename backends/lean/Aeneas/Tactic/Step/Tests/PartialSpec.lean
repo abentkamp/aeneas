@@ -50,4 +50,13 @@ example : succOrPanic false = fail .panic := by
   unfold succOrPanic at *
   simp_all
 
+/-- Test: `step` can apply a partial-spec lemma against a success-only goal.
+    After `step`, the user is left with the Result-level monotonicity goal
+    and case-splits on the result (and on `Error` for the fail branch) to
+    discharge each branch. -/
+example (b : Bool) (hb : b = true) : succOrPanic b ⦃ x => x = 1 ⦄ := by
+  step
+  rcases x with _ | e | _ <;> [skip; cases e; skip] <;>
+    simp_all [Std.WP.successPost]
+
 end partial_spec_tests

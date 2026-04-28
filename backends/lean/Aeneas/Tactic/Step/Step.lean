@@ -369,9 +369,11 @@ def tryMatch (isLet : Bool) (th : Expr) :
   let th := mkAppN th mvars
   trace[Step] "Uninstantiated theorem: {th}: {← inferType th}"
 
-  -- `thTy` should be of the shape `spec program post` (where `post` is the
-  -- success-only `successPost P` produced by the macro): retrieve `program`
-  -- and the inner value-level `P` to feed to `spec_mono'`/`spec_bind'`.
+  -- `thTy` should be of the shape `spec program post`. The post may be either:
+  -- - `successPost P` (the success-only form): we feed the value-level `P`
+  --   to `spec_mono'`/`spec_bind'`.
+  -- - a general Result-level predicate (the partial-spec form `⦃ | ok ... | fail ... ⦄`):
+  --   we feed it directly to `spec_mono_g'`/`spec_bind_g'`.
   let (thHead, thArgs) := thTy.consumeMData.withApp (fun f args => (f, args))
   if !thHead.isConst || thHead.constName! != ``Std.WP.spec then
     throwError "Not a spec theorem"
@@ -379,19 +381,21 @@ def tryMatch (isLet : Bool) (th : Expr) :
     if h: thArgs.size = 3
     then pure (thArgs[1]!, thArgs[2]!)
     else throwError "Not a spec theorem"
-  -- If the post is `successPost P`, extract `P` (the value-level predicate).
-  -- The mono/bind lemmas (`spec_mono'`/`spec_bind'`) take value-level posts,
-  -- so we need to unwrap the canonical success-only wrapper.
+  let isSuccessPost := postExpr.consumeMData.isAppOfArity ``Std.WP.successPost 2
   let P ←
-    if postExpr.consumeMData.isAppOfArity ``Std.WP.successPost 2 then
-      pure postExpr.consumeMData.appArg!
-    else
-      throwError "Step lemma post is not in the success-only `successPost _` form: {postExpr}"
+    if isSuccessPost then pure postExpr.consumeMData.appArg!
+    else pure postExpr
 
-  let (specMonoBindName, varNum) :=
-    if isLet
-    then (``Std.WP.spec_bind', 4)
-    else (``Std.WP.spec_mono', 2)
+  let (specMonoBindName, varNum) ←
+    if isSuccessPost then pure <|
+      if isLet
+      then (``Std.WP.spec_bind', 4)
+      else (``Std.WP.spec_mono', 2)
+    else
+      if isLet then
+        throwError "Step does not yet support partial-spec lemmas in `let`-bind position. \
+                    Theorem post: {postExpr}"
+      else pure (``Std.WP.spec_mono_g', 2)
   let specMonoBind ← Term.mkConst specMonoBindName
   let specMonoBindTy ← inferType specMonoBind
   trace[Step] "specMonoBind (isLet:{isLet}): {specMonoBind}: {← inferType specMonoBind}"
