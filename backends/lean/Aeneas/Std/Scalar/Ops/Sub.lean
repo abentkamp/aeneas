@@ -37,13 +37,14 @@ instance {ty} : HSub (IScalar ty) (IScalar ty) (Result (IScalar ty)) where
 -/
 
 theorem UScalar.sub_equiv {ty} (x y : UScalar ty) :
-  match x - y with
-  | ok z =>
-    y.val ≤ x.val ∧
-    x.val = z.val + y.val ∧
-    z.bv = x.bv - y.bv
-  | fail _ => x.val < y.val
-  | _ => ⊥ := by
+  x - y ⦃
+    | ok z =>
+      y.val ≤ x.val ∧
+      x.val = z.val + y.val ∧
+      z.bv = x.bv - y.bv
+    | fail _ => x.val < y.val
+  ⦄ := by
+  unfold Std.WP.spec
   have : x - y = sub x y := by rfl
   simp [this, sub]
   dcases h : x.val < y.val <;> simp [h]
@@ -81,13 +82,14 @@ theorem UScalar.sub_equiv {ty} (x y : UScalar ty) :
     ring_nf
 
 theorem IScalar.sub_equiv {ty} (x y : IScalar ty) :
-  match x - y with
-  | ok z =>
-    IScalar.inBounds ty (x.val - y.val) ∧
-    z.val = x.val - y.val ∧
-    z.bv = x.bv - y.bv
-  | fail _ => ¬ (IScalar.inBounds ty (x.val - y.val))
-  | _ => ⊥ := by
+  x - y ⦃
+    | ok z =>
+      IScalar.inBounds ty (x.val - y.val) ∧
+      z.val = x.val - y.val ∧
+      z.bv = x.bv - y.bv
+    | fail _ => ¬ (IScalar.inBounds ty (x.val - y.val))
+  ⦄ := by
+  unfold Std.WP.spec
   have : x - y = sub x y := by rfl
   simp [this, sub]
   have h := tryMk_eq ty (↑x - ↑y)
@@ -107,6 +109,7 @@ theorem UScalar.sub_bv_spec {ty} {x y : UScalar ty}
   (h : y.val ≤ x.val) :
   x - y ⦃ z => z.val = x.val - y.val ∧ y.val ≤ x.val ∧ z.bv = x.bv - y.bv ⦄ := by
   have h := @sub_equiv ty x y
+  simp only [Std.WP.spec] at h ⊢
   split at h <;> simp_all
   omega
 
@@ -116,6 +119,7 @@ theorem IScalar.sub_bv_spec {ty} {x y : IScalar ty}
   (hmax : ↑x - ↑y ≤ IScalar.max ty) :
   x - y ⦃ z => (↑z : Int) = ↑x - ↑y ∧ z.bv = x.bv - y.bv ⦄ := by
   have h := @sub_equiv ty x y
+  simp only [Std.WP.spec] at h ⊢
   split at h <;> simp_all [min, max]
   omega
 
@@ -138,6 +142,7 @@ theorem UScalar.sub_spec {ty} {x y : UScalar ty}
   (h : y.val ≤ x.val) :
   x - y ⦃ z => z.val = x.val - y.val ∧ y.val ≤ x.val ⦄ := by
   have h := @sub_equiv ty x y
+  simp only [Std.WP.spec] at h ⊢
   split at h <;> simp_all
   omega
 
@@ -148,6 +153,7 @@ theorem IScalar.sub_spec {ty} {x y : IScalar ty}
   (hmax : ↑x - ↑y ≤ IScalar.max ty) :
   x - y ⦃ z => (↑z : Int) = ↑x - ↑y ⦄ := by
   have h := @sub_equiv ty x y
+  simp only [Std.WP.spec] at h ⊢
   split at h <;> simp_all [min, max]
   omega
 

@@ -33,6 +33,7 @@ theorem core.num.checked_mul_UScalar_bv_spec {ty} (x y : UScalar ty) :
   | some z => x.val * y.val ≤ UScalar.max ty ∧ z.val = x.val * y.val ∧ z.bv = x.bv * y.bv
   | none => UScalar.max ty < x.val * y.val := by
   have h := UScalar.mul_equiv x y
+  simp only [Std.WP.spec] at h
   simp [checked_mul_UScalar]
   cases hEq : UScalar.mul x y <;> simp_all [Option.ofResult]
 
@@ -53,6 +54,7 @@ theorem core.num.checked_mul_IScalar_bv_spec {ty} (x y : IScalar ty) :
   | some z => IScalar.min ty ≤ x.val * y.val ∧ x.val * y.val ≤ IScalar.max ty ∧ z.val = x.val * y.val ∧ z.bv = x.bv * y.bv
   | none => ¬ (IScalar.min ty ≤ x.val * y.val ∧ x.val * y.val ≤ IScalar.max ty) := by
   have h := IScalar.mul_equiv x y
+  simp only [Std.WP.spec] at h
   simp [checked_mul_IScalar]
   cases hEq : IScalar.mul x y <;> simp_all [Option.ofResult]
 

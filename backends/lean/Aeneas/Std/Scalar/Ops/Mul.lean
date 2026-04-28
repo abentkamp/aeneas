@@ -40,10 +40,11 @@ Theorems with a specification which use integers and bit-vectors
 -/
 
 theorem UScalar.mul_equiv {ty} (x y : UScalar ty) :
-  match mul x y with
-  | ok z => x.val * y.val ≤ UScalar.max ty ∧ (↑z : Nat) = ↑x * ↑y ∧ z.bv = x.bv * y.bv
-  | fail _ => UScalar.max ty < x.val * y.val
-  | .div => False := by
+  mul x y ⦃
+    | ok z => x.val * y.val ≤ UScalar.max ty ∧ (↑z : Nat) = ↑x * ↑y ∧ z.bv = x.bv * y.bv
+    | fail _ => UScalar.max ty < x.val * y.val
+  ⦄ := by
+  unfold Std.WP.spec
   simp only [mul]
   have := tryMk_eq ty (x.val * y.val)
   split <;> simp_all only [inBounds, true_and, not_lt, gt_iff_lt]
@@ -66,14 +67,16 @@ theorem UScalar.mul_bv_spec {ty} {x y : UScalar ty}
   x * y ⦃ z => (↑z : Nat) = ↑x * ↑y ∧ z.bv = x.bv * y.bv ⦄ := by
   have : x * y = mul x y := by rfl
   have := mul_equiv x y
+  simp only [Std.WP.spec] at this ⊢
   split at this <;> simp_all [spec_ok, and_self, spec_fail]
   omega
 
 theorem IScalar.mul_equiv {ty} (x y : IScalar ty) :
-  match mul x y with
-  | ok z => IScalar.min ty ≤ x.val * y.val ∧ x.val * y.val ≤ IScalar.max ty ∧ z.val = x.val * y.val ∧ z.bv = x.bv * y.bv
-  | fail _ => ¬(IScalar.min ty ≤ x.val * y.val ∧ x.val * y.val ≤ IScalar.max ty)
-  | .div => False := by
+  mul x y ⦃
+    | ok z => IScalar.min ty ≤ x.val * y.val ∧ x.val * y.val ≤ IScalar.max ty ∧ z.val = x.val * y.val ∧ z.bv = x.bv * y.bv
+    | fail _ => ¬(IScalar.min ty ≤ x.val * y.val ∧ x.val * y.val ≤ IScalar.max ty)
+  ⦄ := by
+  unfold Std.WP.spec
   simp only [mul, not_and, not_le]
   have := tryMk_eq ty (x.val * y.val)
   split <;> simp_all only [inBounds, min, max, true_and, not_and, not_lt] <;>
@@ -118,6 +121,7 @@ theorem IScalar.mul_bv_spec {ty} {x y : IScalar ty}
   x * y ⦃ z => (↑z : Int) = ↑x * ↑y ∧ z.bv = x.bv * y.bv ⦄ := by
   have : x * y = mul x y := by rfl
   have := mul_equiv x y
+  simp only [Std.WP.spec] at this ⊢
   split at this <;> simp_all
 
 uscalar theorem «%S».mul_bv_spec {x y : «%S»} (hmax : x.val * y.val ≤ «%S».max) :

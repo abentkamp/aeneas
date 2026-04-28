@@ -35,12 +35,14 @@ instance {ty} : HAdd (IScalar ty) (IScalar ty) (Result (IScalar ty)) where
 -/
 
 theorem UScalar.add_equiv {ty} (x y : UScalar ty) :
-  match x + y with
-  | ok z => x.val + y.val < 2^ty.numBits ∧
-    z.val = x.val + y.val ∧
-    z.bv = x.bv + y.bv
-  | fail _ => ¬ (UScalar.inBounds ty (x.val + y.val))
-  | _ => ⊥ := by
+  x + y ⦃
+    | ok z =>
+      x.val + y.val < 2^ty.numBits ∧
+      z.val = x.val + y.val ∧
+      z.bv = x.bv + y.bv
+    | fail _ => ¬ (UScalar.inBounds ty (x.val + y.val))
+  ⦄ := by
+  unfold Std.WP.spec
   have : x + y = add x y := by rfl
   rw [this]
   simp [add]
@@ -53,13 +55,14 @@ theorem UScalar.add_equiv {ty} (x y : UScalar ty) :
   simp [*]
 
 theorem IScalar.add_equiv {ty} (x y : IScalar ty) :
-  match x + y with
-  | ok z =>
-    IScalar.inBounds ty (x.val + y.val) ∧
-    z.val = x.val + y.val ∧
-    z.bv = x.bv + y.bv
-  | fail _ => ¬ (IScalar.inBounds ty (x.val + y.val))
-  | _ => ⊥ := by
+  x + y ⦃
+    | ok z =>
+      IScalar.inBounds ty (x.val + y.val) ∧
+      z.val = x.val + y.val ∧
+      z.bv = x.bv + y.bv
+    | fail _ => ¬ (IScalar.inBounds ty (x.val + y.val))
+  ⦄ := by
+  unfold Std.WP.spec
   have : x + y = add x y := by rfl
   rw [this]
   simp [add]
@@ -81,6 +84,7 @@ theorem UScalar.add_bv_spec {ty} {x y : UScalar ty}
   (hmax : ↑x + ↑y ≤ UScalar.max ty) :
   x + y ⦃ z => (↑z : Nat) = ↑x + ↑y ∧ z.bv = x.bv + y.bv ⦄ := by
   have h := @add_equiv ty x y
+  simp only [Std.WP.spec] at h ⊢
   split at h <;> simp_all [max]
   have : 0 < 2^ty.numBits := by simp
   omega
@@ -91,6 +95,7 @@ theorem IScalar.add_bv_spec {ty}  {x y : IScalar ty}
   (hmax : ↑x + ↑y ≤ IScalar.max ty) :
   x + y ⦃ z => (↑z : Int) = ↑x + ↑y ∧ z.bv = x.bv + y.bv ⦄ := by
   have h := @add_equiv ty x y
+  simp only [Std.WP.spec] at h ⊢
   split at h <;> simp_all [min, max]
   omega
 
@@ -115,6 +120,7 @@ theorem UScalar.add_spec {ty} {x y : UScalar ty}
   (hmax : ↑x + ↑y ≤ UScalar.max ty) :
   x + y ⦃ z => (↑z : Nat) = ↑x + ↑y ⦄ := by
   have h := @add_equiv ty x y
+  simp only [Std.WP.spec] at h ⊢
   split at h <;> simp_all [max]
   have : 0 < 2^ty.numBits := by simp
   omega
@@ -126,6 +132,7 @@ theorem IScalar.add_spec {ty} {x y : IScalar ty}
   (hmax : ↑x + ↑y ≤ IScalar.max ty) :
   x + y ⦃ z => (↑z : Int) = ↑x + ↑y ⦄ := by
   have h := @add_equiv ty x y
+  simp only [Std.WP.spec] at h ⊢
   split at h <;> simp_all [min, max]
   omega
 

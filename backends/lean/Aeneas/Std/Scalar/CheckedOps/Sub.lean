@@ -33,6 +33,7 @@ theorem core.num.checked_sub_UScalar_bv_spec {ty} (x y : UScalar ty) :
   | some z => y.val ≤ x.val ∧ z.val = x.val - y.val ∧ z.bv = x.bv - y.bv
   | none => x.val < y.val := by
   have h := UScalar.sub_equiv x y
+  simp only [Std.WP.spec] at h
   have hsub : x - y = UScalar.sub x y := by rfl
   rw [hsub] at h
   cases hEq : UScalar.sub x y <;> simp_all [Option.ofResult, checked_sub_UScalar]
@@ -54,6 +55,7 @@ theorem core.num.checked_sub_IScalar_bv_spec {ty} (x y : IScalar ty) :
   | some z => IScalar.min ty ≤ x.val - y.val ∧ x.val - y.val ≤ IScalar.max ty ∧ z.val = x.val - y.val ∧ z.bv = x.bv - y.bv
   | none => ¬ (IScalar.min ty ≤ x.val - y.val ∧ x.val - y.val ≤ IScalar.max ty) := by
   have h := IScalar.sub_equiv x y
+  simp only [Std.WP.spec] at h
   have hsub : x - y = IScalar.sub x y := by rfl
   rw [hsub] at h
   cases hEq : IScalar.sub x y <;> simp_all [Option.ofResult, checked_sub_IScalar, IScalar.min, IScalar.max] <;>

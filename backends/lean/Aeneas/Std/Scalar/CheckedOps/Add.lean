@@ -33,6 +33,7 @@ theorem core.num.checked_add_UScalar_bv_spec {ty} (x y : UScalar ty) :
   | some z => x.val + y.val ≤ UScalar.max ty ∧ z.val = x.val + y.val ∧ z.bv = x.bv + y.bv
   | none => UScalar.max ty < x.val + y.val := by
   have h := UScalar.add_equiv x y
+  simp only [Std.WP.spec] at h
   have hAdd : x + y = UScalar.add x y := by rfl
   rw [hAdd] at h
   cases hEq : UScalar.add x y <;> simp_all [Option.ofResult, checked_add_UScalar, UScalar.max] <;>
@@ -56,6 +57,7 @@ theorem core.num.checked_add_IScalar_bv_spec {ty} (x y : IScalar ty) :
   | some z => IScalar.min ty ≤ x.val + y.val ∧ x.val + y.val ≤ IScalar.max ty ∧ z.val = x.val + y.val ∧ z.bv = x.bv + y.bv
   | none => ¬ (IScalar.min ty ≤ x.val + y.val ∧ x.val + y.val ≤ IScalar.max ty) := by
   have h := IScalar.add_equiv x y
+  simp only [Std.WP.spec] at h
   have hAdd : x + y = IScalar.add x y := by rfl
   rw [hAdd] at h
   cases hEq : IScalar.add x y <;> simp_all [Option.ofResult, checked_add_IScalar, IScalar.min, IScalar.max] <;>
