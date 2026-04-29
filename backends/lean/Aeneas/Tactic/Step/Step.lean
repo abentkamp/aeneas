@@ -388,12 +388,10 @@ def tryMatch (isLet : Bool) (th : Expr) :
   let P :=
     if isSuccessPost then postExpr.consumeMData.appArg! else postExpr
 
-  if isLet ∧ ¬ isSuccessPost then
-    throwError "Step lemma in let-binding context must be success-only \
-      (`successPost _`); partial-spec is not yet supported in bind position. \
-      Got post: {postExpr}"
   let (specMonoBindName, varNum) :=
-    if isLet then (``Std.WP.spec_bind', 4)
+    if isLet then
+      if isSuccessPost then (``Std.WP.spec_bind', 4)
+      else (``Std.WP.spec_bind_g_combined, 4)
     else if isSuccessPost then (``Std.WP.spec_mono', 2)
     else (``Std.WP.spec_mono_g, 2)
   let specMonoBind ← Term.mkConst specMonoBindName

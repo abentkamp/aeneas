@@ -186,6 +186,22 @@ theorem qimp_result_split {α} (P Q : Result α → Prop) :
     · exact hfail _
     · exact hdiv
 
+/-- Bind for partial-spec lemmas in let-binding context, with a single
+    combined obligation. Step uses this when the bind-position theorem has
+    a Result-level (partial) post. -/
+theorem spec_bind_g_combined {α β} {m : Result α} {k : α → Result β}
+    {Pₘ : Result α → Prop} {Pₖ : Result β → Prop}
+    (h : spec m Pₘ)
+    (hcont : ∀ r, Pₘ r → match r with
+                          | .ok x => spec (k x) Pₖ
+                          | .fail e => Pₖ (.fail e)
+                          | .div => Pₖ .div) :
+    spec (Std.bind m k) Pₖ := by
+  unfold spec at *; cases m
+  · simp_all; exact hcont _ h
+  · simp_all; exact hcont _ h
+  · simp_all; exact hcont _ h
+
 /-- Alternative to `spec_mono` (success-only): introduces a `qimp` between the
     inner value-level postconditions. -/
 theorem spec_mono' {α} {P₁ : α → Prop} {m : Result α} {P₀ : α → Prop}
