@@ -369,9 +369,9 @@ def tryMatch (isLet : Bool) (th : Expr) :
   let th := mkAppN th mvars
   trace[Step] "Uninstantiated theorem: {th}: {← inferType th}"
 
-  -- `thTy` should be of the shape `spec program post`. The post can either be
-  -- in the success-only `successPost P` form (legacy macro) or a general
-  -- `Result α → Prop` post (partial-spec form).
+  -- `thTy` should be of the shape `spec program post` (where `post` is the
+  -- success-only `successPost P` produced by the macro): retrieve `program`
+  -- and the inner value-level `P` to feed to `spec_mono'`/`spec_bind'`.
   let (thHead, thArgs) := thTy.consumeMData.withApp (fun f args => (f, args))
   if !thHead.isConst || thHead.constName! != ``Std.WP.spec then
     throwError "Not a spec theorem"
@@ -379,21 +379,19 @@ def tryMatch (isLet : Bool) (th : Expr) :
     if h: thArgs.size = 3
     then pure (thArgs[1]!, thArgs[2]!)
     else throwError "Not a spec theorem"
-  -- Detect whether the post is `successPost P` (success-only) or a Result-level
-  -- post (partial). For success-only, use `spec_mono'`/`spec_bind'` with the
-  -- inner value-level `P`. For partial, fall back to `spec_mono_g` with the
-  -- full Result-level post (only the non-let path is supported in this case;
-  -- the let-binding case still requires success-only theorems).
-  let isSuccessPost := postExpr.consumeMData.isAppOfArity ``Std.WP.successPost 2
-  let P :=
-    if isSuccessPost then postExpr.consumeMData.appArg! else postExpr
+  -- If the post is `successPost P`, extract `P` (the value-level predicate).
+  -- The mono/bind lemmas (`spec_mono'`/`spec_bind'`) take value-level posts,
+  -- so we need to unwrap the canonical success-only wrapper.
+  let P ←
+    if postExpr.consumeMData.isAppOfArity ``Std.WP.successPost 2 then
+      pure postExpr.consumeMData.appArg!
+    else
+      throwError "Step lemma post is not in the success-only `successPost _` form: {postExpr}"
 
   let (specMonoBindName, varNum) :=
-    if isLet then
-      if isSuccessPost then (``Std.WP.spec_bind', 4)
-      else (``Std.WP.spec_bind_g_combined, 4)
-    else if isSuccessPost then (``Std.WP.spec_mono', 2)
-    else (``Std.WP.spec_mono_g, 2)
+    if isLet
+    then (``Std.WP.spec_bind', 4)
+    else (``Std.WP.spec_mono', 2)
   let specMonoBind ← Term.mkConst specMonoBindName
   let specMonoBindTy ← inferType specMonoBind
   trace[Step] "specMonoBind (isLet:{isLet}): {specMonoBind}: {← inferType specMonoBind}"
@@ -495,17 +493,12 @@ def introOutputs (args : Args) (fExpr : Expr) (stepState : StepState) :
   traceGoalWithNode "goal after decomposing the nested `predn`"
 
   /- Eliminate `qimp_spec`/`qimp` to reveal `imp` and decompose the post-condition into a sequence
-     of implications. Also splits Result-level forall implications produced by
-     `spec_mono_g` (for partial-spec lemmas) and reduces `successPost` on each
-     constructor so the trivial fail/div branches collapse. -/
+     of implications -/
   let some _ ← withTraceNode `Step (fun _ => pure m!"simpAt: eliminating `qimp_spec` and `qimp`") do
     Simp.simpAt true { maxDischargeDepth := 1, failIfUnchanged := false, iota := false}
             { declsToUnfold := #[``Std.WP.curry, ``Std.WP.predn]
               addSimpThms :=
                 #[``Std.WP.qimp_spec_iff, ``Std.WP.qimp_iff,
-                  ``Std.WP.qimp_result_split,
-                  ``Std.WP.successPost_ok, ``Std.WP.successPost_fail,
-                  ``Std.WP.successPost_div,
                   ``Std.WP.imp_and_iff, ``forall_unit, ``true_imp_iff] }
             (.targets #[] true)
     | trace[Step] "The main goal was solved!"; return none

@@ -274,9 +274,13 @@ structure StepSpecAttr where
   ext  : Extension
   deriving Inhabited
 
-/-- Synthesize an alias `<thName>_step` of the original theorem. The alias is
-    what the `step` tactic finds via the DiscrTree; the original keeps its
-    user-facing name. -/
+/-- Synthesize a `<thName>_step` companion of the original theorem in the
+    success-only `successPost _` form, suitable for the existing `step`
+    tactic pipeline. For success-only sources, this is just an alias. For
+    partial-spec sources `spec x P`, the synthesized companion adds two
+    hypotheses (`∀ e, ¬ P (.fail e)` and `¬ P .div`) and concludes
+    `spec x (successPost (fun z => P (.ok z)))`, via
+    `Aeneas.Std.WP.partial_to_success_with_hyps`. -/
 private def generateStepAlias (stx : Syntax) (thName : Name) : MetaM Name := do
   let env ← getEnv
   let some decl := env.findAsync? thName
@@ -284,13 +288,48 @@ private def generateStepAlias (stx : Syntax) (thName : Name) : MetaM Name := do
   let sig := decl.sig.get
   let stepName := thName.appendAfter "_step"
   let levelArgs := sig.levelParams.map Level.param
-  let value := Lean.mkConst thName levelArgs
-  let auxDecl : TheoremVal := {
-    name        := stepName
-    levelParams := sig.levelParams
-    type        := sig.type
-    value       := value
-  }
+  let thConst := Lean.mkConst thName levelArgs
+  let normalizedType ← normalizeLetBindings sig.type
+  let auxDecl ← forallTelescope normalizedType fun fvars body => do
+    let bodyApp := body.consumeMData
+    let (specHead, specArgs) := bodyApp.withApp (fun f args => (f, args))
+    unless specHead.isConstOf ``Aeneas.Std.WP.spec ∧ specArgs.size = 3 do
+      throwError "Expected source body `spec _ _`, got {body}"
+    let postExpr := specArgs[2]!.consumeMData
+    let thApp := mkAppN thConst fvars
+    if postExpr.isAppOfArity ``Aeneas.Std.WP.successPost 2 then
+      -- Success-only source: emit a plain alias.
+      let ty ← mkForallFVars fvars body
+      let value ← mkLambdaFVars fvars thApp
+      pure ({ name := stepName, levelParams := sig.levelParams, type := ty, value : TheoremVal })
+    else
+      -- Partial-spec source: build a success-only companion with two
+      -- extra hypotheses ruling out the fail and div branches.
+      let xExpr := specArgs[1]!
+      let xType ← inferType xExpr
+      let some α := xType.consumeMData.getAppArgs[0]?
+        | throwError "Expected `xExpr : Result α`, got {xType}"
+      let hNoFailTy ← withLocalDeclD `e (Lean.mkConst ``Aeneas.Std.Error) fun e => do
+        let failOfE ← mkAppOptM ``Aeneas.Std.Result.fail #[some α, some e]
+        let pFail ← mkAppM' postExpr #[failOfE]
+        mkForallFVars #[e] (← mkAppM ``Not #[pFail])
+      let hNoDivTy ← do
+        let divExpr ← mkAppOptM ``Aeneas.Std.Result.div #[some α]
+        let pDiv ← mkAppM' postExpr #[divExpr]
+        mkAppM ``Not #[pDiv]
+      withLocalDeclD `h_no_fail hNoFailTy fun hNoFail => do
+      withLocalDeclD `h_no_div hNoDivTy fun hNoDiv => do
+        let hOk ← withLocalDeclD `z α fun z => do
+          let okOfZ ← mkAppOptM ``Aeneas.Std.Result.ok #[some α, some z]
+          let pOkApp ← mkAppM' postExpr #[okOfZ]
+          withLocalDeclD `h pOkApp fun h => do
+            mkLambdaFVars #[z, h] h
+        let proof ← mkAppM ``Aeneas.Std.WP.partial_to_success_with_hyps
+          #[thApp, hOk, hNoFail, hNoDiv]
+        let allFvars := fvars ++ #[hNoFail, hNoDiv]
+        let value ← mkLambdaFVars allFvars proof
+        let ty ← mkForallFVars allFvars (← inferType proof)
+        pure ({ name := stepName, levelParams := sig.levelParams, type := ty, value : TheoremVal })
   addDecl (.thmDecl auxDecl)
   addDeclarationRangesFromSyntax stepName stx
   pure stepName

@@ -148,12 +148,13 @@ def Vec.update {α : Type u} (v: Vec α) (i: Usize) (x: α) : Result (Vec α) :=
     ok ⟨ v.val.set i x, by have := v.property; simp [*] ⟩
 
 @[step]
-theorem Vec.update_spec {α : Type u} (v: Vec α) (i: Usize) (x : α)
-  (hbound : i.val < v.length) :
-  v.update i x ⦃ nv => nv = v.set i x ⦄ := by
-  simp only [update, set]
-  simp at *
-  split <;> simp_all
+theorem Vec.update_spec {α : Type u} (v: Vec α) (i: Usize) (x : α) :
+  v.update i x ⦃
+    | ok nv => nv = v.set i x ∧ i.val < v.length
+    | fail .arrayOutOfBounds => i.val ≥ v.length
+  ⦄ := by
+  simp only [update, set, Std.WP.spec]
+  split <;> simp_all <;> grind
 
 @[scalar_tac_simps, grind =, agrind =]
 theorem Vec.set_length {α : Type u} (v: Vec α) (i: Usize) (x: α) :

@@ -168,39 +168,23 @@ def qimp_predn {α₀ α₁} (P : α₀ → α₁ → Prop) (Q : α₀ × α₁ 
 /-- We use this lemma to eliminate `imp` after we decomposed the nested `predn` -/
 theorem qimp_iff {α} (P₀ P₁ : α → Prop) : qimp P₀ P₁ ↔ ∀ x, imp (P₀ x) (P₁ x) := by simp [qimp, imp]
 
-/-- Decompose a Result-level forall implication into per-branch implications.
-    Used by the `step` tactic to handle partial-spec lemmas: after applying
-    `spec_mono_g`, the obligation has the shape `∀ r : Result α, P r → Q r`,
-    which this lemma splits by Result constructor. -/
-theorem qimp_result_split {α} (P Q : Result α → Prop) :
-    (∀ r, P r → Q r) ↔
-    ((∀ z, P (.ok z) → Q (.ok z)) ∧
-     (∀ e, P (.fail e) → Q (.fail e)) ∧
-     (P .div → Q .div)) := by
-  constructor
-  · intro h
-    refine ⟨fun z => h (.ok z), fun e => h (.fail e), h .div⟩
-  · intro ⟨hok, hfail, hdiv⟩ r
-    cases r
-    · exact hok _
-    · exact hfail _
-    · exact hdiv
-
-/-- Bind for partial-spec lemmas in let-binding context, with a single
-    combined obligation. Step uses this when the bind-position theorem has
-    a Result-level (partial) post. -/
-theorem spec_bind_g_combined {α β} {m : Result α} {k : α → Result β}
-    {Pₘ : Result α → Prop} {Pₖ : Result β → Prop}
-    (h : spec m Pₘ)
-    (hcont : ∀ r, Pₘ r → match r with
-                          | .ok x => spec (k x) Pₖ
-                          | .fail e => Pₖ (.fail e)
-                          | .div => Pₖ .div) :
-    spec (Std.bind m k) Pₖ := by
-  unfold spec at *; cases m
-  · simp_all; exact hcont _ h
-  · simp_all; exact hcont _ h
-  · simp_all; exact hcont _ h
+/-- Convert a partial-spec to a success-only spec by adding hypotheses that
+    rule out the `fail` and `div` branches. Used by the `@[step]` attribute
+    to synthesize a `_step` alias whose conclusion fits the existing
+    success-only `step` pipeline, so the tactic itself does not need to
+    handle partial posts. -/
+theorem partial_to_success_with_hyps {α} {x : Result α}
+    {P : Result α → Prop} {P_ok : α → Prop}
+    (h : spec x P)
+    (h_ok : ∀ z, P (.ok z) → P_ok z)
+    (h_no_fail : ∀ e, ¬ P (.fail e))
+    (h_no_div : ¬ P .div) :
+    spec x (successPost P_ok) := by
+  unfold spec successPost at *
+  cases x
+  case ok z => exact h_ok _ h
+  case fail e => exact (h_no_fail _ h).elim
+  case div => exact (h_no_div h).elim
 
 /-- Alternative to `spec_mono` (success-only): introduces a `qimp` between the
     inner value-level postconditions. -/
