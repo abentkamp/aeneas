@@ -526,6 +526,26 @@ theorem Result.of_wp {α} {x : Result α} (P : Result α → Prop) :
   simp only [instWP] at hspec
   split at hspec <;> simp_all
 
+/-- Lift a success-only Aeneas spec to an mvcgen-compatible `Triple` with a
+    value-level post. -/
+theorem spec_to_mvcgen {α : Type} {x : Result α} {Q : α → Prop}
+    (h : spec x (successPost Q)) :
+    ⦃ ⌜ True ⌝ ⦄ x ⦃ ⇓ r => ⌜ Q r ⌝ ⦄ := by
+  obtain ⟨v, hx, hQv⟩ := spec_imp_exists h
+  subst hx
+  simp [Triple, Result.instWP, hQv]
+
+/-- Lift a general (Result-level) Aeneas spec to an mvcgen-compatible `Triple`
+    with a 3-branch post characterizing all of `ok`, `fail`, `div`. -/
+theorem spec_to_mvcgen_partial {α : Type} {x : Result α} {P : Result α → Prop}
+    (h : spec x P) :
+    ⦃ ⌜ True ⌝ ⦄ x ⦃ post⟨fun z => ⌜ P (.ok z) ⌝,
+                          fun e => ⌜ P (.fail e) ⌝,
+                          fun () => ⌜ P .div ⌝⟩ ⦄ := by
+  unfold spec at h
+  simp only [Triple, Result.instWP]
+  cases x <;> simp_all
+
 end Aeneas.Std.WP
 
 namespace Aeneas.Std

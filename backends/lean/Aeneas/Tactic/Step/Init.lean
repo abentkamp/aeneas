@@ -274,8 +274,51 @@ structure StepSpecAttr where
   ext  : Extension
   deriving Inhabited
 
-private def saveStepSpecFromThm (ext : Extension) (attrKind : AttributeKind) (thName : Name) :
-  AttrM Unit := do
+/-- Synthesize an mvcgen-friendly companion `<thName>_mvcgen` of the form
+    `⦃ ⌜True⌝ ⦄ f x ⦃ ... ⦄`. Detects whether the source post is in
+    `successPost _` (success-only) form or general (partial-spec) form and
+    chooses the appropriate lifting lemma. The companion is tagged `@[spec]`
+    so mvcgen finds it. -/
+private def generateMvcgenSpec (stx : Syntax) (attrKind : AttributeKind)
+    (thName : Name) : MetaM Unit := do
+  let env ← getEnv
+  let some decl := env.findAsync? thName
+    | throwError "Could not find theorem {thName}"
+  let sig := decl.sig.get
+  -- Specialise all universe level parameters to 0 so that the lifting lemmas
+  -- (whose `α : Type`) apply.
+  let zeroLevels := List.replicate sig.levelParams.length Level.zero
+  let ty ← normalizeLetBindings (sig.type.instantiateLevelParams sig.levelParams zeroLevels)
+  forallTelescope ty fun fvars body => do
+    -- body should be `spec (f args) post`.
+    let bodyApp := body.consumeMData
+    let (specHead, specArgs) := bodyApp.withApp (fun f args => (f, args))
+    unless specHead.isConstOf ``Aeneas.Std.WP.spec ∧ specArgs.size = 3 do
+      throwError "Expected a `spec _ _` body, got {body}"
+    let postExpr := specArgs[2]!
+    let liftLemma :=
+      if postExpr.consumeMData.isAppOfArity ``Aeneas.Std.WP.successPost 2
+      then ``Aeneas.Std.WP.spec_to_mvcgen
+      else ``Aeneas.Std.WP.spec_to_mvcgen_partial
+    let thConst := Lean.mkConst thName zeroLevels
+    let thApp := mkAppN thConst fvars
+    let proof ← mkAppM liftLemma #[thApp]
+    let innerTy ← inferType proof
+    let proofTerm ← mkLambdaFVars fvars proof
+    let thmTy ← mkForallFVars fvars innerTy
+    let mvcgenName := thName.appendAfter "_mvcgen"
+    let auxDecl : TheoremVal := {
+      name        := mvcgenName
+      levelParams := []
+      type        := thmTy
+      value       := proofTerm
+    }
+    addDecl (.thmDecl auxDecl)
+    addDeclarationRangesFromSyntax mvcgenName stx
+    Lean.Attribute.add mvcgenName `spec .missing attrKind
+
+private def saveStepSpecFromThm (ext : Extension) (attrKind : AttributeKind)
+    (stx : Syntax) (thName : Name) : AttrM Unit := do
   -- Lookup the theorem
   let env ← getEnv
   -- Ignore some auxiliary definitions (see the comments for attrIgnoreMutRec)
@@ -293,9 +336,15 @@ private def saveStepSpecFromThm (ext : Extension) (attrKind : AttributeKind) (th
       trace[Step] "Registering spec theorem for expr: {fExpr}"
       -- Convert the function expression to a discrimination tree key
       DiscrTree.mkPath fExpr)
-    -- Save the entry
+    -- Save the entry under the original name (preserves what `step?` reports
+    -- and avoids alias indirection for direct references).
     ScopedEnvExtension.add ext (fKey, thName) attrKind
     trace[Step] "Saved the entry"
+    -- Synthesize the `_mvcgen` companion and tag it `@[spec]`.
+    try
+      MetaM.run' (generateMvcgenSpec stx attrKind thName)
+    catch e =>
+      logWarning m!"Could not generate mvcgen companion for {thName}: {e.toMessageData}"
     pure ()
 
 /- Initiliaze the `step` attribute. -/
@@ -306,7 +355,7 @@ initialize stepAttr : StepSpecAttr ← do
     descr := "Adds theorems to the `step` database"
     add := fun thName stx attrKind => do
       Attribute.Builtin.ensureNoArgs stx
-      saveStepSpecFromThm ext attrKind thName
+      saveStepSpecFromThm ext attrKind stx thName
     erase := fun thName => do
       let s := ext.getState (← getEnv)
       let s := s.erase thName
@@ -832,7 +881,7 @@ initialize stepPureAttribute : StepPureSpecAttr ← do
         -- Introduce the lifted theorem
         let liftedThmName ← MetaM.run' (liftThm stx thName pat)
         -- Save the lifted theorem to the `step` database
-        saveStepSpecFromThm stepAttr.ext attrKind liftedThmName
+        saveStepSpecFromThm stepAttr.ext attrKind stx liftedThmName
   }
   registerBuiltinAttribute attrImpl
   pure { attr := attrImpl }
@@ -976,7 +1025,7 @@ initialize stepPureDefAttribute : StepPureDefSpecAttr ← do
         -- Introduce the lifted theorem
         let thmName ← MetaM.run' (mkStepPureDefThm stx pat declName)
         -- Save the lifted theorem to the `step` database
-        saveStepSpecFromThm stepAttr.ext attrKind thmName
+        saveStepSpecFromThm stepAttr.ext attrKind stx thmName
   }
   registerBuiltinAttribute attrImpl
   pure { attr := attrImpl }
