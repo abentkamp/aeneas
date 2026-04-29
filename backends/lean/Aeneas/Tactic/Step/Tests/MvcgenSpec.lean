@@ -62,4 +62,31 @@ example : True := by
   let _ := @succOrPanic_spec_mvcgen
   trivial
 
+/-- The auto-generated `_step` alias also exists for partial-spec sources;
+    `step` invokes it via the Result-level `spec_mono_g` path. -/
+example : True := by
+  let _ := @succOrPanic_spec_step
+  trivial
+
+/-- A second toy primitive with a non-trivial fail predicate. The partial spec
+    characterises both branches: ok says we never get more than `n`, and fail
+    says the input violated `n ≤ 100`. The auto-generated `_mvcgen` and
+    `_step` companions are both verified to exist below. -/
+def boundedDouble (n : Nat) : Result Nat :=
+  if n ≤ 100 then ok (2 * n) else fail .panic
+
+@[step]
+theorem boundedDouble_spec (n : Nat) :
+    boundedDouble n ⦃
+      | ok m => m = 2 * n ∧ n ≤ 100
+      | fail .panic => n > 100
+    ⦄ := by
+  unfold boundedDouble Std.WP.spec
+  split <;> simp_all
+
+example : True := by
+  let _ := @boundedDouble_spec_mvcgen
+  let _ := @boundedDouble_spec_step
+  trivial
+
 end partial_mvcgen_tests

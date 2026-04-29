@@ -168,6 +168,24 @@ def qimp_predn {α₀ α₁} (P : α₀ → α₁ → Prop) (Q : α₀ × α₁ 
 /-- We use this lemma to eliminate `imp` after we decomposed the nested `predn` -/
 theorem qimp_iff {α} (P₀ P₁ : α → Prop) : qimp P₀ P₁ ↔ ∀ x, imp (P₀ x) (P₁ x) := by simp [qimp, imp]
 
+/-- Decompose a Result-level forall implication into per-branch implications.
+    Used by the `step` tactic to handle partial-spec lemmas: after applying
+    `spec_mono_g`, the obligation has the shape `∀ r : Result α, P r → Q r`,
+    which this lemma splits by Result constructor. -/
+theorem qimp_result_split {α} (P Q : Result α → Prop) :
+    (∀ r, P r → Q r) ↔
+    ((∀ z, P (.ok z) → Q (.ok z)) ∧
+     (∀ e, P (.fail e) → Q (.fail e)) ∧
+     (P .div → Q .div)) := by
+  constructor
+  · intro h
+    refine ⟨fun z => h (.ok z), fun e => h (.fail e), h .div⟩
+  · intro ⟨hok, hfail, hdiv⟩ r
+    cases r
+    · exact hok _
+    · exact hfail _
+    · exact hdiv
+
 /-- Alternative to `spec_mono` (success-only): introduces a `qimp` between the
     inner value-level postconditions. -/
 theorem spec_mono' {α} {P₁ : α → Prop} {m : Result α} {P₀ : α → Prop}

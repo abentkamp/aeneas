@@ -930,9 +930,9 @@ def add1 (x0 x1 : U32) : Std.Result U32 := do
 /--
 info: Try this:
 
-  [apply]     let* ⟨ x2, x2_post ⟩ ← U32.add_spec
-    let* ⟨ x3, x3_post ⟩ ← U32.add_spec
-    let* ⟨ ⟩ ← U32.add_spec
+  [apply]     let* ⟨ x2, x2_post ⟩ ← U32.add_spec_step
+    let* ⟨ x3, x3_post ⟩ ← U32.add_spec_step
+    let* ⟨ ⟩ ← U32.add_spec_step
 -/
 #guard_msgs in
 example (x y : U32) (h : 2 * x.val + 2 * y.val + 4 ≤ U32.max) :
@@ -943,9 +943,9 @@ example (x y : U32) (h : 2 * x.val + 2 * y.val + 4 ≤ U32.max) :
 /--
 info: Try this:
 
-  [apply]     let* ⟨ x2, x2_post ⟩ ← [ +scalarTac -grind ] U32.add_spec
-    let* ⟨ x3, x3_post ⟩ ← [ +scalarTac -grind ] U32.add_spec
-    let* ⟨ ⟩ ← [ +scalarTac -grind ] U32.add_spec
+  [apply]     let* ⟨ x2, x2_post ⟩ ← [ +scalarTac -grind ] U32.add_spec_step
+    let* ⟨ x3, x3_post ⟩ ← [ +scalarTac -grind ] U32.add_spec_step
+    let* ⟨ ⟩ ← [ +scalarTac -grind ] U32.add_spec_step
 -/
 #guard_msgs in
 example (x y : U32) (h : 2 * x.val + 2 * y.val + 4 ≤ U32.max) :
@@ -974,8 +974,8 @@ example (x y : U32) (h : 2 * x.val + 2 * y.val + 4 ≤ U32.max) :
 /--
 info: Try this:
 
-  [apply]     let* ⟨ x2, x2_post ⟩ ← U32.add_spec
-    let* ⟨ x3, x3_post ⟩ ← U32.add_spec
+  [apply]     let* ⟨ x2, x2_post ⟩ ← U32.add_spec_step
+    let* ⟨ x3, x3_post ⟩ ← U32.add_spec_step
 ---
 error: unsolved goals
 x y : U32
@@ -998,9 +998,9 @@ example (x y : U32) (h : 2 * x.val + 2 * y.val + 4 ≤ U32.max) :
 info: Try this:
 
   [apply]     simp only [step_simps]
-    let* ⟨ x2, x2_post ⟩ ← U32.add_spec
-    let* ⟨ x3, x3_post ⟩ ← U32.add_spec
-    let* ⟨ z, z_post ⟩ ← U32.add_spec
+    let* ⟨ x2, x2_post ⟩ ← U32.add_spec_step
+    let* ⟨ x3, x3_post ⟩ ← U32.add_spec_step
+    let* ⟨ z, z_post ⟩ ← U32.add_spec_step
     agrind
 -/
 #guard_msgs in
@@ -1023,11 +1023,11 @@ def add2 (b : Bool) (x0 x1 : U32) : Std.Result U32 := do
 info: Try this:
 
   [apply]     spec_split
-    · let* ⟨ x2, x2_post ⟩ ← U32.add_spec
-      let* ⟨ x3, x3_post ⟩ ← U32.add_spec
-      let* ⟨ ⟩ ← U32.add_spec
-    · let* ⟨ y, y_post ⟩ ← U32.add_spec
-      let* ⟨ ⟩ ← U32.add_spec
+    · let* ⟨ x2, x2_post ⟩ ← U32.add_spec_step
+      let* ⟨ x3, x3_post ⟩ ← U32.add_spec_step
+      let* ⟨ ⟩ ← U32.add_spec_step
+    · let* ⟨ y, y_post ⟩ ← U32.add_spec_step
+      let* ⟨ ⟩ ← U32.add_spec_step
 -/
 #guard_msgs in
 example b (x y : U32) (h : 2 * x.val + 2 * y.val + 4 ≤ U32.max) :
@@ -1039,10 +1039,10 @@ example b (x y : U32) (h : 2 * x.val + 2 * y.val + 4 ≤ U32.max) :
 info: Try this:
 
   [apply]     spec_split
-    · let* ⟨ x2, x2_post ⟩ ← U32.add_spec
-      let* ⟨ x3, x3_post ⟩ ← U32.add_spec
-    · let* ⟨ y, y_post ⟩ ← U32.add_spec
-      let* ⟨ ⟩ ← U32.add_spec
+    · let* ⟨ x2, x2_post ⟩ ← U32.add_spec_step
+      let* ⟨ x3, x3_post ⟩ ← U32.add_spec_step
+    · let* ⟨ y, y_post ⟩ ← U32.add_spec_step
+      let* ⟨ ⟩ ← U32.add_spec_step
 ---
 error: unsolved goals
 b : Bool
@@ -1067,15 +1067,15 @@ example b (x y : U32) (h : 2 * x.val + 2 * y.val + 4 ≤ U32.max) :
 info: Try this:
 
   [apply]     spec_split
-    · let* ⟨ x2, x2_post ⟩ ← U32.add_spec
+    · let* ⟨ x2, x2_post ⟩ ← U32.add_spec_step
       · sorry
-      let* ⟨ x3, x3_post ⟩ ← U32.add_spec
+      let* ⟨ x3, x3_post ⟩ ← U32.add_spec_step
       · sorry
-      let* ⟨ ⟩ ← U32.add_spec
+      let* ⟨ ⟩ ← U32.add_spec_step
       · sorry
-    · let* ⟨ y, y_post ⟩ ← U32.add_spec
+    · let* ⟨ y, y_post ⟩ ← U32.add_spec_step
       · sorry
-      let* ⟨ ⟩ ← U32.add_spec
+      let* ⟨ ⟩ ← U32.add_spec_step
       · sorry
 ---
 error: unsolved goals
@@ -1132,9 +1132,9 @@ example b (x y : U32) :
 /--
 info: Try this:
 
-  [apply]     let* ⟨ x2, x2_post ⟩ ← U32.add_spec
-    let* ⟨ x3, x3_post ⟩ ← U32.add_spec
-    let* ⟨ _, _ ⟩ ← U32.add_spec
+  [apply]     let* ⟨ x2, x2_post ⟩ ← U32.add_spec_step
+    let* ⟨ x3, x3_post ⟩ ← U32.add_spec_step
+    let* ⟨ _, _ ⟩ ← U32.add_spec_step
     sorry
 ---
 error: unsolved goals
@@ -1209,7 +1209,7 @@ example (l : List Nat) :
 info: Try this:
 
   [apply]     simp only [step_simps]
-    let* ⟨ ⟩ ← core.num.U32.overflowing_add_eq.step_spec
+    let* ⟨ ⟩ ← core.num.U32.overflowing_add_eq.step_spec_step
 -/
 #guard_msgs in
 example (x y : U32) :
@@ -1309,7 +1309,7 @@ example (a b : U32) (h : a = b) (hbnd : a.val + b.val ≤ U32.max) :
 info: Try this:
 
   [apply]     spec_split
-    · let* ⟨ c, c_post ⟩ ← U32.add_spec
+    · let* ⟨ c, c_post ⟩ ← U32.add_spec_step
       agrind
     · agrind
 -/
@@ -1326,7 +1326,7 @@ example (a b : U32) (h : a = b) (hbnd : a.val + b.val ≤ U32.max) :
     grindContradictionFn a b ⦃ c => c.val = a.val + b.val ⦄ := by
   unfold grindContradictionFn
   spec_split
-  · let* ⟨ c, c_post ⟩ ← U32.add_spec
+  · let* ⟨ c, c_post ⟩ ← U32.add_spec_step
     agrind
   · agrind
 

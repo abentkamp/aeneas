@@ -274,6 +274,27 @@ structure StepSpecAttr where
   ext  : Extension
   deriving Inhabited
 
+/-- Synthesize an alias `<thName>_step` of the original theorem. The alias is
+    what the `step` tactic finds via the DiscrTree; the original keeps its
+    user-facing name. -/
+private def generateStepAlias (stx : Syntax) (thName : Name) : MetaM Name := do
+  let env ← getEnv
+  let some decl := env.findAsync? thName
+    | throwError "Could not find theorem {thName}"
+  let sig := decl.sig.get
+  let stepName := thName.appendAfter "_step"
+  let levelArgs := sig.levelParams.map Level.param
+  let value := Lean.mkConst thName levelArgs
+  let auxDecl : TheoremVal := {
+    name        := stepName
+    levelParams := sig.levelParams
+    type        := sig.type
+    value       := value
+  }
+  addDecl (.thmDecl auxDecl)
+  addDeclarationRangesFromSyntax stepName stx
+  pure stepName
+
 /-- Synthesize an mvcgen-friendly companion `<thName>_mvcgen` of the form
     `⦃ ⌜True⌝ ⦄ f x ⦃ ... ⦄`. Detects whether the source post is in
     `successPost _` (success-only) form or general (partial-spec) form and
@@ -336,10 +357,11 @@ private def saveStepSpecFromThm (ext : Extension) (attrKind : AttributeKind)
       trace[Step] "Registering spec theorem for expr: {fExpr}"
       -- Convert the function expression to a discrimination tree key
       DiscrTree.mkPath fExpr)
-    -- Save the entry under the original name (preserves what `step?` reports
-    -- and avoids alias indirection for direct references).
-    ScopedEnvExtension.add ext (fKey, thName) attrKind
-    trace[Step] "Saved the entry"
+    -- Synthesize the `_step` alias and register it (instead of the original)
+    -- with the step DiscrTree.
+    let stepName ← MetaM.run' (generateStepAlias stx thName)
+    ScopedEnvExtension.add ext (fKey, stepName) attrKind
+    trace[Step] "Saved the entry under {stepName}"
     -- Synthesize the `_mvcgen` companion and tag it `@[spec]`.
     try
       MetaM.run' (generateMvcgenSpec stx attrKind thName)
