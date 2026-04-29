@@ -33,7 +33,7 @@ example (arr : Array U8 25#usize) (i : Usize) (a : U8) (hi : i.val < arr.length)
     ⦃ ⌜ True ⌝ ⦄
       Array.update arr i a
     ⦃ ⇓ r => ⌜ r = arr.set i a ⌝ ⦄ := by
-  mvcgen
+  mvcgen <;> simp_all <;> grind
 
 /-! ## Partial-spec source
 

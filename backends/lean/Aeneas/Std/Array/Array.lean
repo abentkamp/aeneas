@@ -101,14 +101,13 @@ theorem Array.repeat_val (n : Usize) (x : α) : (Array.repeat n x).val = List.re
   simp only [Array.repeat]
 
 @[step]
-theorem Array.index_usize_spec {α : Type u} {n : Usize} [Inhabited α] (v: Array α n) (i: Usize)
-  (hbound : i.val < v.length) :
-  (v.index_usize i) ⦃ x => x = v.val[i.val]! ⦄ := by
-  simp only [index_usize]
-  simp at *
-  split <;> simp_all only [List.Vector.length_val, List.getElem?_eq_getElem, Option.some.injEq,
-    Option.getD_some, reduceCtorEq]
-  simp
+theorem Array.index_usize_spec {α : Type u} {n : Usize} [Inhabited α] (v: Array α n) (i: Usize) :
+  (v.index_usize i) ⦃
+    | ok x => x = v.val[i.val]! ∧ i.val < v.length
+    | fail .arrayOutOfBounds => i.val ≥ v.length
+  ⦄ := by
+  unfold index_usize Std.WP.spec
+  cases h : v[i]? <;> simp_all <;> grind
 
 def Array.set {α : Type u} {n : Usize} (v: Array α n) (i: Usize) (x: α) : Array α n :=
   ⟨ v.val.set i.val x, by have := v.property; simp [*] ⟩
@@ -174,13 +173,13 @@ def Array.update {α : Type u} {n : Usize} (v: Array α n) (i: Usize) (x: α) : 
     ok ⟨ v.val.set i.val x, by have := v.property; simp [*] ⟩
 
 @[step]
-theorem Array.update_spec {α : Type u} {n : Usize} (v: Array α n) (i: Usize) (x : α)
-  (hbound : i.val < v.length) :
-  v.update i x ⦃ nv => nv = v.set i x ⦄
-  := by
-  simp only [update, set]
-  simp at *
-  split <;> simp_all
+theorem Array.update_spec {α : Type u} {n : Usize} (v: Array α n) (i: Usize) (x : α) :
+  v.update i x ⦃
+    | ok nv => nv = v.set i x ∧ i.val < v.length
+    | fail .arrayOutOfBounds => i.val ≥ v.length
+  ⦄ := by
+  unfold update set Std.WP.spec
+  cases h : v[i]? <;> simp_all <;> grind
 
 def Array.index_mut_usize {α : Type u} {n : Usize} (v: Array α n) (i: Usize) :
   Result (α × (α -> Array α n)) := do
@@ -188,13 +187,15 @@ def Array.index_mut_usize {α : Type u} {n : Usize} (v: Array α n) (i: Usize) :
   ok (x, set v i)
 
 @[step]
-theorem Array.index_mut_usize_spec {α : Type u} {n : Usize} [Inhabited α] (v: Array α n) (i: Usize)
-  (hbound : i.val < v.length) :
-  v.index_mut_usize i ⦃ x y => y = set v i ∧
-  x = v.val[i.val]! ⦄ := by
-  simp only [index_mut_usize, Bind.bind, bind]
-  have ⟨ x, h ⟩ := spec_imp_exists (index_usize_spec v i hbound)
-  simp [h]
+theorem Array.index_mut_usize_spec {α : Type u} {n : Usize} [Inhabited α] (v: Array α n) (i: Usize) :
+  v.index_mut_usize i ⦃
+    | ok r => r.1 = v.val[i.val]! ∧ r.2 = set v i ∧ i.val < v.length
+    | fail .arrayOutOfBounds => i.val ≥ v.length
+  ⦄ := by
+  unfold index_mut_usize Std.WP.spec
+  have h := index_usize_spec v i
+  unfold Std.WP.spec at h
+  cases hi : v.index_usize i <;> simp_all <;> grind
 
 @[simp]
 theorem Array.set_getElem!_eq α n [Inhabited α] (x : Array α n) (i : Usize) :

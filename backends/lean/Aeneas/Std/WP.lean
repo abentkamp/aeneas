@@ -186,6 +186,20 @@ theorem partial_to_success_with_hyps {α} {x : Result α}
   case fail e => exact (h_no_fail _ h).elim
   case div => exact (h_no_div h).elim
 
+/-- Companion to `spec_imp_exists` for partial-spec lemmas: given the partial
+    spec plus hypotheses ruling out the fail/div branches, extract the value
+    along with the ok-branch postcondition. -/
+theorem partial_imp_exists {α} {m : Result α} {P : Result α → Prop}
+    (h : spec m P)
+    (h_no_fail : ∀ e, ¬ P (.fail e))
+    (h_no_div : ¬ P .div) :
+    ∃ v, m = ok v ∧ P (.ok v) := by
+  unfold spec at h
+  cases m
+  case ok z => exact ⟨z, rfl, h⟩
+  case fail e => exact (h_no_fail _ h).elim
+  case div => exact (h_no_div h).elim
+
 /-- Alternative to `spec_mono` (success-only): introduces a `qimp` between the
     inner value-level postconditions. -/
 theorem spec_mono' {α} {P₁ : α → Prop} {m : Result α} {P₀ : α → Prop}
