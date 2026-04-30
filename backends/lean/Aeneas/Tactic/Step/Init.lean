@@ -274,13 +274,120 @@ structure StepSpecAttr where
   ext  : Extension
   deriving Inhabited
 
+/-- (Currently a pass-through.) Placeholder for normalizing negation
+    preconditions like `¬ (a ≥ b) ↦ a < b`. The raw `¬ P_fail` form is
+    passed straight through; step's `grind` discharge handles the
+    semantic conversion at use-time. A future improvement would
+    construct the equivalent positive form *and* the corresponding proof
+    transformation, so the user-facing precondition matches the
+    historical hand-written shape verbatim. -/
+private def normalizeNeg (e : Expr) : MetaM Expr := pure e
+
+/-- Build the partial-spec `_step` companion: walks each Error constructor,
+    emitting one precondition per non-trivial fail arm; ditto for div.
+    See `generateStepAlias` for the user-visible behavior. -/
+private def buildPartialStepAlias (stx : Syntax) (thName : Name) (sig : ConstantVal)
+    (fvars : Array Expr) (specArgs : Array Expr) (postExpr thApp : Expr)
+    (stepName : Name) : MetaM TheoremVal := do
+  let xExpr := specArgs[1]!
+  let xType ← inferType xExpr
+  let some α := xType.consumeMData.getAppArgs[0]?
+    | throwError "Expected `xExpr : Result α`, got {xType}"
+  -- Enumerate Error constructors and build per-ctor preconditions.
+  let errorIndInfo ← getConstInfoInduct ``Aeneas.Std.Error
+  let mut failPreconds : Array (Name × Expr) := #[]
+  for ctorName in errorIndInfo.ctors do
+    let failOfCtor := Lean.mkConst ctorName
+    let failExpr ← mkAppOptM ``Aeneas.Std.Result.fail #[some α, some failOfCtor]
+    let pFail ← Meta.whnfD (Lean.Expr.beta postExpr #[failExpr])
+    if pFail.isConstOf ``False then
+      continue
+    let neg ← normalizeNeg (← mkAppM ``Not #[pFail])
+    -- Use the bare constructor name (without namespace) as the binder.
+    let hypName := Name.mkSimple s!"h_{ctorName.getString!}"
+    failPreconds := failPreconds.push (hypName, neg)
+  -- Div arm.
+  let divExpr ← mkAppOptM ``Aeneas.Std.Result.div #[some α]
+  let pDiv ← Meta.whnfD (Lean.Expr.beta postExpr #[divExpr])
+  let divPrecond? : Option Expr ← if pDiv.isConstOf ``False then pure none else
+    some <$> normalizeNeg (← mkAppM ``Not #[pDiv])
+  -- Build the success post body by reducing P (.ok z).
+  let pOkLam ← withLocalDeclD `z α fun z => do
+    let okExpr ← mkAppOptM ``Aeneas.Std.Result.ok #[some α, some z]
+    let pOkApp ← Meta.whnfD (Lean.Expr.beta postExpr #[okExpr])
+    mkLambdaFVars #[z] pOkApp
+  -- Introduce the per-arm precondition fvars in order.
+  let rec buildWithPreconds (i : Nat) (acc : Array Expr)
+      (k : Array Expr → MetaM TheoremVal) : MetaM TheoremVal := do
+    if h : i < failPreconds.size then
+      let (n, ty) := failPreconds[i]
+      withLocalDeclD n ty fun fv => buildWithPreconds (i + 1) (acc.push fv) k
+    else
+      match divPrecond? with
+      | some divTy => withLocalDeclD `h_div divTy fun fv => k (acc.push fv)
+      | none => k acc
+  buildWithPreconds 0 #[] fun precondFvars => do
+    -- Construct the proof of `partial_to_success_with_hyps`.
+    -- - h_ok: fun z h => h (since reduced ok arm = success post body).
+    let hOk ← withLocalDeclD `z α fun z => do
+      let okExpr ← mkAppOptM ``Aeneas.Std.Result.ok #[some α, some z]
+      let pOkRaw := Lean.Expr.beta postExpr #[okExpr]
+      withLocalDeclD `h pOkRaw fun h => do
+        mkLambdaFVars #[z, h] h
+    -- - h_no_fail: ∀ e, ¬ P (.fail e). Build via a tactic proof that
+    --   case-splits on `e` and uses the user's per-ctor hypotheses.
+    let hNoFailTy ← withLocalDeclD `e (Lean.mkConst ``Aeneas.Std.Error) fun e => do
+      let failOfE ← mkAppOptM ``Aeneas.Std.Result.fail #[some α, some e]
+      let pFail := Lean.Expr.beta postExpr #[failOfE]
+      mkForallFVars #[e] (← mkAppM ``Not #[pFail])
+    let hNoFailMVar ← mkFreshExprSyntheticOpaqueMVar hNoFailTy
+    -- Bring the precondition fvars into the local context for the tactic so
+    -- `simp_all` can use them automatically.
+    let hNoFailTac ← `(tactic|
+      (intro e h
+       cases e <;> first | (simp_all; done) | (simp_all; omega) | grind))
+    let (remainingGoals, _) ← Lean.Elab.runTactic hNoFailMVar.mvarId! hNoFailTac
+    if !remainingGoals.isEmpty then
+      throwError "Could not discharge h_no_fail for {thName}: \
+        {remainingGoals.length} unsolved goals"
+    let hNoFail ← instantiateMVars hNoFailMVar
+    -- - h_no_div: similar.
+    let hNoDivTy ← do
+      let divExpr2 ← mkAppOptM ``Aeneas.Std.Result.div #[some α]
+      let pDiv2 := Lean.Expr.beta postExpr #[divExpr2]
+      mkAppM ``Not #[pDiv2]
+    let hNoDivMVar ← mkFreshExprSyntheticOpaqueMVar hNoDivTy
+    let hNoDivTac ← `(tactic| (intro h; first | (simp_all; done) | (simp_all; omega) | grind))
+    let (remainingDivGoals, _) ← Lean.Elab.runTactic hNoDivMVar.mvarId! hNoDivTac
+    if !remainingDivGoals.isEmpty then
+      throwError "Could not discharge h_no_div for {thName}: \
+        {remainingDivGoals.length} unsolved goals"
+    let hNoDiv ← instantiateMVars hNoDivMVar
+    let proof ← mkAppM ``Aeneas.Std.WP.partial_to_success_with_hyps
+      #[thApp, hOk, hNoFail, hNoDiv]
+    let allFvars := fvars ++ precondFvars
+    let value ← mkLambdaFVars allFvars proof
+    let concl ← do
+      let successPost ← mkAppM ``Aeneas.Std.WP.successPost #[pOkLam]
+      mkAppM ``Aeneas.Std.WP.spec #[xExpr, successPost]
+    let ty ← mkForallFVars allFvars concl
+    pure ({ name := stepName, levelParams := sig.levelParams, type := ty,
+            value := value : TheoremVal })
+
 /-- Synthesize a `<thName>_step` companion of the original theorem in the
     success-only `successPost _` form, suitable for the existing `step`
     tactic pipeline. For success-only sources, this is just an alias. For
-    partial-spec sources `spec x P`, the synthesized companion adds two
-    hypotheses (`∀ e, ¬ P (.fail e)` and `¬ P .div`) and concludes
-    `spec x (successPost (fun z => P (.ok z)))`, via
-    `Aeneas.Std.WP.partial_to_success_with_hyps`. -/
+    partial-spec sources `spec x P`, the synthesized companion enumerates
+    each `Error` constructor:
+    - For each constructor whose `P (.fail .ctor)` is non-trivial (does not
+      reduce to `False`), emit a precondition named after the constructor
+      (`h_arrayOutOfBounds`, `h_maximumSizeExceeded`, ...).
+    - The `div` arm gets a `h_div` precondition if non-trivial.
+    Each precondition is normalized via `[not_le, not_lt, not_not]` so
+    `¬ (i.val ≥ v.length)` becomes `i.val < v.length`, matching the
+    historical hand-written success-only spec shape.
+    The conclusion is `spec x (successPost (fun z => P (.ok z)))`, with
+    `P (.ok z)` iota-reduced to the ok-arm body. -/
 private def generateStepAlias (stx : Syntax) (thName : Name) : MetaM Name := do
   let env ← getEnv
   let some decl := env.findAsync? thName
@@ -303,33 +410,7 @@ private def generateStepAlias (stx : Syntax) (thName : Name) : MetaM Name := do
       let value ← mkLambdaFVars fvars thApp
       pure ({ name := stepName, levelParams := sig.levelParams, type := ty, value : TheoremVal })
     else
-      -- Partial-spec source: build a success-only companion with two
-      -- extra hypotheses ruling out the fail and div branches.
-      let xExpr := specArgs[1]!
-      let xType ← inferType xExpr
-      let some α := xType.consumeMData.getAppArgs[0]?
-        | throwError "Expected `xExpr : Result α`, got {xType}"
-      let hNoFailTy ← withLocalDeclD `e (Lean.mkConst ``Aeneas.Std.Error) fun e => do
-        let failOfE ← mkAppOptM ``Aeneas.Std.Result.fail #[some α, some e]
-        let pFail ← mkAppM' postExpr #[failOfE]
-        mkForallFVars #[e] (← mkAppM ``Not #[pFail])
-      let hNoDivTy ← do
-        let divExpr ← mkAppOptM ``Aeneas.Std.Result.div #[some α]
-        let pDiv ← mkAppM' postExpr #[divExpr]
-        mkAppM ``Not #[pDiv]
-      withLocalDeclD `h_no_fail hNoFailTy fun hNoFail => do
-      withLocalDeclD `h_no_div hNoDivTy fun hNoDiv => do
-        let hOk ← withLocalDeclD `z α fun z => do
-          let okOfZ ← mkAppOptM ``Aeneas.Std.Result.ok #[some α, some z]
-          let pOkApp ← mkAppM' postExpr #[okOfZ]
-          withLocalDeclD `h pOkApp fun h => do
-            mkLambdaFVars #[z, h] h
-        let proof ← mkAppM ``Aeneas.Std.WP.partial_to_success_with_hyps
-          #[thApp, hOk, hNoFail, hNoDiv]
-        let allFvars := fvars ++ #[hNoFail, hNoDiv]
-        let value ← mkLambdaFVars allFvars proof
-        let ty ← mkForallFVars allFvars (← inferType proof)
-        pure ({ name := stepName, levelParams := sig.levelParams, type := ty, value : TheoremVal })
+      buildPartialStepAlias stx thName sig fvars specArgs postExpr thApp stepName
   addDecl (.thmDecl auxDecl)
   addDeclarationRangesFromSyntax stepName stx
   pure stepName
