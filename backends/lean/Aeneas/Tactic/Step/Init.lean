@@ -295,7 +295,10 @@ private def buildPartialStepAlias (stx : Syntax) (thName : Name) (sig : Constant
     | throwError "Expected `xExpr : Result α`, got {xType}"
   -- Enumerate Error constructors and build per-ctor preconditions.
   let errorIndInfo ← getConstInfoInduct ``Aeneas.Std.Error
-  let mut failPreconds : Array (Name × Expr) := #[]
+  -- Track each non-trivial fail constructor: full ctor name, hypothesis
+  -- binder name, hypothesis type. Used to drive both the precondition
+  -- list and the term-mode `Error.casesOn` proof construction.
+  let mut failPreconds : Array (Name × Name × Expr) := #[]
   for ctorName in errorIndInfo.ctors do
     let failOfCtor := Lean.mkConst ctorName
     let failExpr ← mkAppOptM ``Aeneas.Std.Result.fail #[some α, some failOfCtor]
@@ -303,9 +306,8 @@ private def buildPartialStepAlias (stx : Syntax) (thName : Name) (sig : Constant
     if pFail.isConstOf ``False then
       continue
     let neg ← normalizeNeg (← mkAppM ``Not #[pFail])
-    -- Use the bare constructor name (without namespace) as the binder.
     let hypName := Name.mkSimple s!"h_{ctorName.getString!}"
-    failPreconds := failPreconds.push (hypName, neg)
+    failPreconds := failPreconds.push (ctorName, hypName, neg)
   -- Div arm.
   let divExpr ← mkAppOptM ``Aeneas.Std.Result.div #[some α]
   let pDiv ← Meta.whnfD (Lean.Expr.beta postExpr #[divExpr])
@@ -320,7 +322,7 @@ private def buildPartialStepAlias (stx : Syntax) (thName : Name) (sig : Constant
   let rec buildWithPreconds (i : Nat) (acc : Array Expr)
       (k : Array Expr → MetaM TheoremVal) : MetaM TheoremVal := do
     if h : i < failPreconds.size then
-      let (n, ty) := failPreconds[i]
+      let (_, n, ty) := failPreconds[i]
       withLocalDeclD n ty fun fv => buildWithPreconds (i + 1) (acc.push fv) k
     else
       match divPrecond? with
@@ -334,35 +336,67 @@ private def buildPartialStepAlias (stx : Syntax) (thName : Name) (sig : Constant
       let pOkRaw := Lean.Expr.beta postExpr #[okExpr]
       withLocalDeclD `h pOkRaw fun h => do
         mkLambdaFVars #[z, h] h
-    -- - h_no_fail: ∀ e, ¬ P (.fail e). Build via a tactic proof that
-    --   case-splits on `e` and uses the user's per-ctor hypotheses.
-    let hNoFailTy ← withLocalDeclD `e (Lean.mkConst ``Aeneas.Std.Error) fun e => do
-      let failOfE ← mkAppOptM ``Aeneas.Std.Result.fail #[some α, some e]
-      let pFail := Lean.Expr.beta postExpr #[failOfE]
-      mkForallFVars #[e] (← mkAppM ``Not #[pFail])
-    let hNoFailMVar ← mkFreshExprSyntheticOpaqueMVar hNoFailTy
-    -- Bring the precondition fvars into the local context for the tactic so
-    -- `simp_all` can use them automatically.
-    let hNoFailTac ← `(tactic|
-      (intro e h
-       cases e <;> first | (simp_all; done) | (simp_all; omega) | grind))
-    let (remainingGoals, _) ← Lean.Elab.runTactic hNoFailMVar.mvarId! hNoFailTac
-    if !remainingGoals.isEmpty then
-      throwError "Could not discharge h_no_fail for {thName}: \
-        {remainingGoals.length} unsolved goals"
-    let hNoFail ← instantiateMVars hNoFailMVar
-    -- - h_no_div: similar.
-    let hNoDivTy ← do
-      let divExpr2 ← mkAppOptM ``Aeneas.Std.Result.div #[some α]
-      let pDiv2 := Lean.Expr.beta postExpr #[divExpr2]
-      mkAppM ``Not #[pDiv2]
-    let hNoDivMVar ← mkFreshExprSyntheticOpaqueMVar hNoDivTy
-    let hNoDivTac ← `(tactic| (intro h; first | (simp_all; done) | (simp_all; omega) | grind))
-    let (remainingDivGoals, _) ← Lean.Elab.runTactic hNoDivMVar.mvarId! hNoDivTac
-    if !remainingDivGoals.isEmpty then
-      throwError "Could not discharge h_no_div for {thName}: \
-        {remainingDivGoals.length} unsolved goals"
-    let hNoDiv ← instantiateMVars hNoDivMVar
+    -- - h_no_fail: ∀ e, ¬ P (.fail e). Built term-mode via `Error.casesOn`
+    --   with one branch per `Error` constructor:
+    --     * supplied ctors (h_arrayOutOfBounds, h_maximumSizeExceeded, …)
+    --       ↦ apply the user's hypothesis to `h`,
+    --     * un-supplied ctors fall through to the macro's `_ => False`
+    --       arm so `h : False` ↦ `h.elim`.
+    --   Predictable; no tactic discharge needed.
+    let hNoFail ← withLocalDeclD `e (Lean.mkConst ``Aeneas.Std.Error) fun e => do
+      withLocalDeclD `h
+          (Lean.Expr.beta postExpr
+              #[← mkAppOptM ``Aeneas.Std.Result.fail #[some α, some e]])
+          fun h => do
+        let motive ← withLocalDeclD `e' (Lean.mkConst ``Aeneas.Std.Error) fun e' => do
+          let failOfE' ← mkAppOptM ``Aeneas.Std.Result.fail #[some α, some e']
+          let pFail' := Lean.Expr.beta postExpr #[failOfE']
+          mkLambdaFVars #[e'] (← mkAppM ``Not #[pFail'])
+        -- Map ctor name → user fvar (if any).
+        let lookupHyp (ctorName : Name) : Option Expr := Id.run do
+          let mut idx : Option Nat := none
+          for h : i in [0:failPreconds.size] do
+            if failPreconds[i].1 == ctorName then idx := some i
+          idx.bind fun i =>
+            if h : i < precondFvars.size then some precondFvars[i] else none
+        let mut branches : Array Expr := #[]
+        for ctorName in errorIndInfo.ctors do
+          let failOfCtor := Lean.mkConst ctorName
+          let failExpr ← mkAppOptM ``Aeneas.Std.Result.fail #[some α, some failOfCtor]
+          let pFail := Lean.Expr.beta postExpr #[failExpr]
+          let pFailReduced ← Meta.whnfD pFail
+          let branch ← withLocalDeclD `h pFailReduced fun hLocal => do
+            match lookupHyp ctorName with
+            | some userHyp => mkLambdaFVars #[hLocal] (mkApp userHyp hLocal)
+            | none =>
+                -- catch-all branch: `pFailReduced` is `False` (or
+                -- definitionally so). Conclusion type is also `False`.
+                -- `fun (h : False) => h` (i.e. `id`) suffices.
+                mkLambdaFVars #[hLocal] hLocal
+          branches := branches.push branch
+        let casesProof ← mkAppOptM ``Aeneas.Std.Error.casesOn
+          (#[some motive, some e] ++ branches.map some)
+        let inner := mkApp casesProof h
+        mkLambdaFVars #[e, h] inner
+    -- - h_no_div: ¬ P .div. If catch-all, P .div ↝ False, so `fun h => h.elim`.
+    --   Otherwise apply user-supplied div hypothesis directly.
+    let hNoDiv ← withLocalDeclD `h
+        (Lean.Expr.beta postExpr
+            #[← mkAppOptM ``Aeneas.Std.Result.div #[some α]])
+        fun h => do
+      match divPrecond? with
+      | some _ =>
+          -- The user-supplied h_div fvar is the LAST element of precondFvars.
+          if hi : 0 < precondFvars.size then
+            let userDiv := precondFvars[precondFvars.size - 1]'
+              (Nat.sub_lt hi (by decide))
+            mkLambdaFVars #[h] (mkApp userDiv h)
+          else
+            throwError "Inconsistent state: divPrecond? set but no fvar"
+      | none =>
+          -- `h : False` (catch-all). Conclusion is `False`. `h` itself
+          -- has the right type — no `False.elim` needed.
+          mkLambdaFVars #[h] h
     let proof ← mkAppM ``Aeneas.Std.WP.partial_to_success_with_hyps
       #[thApp, hOk, hNoFail, hNoDiv]
     let allFvars := fvars ++ precondFvars
