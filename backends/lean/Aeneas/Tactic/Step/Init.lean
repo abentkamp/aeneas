@@ -283,6 +283,17 @@ structure StepSpecAttr where
     historical hand-written shape verbatim. -/
 private def normalizeNeg (e : Expr) : MetaM Expr := pure e
 
+/-- Beta + iota reduction (no delta, no typeclass-projection unfolding).
+    Used by the partial-spec `_step` synthesizer to reduce
+    `(fun __r => match __r with …) (.fail .ctor)` to the matched arm
+    body without unfolding `LE.le` to `Nat.le` (which would change the
+    user-visible display from `a ≤ b` to `a.le b`). -/
+private partial def reduceBetaIota (e : Expr) : MetaM Expr := do
+  let e := e.headBeta
+  match ← Lean.Meta.reduceMatcher? e with
+  | .reduced e' => reduceBetaIota e'
+  | _ => pure e
+
 /-- Build the partial-spec `_step` companion: walks each Error constructor,
     emitting one precondition per non-trivial fail arm; ditto for div.
     See `generateStepAlias` for the user-visible behavior. -/
@@ -302,7 +313,7 @@ private def buildPartialStepAlias (stx : Syntax) (thName : Name) (sig : Constant
   for ctorName in errorIndInfo.ctors do
     let failOfCtor := Lean.mkConst ctorName
     let failExpr ← mkAppOptM ``Aeneas.Std.Result.fail #[some α, some failOfCtor]
-    let pFail ← Meta.whnfD (Lean.Expr.beta postExpr #[failExpr])
+    let pFail ← reduceBetaIota (Lean.Expr.beta postExpr #[failExpr])
     if pFail.isConstOf ``False then
       continue
     let neg ← normalizeNeg (← mkAppM ``Not #[pFail])
@@ -310,13 +321,13 @@ private def buildPartialStepAlias (stx : Syntax) (thName : Name) (sig : Constant
     failPreconds := failPreconds.push (ctorName, hypName, neg)
   -- Div arm.
   let divExpr ← mkAppOptM ``Aeneas.Std.Result.div #[some α]
-  let pDiv ← Meta.whnfD (Lean.Expr.beta postExpr #[divExpr])
+  let pDiv ← reduceBetaIota (Lean.Expr.beta postExpr #[divExpr])
   let divPrecond? : Option Expr ← if pDiv.isConstOf ``False then pure none else
     some <$> normalizeNeg (← mkAppM ``Not #[pDiv])
   -- Build the success post body by reducing P (.ok z).
   let pOkLam ← withLocalDeclD `z α fun z => do
     let okExpr ← mkAppOptM ``Aeneas.Std.Result.ok #[some α, some z]
-    let pOkApp ← Meta.whnfD (Lean.Expr.beta postExpr #[okExpr])
+    let pOkApp ← reduceBetaIota (Lean.Expr.beta postExpr #[okExpr])
     mkLambdaFVars #[z] pOkApp
   -- Introduce the per-arm precondition fvars in order.
   let rec buildWithPreconds (i : Nat) (acc : Array Expr)
@@ -364,7 +375,7 @@ private def buildPartialStepAlias (stx : Syntax) (thName : Name) (sig : Constant
           let failOfCtor := Lean.mkConst ctorName
           let failExpr ← mkAppOptM ``Aeneas.Std.Result.fail #[some α, some failOfCtor]
           let pFail := Lean.Expr.beta postExpr #[failExpr]
-          let pFailReduced ← Meta.whnfD pFail
+          let pFailReduced ← reduceBetaIota pFail
           let branch ← withLocalDeclD `h pFailReduced fun hLocal => do
             match lookupHyp ctorName with
             | some userHyp => mkLambdaFVars #[hLocal] (mkApp userHyp hLocal)
