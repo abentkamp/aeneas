@@ -1,9 +1,10 @@
 //@ [coq,fstar] skip
-//! Regression test: Aeneas used to fail with `Unimplemented` (in
-//! `src/interp/InterpJoin.ml`'s `push_abs_for_shared_value`) on functions
-//! whose signature contains a shared borrow of a value whose type also
-//! contains borrows. The simplest reproducer is a multidimensional borrowed
-//! array.
+//! Regression test for shared borrows of types whose pointee itself
+//! contains borrows. The original Aeneas symbolic interpreter rejected
+//! such shapes with `Unimplemented` (in `InterpJoin.ml`'s
+//! `push_abs_for_shared_value`) and `Found a case of unsupported nested
+//! borrows` / `Nested borrows are not supported yet` (in `InterpBorrows.ml`'s
+//! `destructure_abs`).
 
 pub fn f(_i: &[&[u8; 10]; 10]) -> usize {
     if false {
@@ -19,4 +20,16 @@ pub fn g(i: &[&u8; 2]) -> u8 {
 
 pub fn h(i: &(&u8, &u8)) -> u8 {
     *i.0 + *i.1
+}
+
+pub fn read_inner(i: &[&[u8; 10]; 10]) -> u8 {
+    i[0][0]
+}
+
+pub fn read_dyn(i: &[&[u8; 10]; 10], a: usize, b: usize) -> u8 {
+    i[a][b]
+}
+
+pub fn read_first(i: &[&[u8; 10]; 10]) -> u8 {
+    *i[0].first().unwrap()
 }

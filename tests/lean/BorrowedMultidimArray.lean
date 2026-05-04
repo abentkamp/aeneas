@@ -9,25 +9,64 @@ set_option linter.unusedVariables false
 /- You can set the `maxHeartbeats` value with the `-max-heartbeats` CLI option -/
 set_option maxHeartbeats 1000000
 
+/- You can remove the following line by using the CLI option `-all-computable`: -/
+noncomputable section
+
 namespace borrowed_multidim_array
 
+/-- [core::slice::{[T]}::first]:
+    Source: '/rustc/library/core/src/slice/mod.rs', lines 155:4-155:43
+    Name pattern: [core::slice::{[@T]}::first]
+    Visibility: public -/
+@[rust_fun "core::slice::{[@T]}::first"]
+axiom core.slice.Slice.first {T : Type} : Slice T → Result (Option T)
+
 /-- [borrowed_multidim_array::f]:
-    Source: 'tests/src/borrowed-multidim-array.rs', lines 8:0-14:1
+    Source: 'tests/src/borrowed-multidim-array.rs', lines 9:0-15:1
     Visibility: public -/
 def f (_i : Array (Array Std.U8 10#usize) 10#usize) : Result Std.Usize := do
   ok 0#usize
 
 /-- [borrowed_multidim_array::g]:
-    Source: 'tests/src/borrowed-multidim-array.rs', lines 16:0-18:1
+    Source: 'tests/src/borrowed-multidim-array.rs', lines 17:0-19:1
     Visibility: public -/
 def g (i : Array Std.U8 2#usize) : Result Std.U8 := do
   Array.index_usize i 0#usize
 
 /-- [borrowed_multidim_array::h]:
-    Source: 'tests/src/borrowed-multidim-array.rs', lines 20:0-22:1
+    Source: 'tests/src/borrowed-multidim-array.rs', lines 21:0-23:1
     Visibility: public -/
 def h (i : (Std.U8 × Std.U8)) : Result Std.U8 := do
   let (i1, i2) := i
   i1 + i2
+
+/-- [borrowed_multidim_array::read_inner]:
+    Source: 'tests/src/borrowed-multidim-array.rs', lines 25:0-27:1
+    Visibility: public -/
+def read_inner
+  (i : Array (Array Std.U8 10#usize) 10#usize) : Result Std.U8 := do
+  let a ← Array.index_usize i 0#usize
+  Array.index_usize a 0#usize
+
+/-- [borrowed_multidim_array::read_dyn]:
+    Source: 'tests/src/borrowed-multidim-array.rs', lines 29:0-31:1
+    Visibility: public -/
+def read_dyn
+  (i : Array (Array Std.U8 10#usize) 10#usize) (a : Std.Usize) (b : Std.Usize)
+  :
+  Result Std.U8
+  := do
+  let a1 ← Array.index_usize i a
+  Array.index_usize a1 b
+
+/-- [borrowed_multidim_array::read_first]:
+    Source: 'tests/src/borrowed-multidim-array.rs', lines 33:0-35:1
+    Visibility: public -/
+def read_first
+  (i : Array (Array Std.U8 10#usize) 10#usize) : Result Std.U8 := do
+  let a ← Array.index_usize i 0#usize
+  let s ← lift (Array.to_slice a)
+  let o ← core.slice.Slice.first s
+  core.option.Option.unwrap o
 
 end borrowed_multidim_array

@@ -2010,15 +2010,21 @@ let destructure_abs (span : Meta.span) (abs_kind : abs_kind) ~(can_end : bool)
         | AEndedMutLoan
             { child = child_av; given_back = _; given_back_meta = _ }
         | AEndedIgnoredMutLoan
-            { child = child_av; given_back = _; given_back_meta = _ }
-        | AIgnoredSharedLoan child_av ->
-            (* We don't support nested borrows for now *)
+            { child = child_av; given_back = _; given_back_meta = _ } ->
+            (* We don't support nested mutable borrows for now *)
             [%cassert] span
               (not
                  (ty_has_borrows (Some span) ctx.type_ctx.type_infos child_av.ty))
               "Nested borrows are not supported yet";
             (* Simply explore the child *)
-            list_avalues 0 push_fail child_av)
+            list_avalues 0 push_fail child_av
+        | AIgnoredSharedLoan child_av ->
+            (* The shared reborrow dependencies are tracked separately through
+               [AProjSharedBorrow] values, so the ignored shared loan's child
+               can be recursively destructured like other shared-loan
+               children, even when the child type contains inner borrows
+               (e.g. inside `&[&u8; N]`). *)
+            list_avalues 0 push_avalue child_av)
     | ABorrow bc -> (
         (* Sanity check - rem.: may be redundant with [push_fail] *)
         [%sanity_check] span (allow_borrows > 0);
@@ -2050,11 +2056,12 @@ let destructure_abs (span : Meta.span) (abs_kind : abs_kind) ~(can_end : bool)
             list_avalues allow_borrows push_avalue child_av;
             list_avalues allow_borrows push_avalue given_back
         | AProjSharedBorrow asb ->
-            (* We don't support nested borrows *)
-            [%cassert] span (asb = [])
-              "Found a case of unsupported nested borrows";
-            (* Nothing specific to do *)
-            ()
+            (* Projected shared borrows are already flat: they don't have a
+               child avalue to destructure. When [asb] is non-empty (which
+               happens for shared borrows of types containing inner borrows,
+               e.g. `&[&u8; N]`) we keep the value as-is so later phases can
+               keep tracking the projected reborrows. *)
+            if asb <> [] then push av
         | AEndedMutBorrow _ | AEndedSharedBorrow ->
             (* If we get there it means the abstraction ended: it should not
                be in the context anymore (if we end *one* borrow in an abstraction,
@@ -2113,8 +2120,12 @@ let destructure_abs (span : Meta.span) (abs_kind : abs_kind) ~(can_end : bool)
            meaning we can't read x any more (but we can write to x).
         *)
         ([], v)
-    | VBorrow _ ->
-        (* We don't support nested borrows for now *)
+    | VBorrow (VSharedBorrow _) ->
+        (* Nested shared borrows: keep as-is; the projected reborrows are
+           already tracked separately via [AProjSharedBorrow]. *)
+        ([], v)
+    | VBorrow (VMutBorrow _ | VReservedMutBorrow _) ->
+        (* We don't support nested mutable borrows for now *)
         [%craise] span "Unreachable"
     | VLoan lc -> (
         match lc with
