@@ -84,8 +84,9 @@ let reborrow_ashared_loans (span : Meta.span) (loop_id : LoopId.id option)
        x1 -> SB l2
      ]}
   *)
-  let push_abs_for_shared_value (abs : abs) (sv : tvalue) (lid : BorrowId.id)
-      (sid : SharedBorrowId.id) : BorrowId.id * SharedBorrowId.id =
+  let push_abs_for_shared_value (abs : abs) (sv : tvalue) (inner_rty : ty)
+      (lid : BorrowId.id) (sid : SharedBorrowId.id) :
+      BorrowId.id * SharedBorrowId.id =
     (* Create fresh borrows (for the reborrow) *)
     let nlid = ctx.fresh_borrow_id () in
     let nsid = ctx.fresh_shared_borrow_id () in
@@ -98,9 +99,21 @@ let reborrow_ashared_loans (span : Meta.span) (loop_id : LoopId.id option)
       mk_value_with_fresh_sids_no_shared_loans abs.regions.owned nrid sv
     in
 
-    (* Introduce the new abstraction for the shared values *)
-    [%cassert] span (ty_no_regions sv.ty) "Unimplemented";
-    let rty = sv.ty in
+    (* Compute the rty of the inner shared value: the regions belonging to
+       [abs.regions.owned] (the regions of the original abstraction that are
+       being reborrowed) get remapped to [nrid]; the other regions are left
+       untouched, since they belong to other abstractions and stay there.
+
+       Previously this code asserted [ty_no_regions sv.ty] and used [sv.ty]
+       (the erased ety of the shared value), but that breaks for shared
+       borrows whose pointee itself contains borrows (e.g. a function input
+       of type [&[&[u8;10];10]]): the inner shared value still carries the
+       inner regions, and we need a properly-regioned rty to build the
+       reborrow abstraction. *)
+    let r_subst r =
+      if RegionId.Set.mem r abs.regions.owned then nrid else r
+    in
+    let rty = Substitute.ty_subst_rids span r_subst inner_rty in
 
     (* Create the shared loan child *)
     let child_rty = rty in
@@ -151,7 +164,15 @@ let reborrow_ashared_loans (span : Meta.span) (loop_id : LoopId.id option)
   in
 
   (* Compute the map from borrow id to shared value appearing in a region abstraction -
-     we only visit the region abstractions *)
+     we only visit the region abstractions.
+
+     For each shared loan we also record the rty of the inner shared value
+     (the [T] in [&'r T]). For [ASharedLoan], that is exactly the type of
+     the child avalue. For [VSharedLoan], we don't have a proper rty
+     readily available; we fall back to the value's erased ety, which is
+     correct as long as the shared value contains no further borrows
+     (otherwise [push_abs_for_shared_value] will operate on regions that
+     have already been erased). *)
   let loan_to_shared_value = ref BorrowId.Map.empty in
   let visitor =
     object
@@ -159,12 +180,12 @@ let reborrow_ashared_loans (span : Meta.span) (loop_id : LoopId.id option)
 
       method! visit_VSharedLoan abs bid sv =
         loan_to_shared_value :=
-          BorrowId.Map.add bid (abs, sv) !loan_to_shared_value;
+          BorrowId.Map.add bid (abs, sv, sv.ty) !loan_to_shared_value;
         super#visit_VSharedLoan abs bid sv
 
       method! visit_ASharedLoan abs pm bid sv child =
         loan_to_shared_value :=
-          BorrowId.Map.add bid (abs, sv) !loan_to_shared_value;
+          BorrowId.Map.add bid (abs, sv, child.ty) !loan_to_shared_value;
         super#visit_ASharedLoan abs pm bid sv child
     end
   in
@@ -187,10 +208,12 @@ let reborrow_ashared_loans (span : Meta.span) (loop_id : LoopId.id option)
         | None ->
             (* Do nothing *)
             super#visit_VSharedBorrow env bid sid
-        | Some (abs, sv) ->
+        | Some (abs, sv, inner_rty) ->
             (* Check if the region abstraction is frozen *)
             if not abs.can_end then
-              let bid, sid = push_abs_for_shared_value abs sv bid sid in
+              let bid, sid =
+                push_abs_for_shared_value abs sv inner_rty bid sid
+              in
               VSharedBorrow (bid, sid)
             else super#visit_VSharedBorrow env bid sid
     end
