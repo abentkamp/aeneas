@@ -2094,4 +2094,114 @@ warning: #decompose: 'test54_add3b' has the same definition as 'test54_add3a' (c
   letRange 0 3 => test54_add3a
   letRange 1 3 => test54_add3b
 
+-- ============================================================================
+-- Test 55: Tuple-destructuring bind with letAt — regression test
+-- letAt N for N > 0 should work when an earlier bind uses tuple destructuring
+-- ============================================================================
 
+namespace test55_ns
+open Aeneas Aeneas.Std Result
+
+/-- A function with a tuple-destructuring monadic bind. -/
+def f (x : U32) : Result U32 := do
+  let (a, b) ← (do let v ← x + 1#u32; ok (v, v))
+  let c ← b + 1#u32
+  c + a
+
+-- Probe 1: trivial first-binding extraction works (no `letAt`).
+#decompose f f_prefix_eq
+  letRange 0 1 => f_prefix
+
+/--
+info: f_prefix_eq : ∀ (x : U32),
+  f x = do
+    let (a, b) ← f_prefix x
+    let c ← b + 1#u32
+    c + a
+-/
+#guard_msgs in
+#check @f_prefix_eq
+/--
+info: def test55_ns.f_prefix : U32 → Result (UScalar UScalarTy.U32 × UScalar UScalarTy.U32) :=
+fun x => do
+  let (a, b) ←
+    do
+      let v ← x + 1#u32
+      ok (v, v)
+  pure (a, b)
+-/
+#guard_msgs in
+#print f_prefix
+
+-- Probe 2: `letAt 1 (full)` to extract the value of the *second* binding
+-- (the `c ← b + 1#u32`). The first binding has tuple-destructured `(a, b)`.
+#decompose f f_letat1_eq
+  letAt 1 (full) => f_second_value
+
+/--
+info: f_letat1_eq : ∀ (x : U32),
+  f x = do
+    let (a, b) ←
+      do
+        let v ← x + 1#u32
+        ok (v, v)
+    let c ← f_second_value b
+    c + a
+-/
+#guard_msgs in
+#check @f_letat1_eq
+/--
+info: def test55_ns.f_second_value : UScalar UScalarTy.U32 → Result (UScalar UScalarTy.U32) :=
+fun b => b + 1#u32
+-/
+#guard_msgs in
+#print f_second_value
+
+end test55_ns
+
+-- ============================================================================
+-- Test 56: Nested tuple-destructuring bind with letRange — regression test
+-- ============================================================================
+
+namespace test56_ns
+open Aeneas Aeneas.Std Result
+
+/-- A function with a nested tuple-destructuring monadic bind. -/
+def g (x : U32) : Result U32 := do
+  let ((a, b), (c, d)) ← (do
+    let v ← x + 1#u32
+    let w ← x + 2#u32
+    ok ((v, w), (w, v)))
+  let e ← a + c
+  let f ← b + d
+  e + f
+
+-- letRange on the first binding works (extracts the whole tuple computation)
+#decompose g g_prefix_eq
+  letRange 0 1 => g_prefix
+
+/--
+info: g_prefix_eq : ∀ (x : U32),
+  g x = do
+    let (a, b, c, d) ← g_prefix x
+    let e ← a + c
+    let f ← b + d
+    e + f
+-/
+#guard_msgs in
+#check @g_prefix_eq
+/--
+info: def test56_ns.g_prefix : U32 →
+  Result (UScalar UScalarTy.U32 × UScalar UScalarTy.U32 × UScalar UScalarTy.U32 × UScalar UScalarTy.U32) :=
+fun x => do
+  let (a, b, c, d) ←
+    do
+      let v ← x + 1#u32
+      let w ← x + 2#u32
+      ok ((v, w), w, v)
+  pure (a, b, c, d)
+-/
+#guard_msgs in
+#print g_prefix
+
+end test56_ns
