@@ -1127,6 +1127,109 @@ def proveStep (goalType : Expr) (defNames : Array Name) : TermElabM Expr := do
 -- Main command elaboration
 -- ============================================================================
 
+/-- Resolve the equation theorem name in the current namespace. -/
+private def resolveEqName (eqId : Ident) : TermElabM Name := do
+  let ns ← getCurrNamespace
+  let rawName := eqId.getId
+  pure (if ns.isAnonymous then rawName else ns ++ rawName)
+
+/-- Decompose a non-recursive function using its definitional body directly. -/
+private def decomposeViaDef (fnName : Name) (levelParams : List Name)
+    (srcIsNoncomputable : Bool)
+    (parsedClauses : Array (DecomposePattern × Name))
+    (eqId : Ident) : TermElabM Unit := do
+  let env ← getEnv
+  let some info := env.find? fnName | throwError "No declaration: {fnName}"
+  let fnValue ← match info with
+    | .defnInfo val => pure val.value
+    | _ => throwError "{fnName} is not a definition"
+
+  -- Open the function parameters
+  lambdaTelescope fnValue fun params body => do
+    -- Apply each clause sequentially
+    let ((currentBody, introNames), _) ←
+      (do
+        let mut currentBody := body
+        let mut introNames : Array Name := #[]
+        for (pat, newName) in parsedClauses do
+          currentBody ← applyClause currentBody pat newName levelParams srcIsNoncomputable
+          if !introNames.contains newName then
+            introNames := introNames.push newName
+        return (currentBody, introNames) : DecomposeM _).run {}
+
+    -- Prove: ∀ params, body = currentBody
+    let eqType ← mkForallFVars params (← mkEq body currentBody)
+    let proof ← proveStep eqType introNames
+
+    -- Build the theorem: ∀ params, f params = currentBody
+    let lhs := mkAppN (mkConst fnName (levelParams.map Level.param)) params
+    let thmTypeForall ← mkForallFVars params (← mkEq lhs currentBody)
+
+    let eqName ← resolveEqName eqId
+
+    addDecl (.thmDecl {
+      name        := eqName
+      levelParams := levelParams
+      type        := thmTypeForall
+      value       := proof
+    })
+
+    trace[Decompose] "#decompose: created {parsedClauses.size} definition(s) and theorem '{eqName}'"
+
+/-- Decompose a recursive function using its unfolding equation theorem.
+    For functions defined with `partial_fixpoint`, WF recursion, or structural recursion,
+    the raw definition body contains fixpoint combinator internals. Instead, we use the
+    RHS of the `eq_def` theorem (the clean user-written body) as the expression to
+    decompose, then chain `eq_def` with the decomposition proof. -/
+private def decomposeViaEqDef (fnName eqDefName : Name) (levelParams : List Name)
+    (srcIsNoncomputable : Bool)
+    (parsedClauses : Array (DecomposePattern × Name))
+    (eqId : Ident) : TermElabM Unit := do
+  let eqDefInfo ← getConstInfo eqDefName
+
+  -- The eq_def type is: ∀ (params...), f params = clean_body
+  forallTelescope eqDefInfo.type fun params eqBody => do
+    let some (_, lhs, cleanBody) := eqBody.eq? |
+      throwError "#decompose: unexpected eq_def shape for '{fnName}' (not an equality)"
+    unless lhs.getAppFn.isConstOf fnName do
+      throwError "#decompose: unexpected eq_def LHS for '{fnName}'"
+
+    -- Apply each clause to the clean body
+    let ((currentBody, introNames), _) ←
+      (do
+        let mut currentBody := cleanBody
+        let mut introNames : Array Name := #[]
+        for (pat, newName) in parsedClauses do
+          currentBody ← applyClause currentBody pat newName levelParams srcIsNoncomputable
+          if !introNames.contains newName then
+            introNames := introNames.push newName
+        return (currentBody, introNames) : DecomposeM _).run {}
+
+    -- Prove: ∀ params, clean_body = currentBody
+    let internalEqType ← mkForallFVars params (← mkEq cleanBody currentBody)
+    let internalProof ← proveStep internalEqType introNames
+
+    -- Build the final proof: ∀ params, f params = currentBody
+    -- by composing eq_def (f params = clean_body) with the internal proof
+    -- (clean_body = currentBody) via Eq.trans
+    let eqDefLevels := eqDefInfo.levelParams.map Level.param
+    let eqDefApplied := mkAppN (mkConst eqDefName eqDefLevels) params
+    let internalApplied := mkAppN internalProof params
+    let proofBody ← mkEqTrans eqDefApplied internalApplied
+    let finalProof ← mkLambdaFVars params proofBody
+
+    let thmTypeForall ← mkForallFVars params (← mkEq lhs currentBody)
+    let eqName ← resolveEqName eqId
+
+    addDecl (.thmDecl {
+      name        := eqName
+      levelParams := levelParams
+      type        := thmTypeForall
+      value       := finalProof
+    })
+
+    trace[Decompose] "#decompose: created {parsedClauses.size} definition(s) and theorem '{eqName}' (via {eqDefName})"
+
 @[command_elab decomposeCmd]
 def elabDecompose : CommandElab := fun stx => do
   match stx with
@@ -1139,10 +1242,9 @@ def elabDecompose : CommandElab := fun stx => do
         | none => throwError "Unknown: {fnId}"
       let env ← getEnv
       let some info := env.find? fnName | throwError "No declaration: {fnName}"
-      let fnValue ← match info with
-        | .defnInfo val => pure val.value
-        | _ => throwError "{fnName} is not a definition"
-      let _fnType := info.type
+      match info with
+      | .defnInfo _ => pure ()
+      | _ => throwError "{fnName} is not a definition"
       let levelParams := info.levelParams
       let srcIsNoncomputable := isNoncomputable env fnName
 
@@ -1160,43 +1262,16 @@ def elabDecompose : CommandElab := fun stx => do
           parsedClauses := parsedClauses.push (p, fullName)
         | _ => throwError "Invalid decompose clause syntax"
 
-      -- Open the function parameters
-      lambdaTelescope fnValue fun params body => do
-        -- Apply each clause sequentially (in DecomposeM to track introduced defs)
-        -- Collect the names of all definitions introduced
-        let ((currentBody, introNames), _) ←
-          (do
-            let mut currentBody := body
-            let mut introNames : Array Name := #[]
-            for (pat, newName) in parsedClauses do
-              currentBody ← applyClause currentBody pat newName levelParams srcIsNoncomputable
-              if !introNames.contains newName then
-                introNames := introNames.push newName
-            return (currentBody, introNames) : DecomposeM _).run {}
-
-        -- Prove the single equality: ∀ params, body = currentBody
-        -- using simp with all introduced definition names + bind_assoc_eq
-        let eqType ← mkForallFVars params (← mkEq body currentBody)
-        let proof ← proveStep eqType introNames
-
-        -- Build the theorem type: ∀ params, f params = currentBody
-        let lhs := mkAppN (mkConst fnName (levelParams.map Level.param)) params
-        let thmTypeForall ← mkForallFVars params (← mkEq lhs currentBody)
-
-        let eqName ← do
-          let ns ← getCurrNamespace
-          let rawName := eqId.getId
-          pure (if ns.isAnonymous then rawName else ns ++ rawName)
-
-        -- Add the theorem
-        addDecl (.thmDecl {
-          name        := eqName
-          levelParams := levelParams
-          type        := thmTypeForall
-          value       := proof
-        })
-
-        trace[Decompose] "#decompose: created {parsedClauses.size} definition(s) and theorem '{eqName}'"
+      -- Check if the function has an unfolding equation theorem (recursive functions:
+      -- WF recursion, partial_fixpoint, structural recursion). If so, use the RHS of
+      -- the equation as the body to decompose, since the raw definition value may
+      -- contain fixpoint combinator internals (e.g., Part.fix for partial_fixpoint).
+      let eqDefName? ← Meta.getUnfoldEqnFor? fnName
+      match eqDefName? with
+      | some eqDefName =>
+        decomposeViaEqDef fnName eqDefName levelParams srcIsNoncomputable parsedClauses eqId
+      | none =>
+        decomposeViaDef fnName levelParams srcIsNoncomputable parsedClauses eqId
   | _ => throwError "Invalid #decompose syntax"
 
 end Aeneas.Command.Decompose
