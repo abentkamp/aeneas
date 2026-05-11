@@ -1127,6 +1127,23 @@ def proveStep (goalType : Expr) (defNames : Array Name) : TermElabM Expr := do
 -- Main command elaboration
 -- ============================================================================
 
+/-- Register LSP info for declarations introduced by `#decompose`:
+    - Declaration ranges (for go-to-definition on introduced names)
+    - Term info (for hover on identifiers in the command syntax) -/
+private def registerDecomposeInfo (cmdStx : Syntax) (eqId : Ident) (eqName : Name)
+    (parsedClauses : Array (DecomposePattern × Name × Ident)) : TermElabM Unit := do
+  -- Register the equation theorem
+  Elab.addDeclarationRangesFromSyntax eqName cmdStx eqId
+  Term.addTermInfo' eqId (← mkConstWithLevelParams eqName) (isBinder := true)
+  -- Register each auxiliary definition (deduplicate: same name may appear multiple times
+  -- when the user reuses a name across clauses)
+  let mut registered : Array Name := #[]
+  for (_, auxName, auxIdent) in parsedClauses do
+    unless registered.contains auxName do
+      Elab.addDeclarationRangesFromSyntax auxName cmdStx auxIdent
+      Term.addTermInfo' auxIdent (← mkConstWithLevelParams auxName) (isBinder := true)
+      registered := registered.push auxName
+
 /-- Resolve the equation theorem name in the current namespace. -/
 private def resolveEqName (eqId : Ident) : TermElabM Name := do
   let ns ← getCurrNamespace
@@ -1136,8 +1153,8 @@ private def resolveEqName (eqId : Ident) : TermElabM Name := do
 /-- Decompose a non-recursive function using its definitional body directly. -/
 private def decomposeViaDef (fnName : Name) (levelParams : List Name)
     (srcIsNoncomputable : Bool)
-    (parsedClauses : Array (DecomposePattern × Name))
-    (eqId : Ident) : TermElabM Unit := do
+    (parsedClauses : Array (DecomposePattern × Name × Ident))
+    (cmdStx : Syntax) (eqId : Ident) : TermElabM Unit := do
   let env ← getEnv
   let some info := env.find? fnName | throwError "No declaration: {fnName}"
   let fnValue ← match info with
@@ -1151,7 +1168,7 @@ private def decomposeViaDef (fnName : Name) (levelParams : List Name)
       (do
         let mut currentBody := body
         let mut introNames : Array Name := #[]
-        for (pat, newName) in parsedClauses do
+        for (pat, newName, _) in parsedClauses do
           currentBody ← applyClause currentBody pat newName levelParams srcIsNoncomputable
           if !introNames.contains newName then
             introNames := introNames.push newName
@@ -1174,6 +1191,9 @@ private def decomposeViaDef (fnName : Name) (levelParams : List Name)
       value       := proof
     })
 
+    -- Register LSP info (hover + go-to-definition)
+    registerDecomposeInfo cmdStx eqId eqName parsedClauses
+
     trace[Decompose] "#decompose: created {parsedClauses.size} definition(s) and theorem '{eqName}'"
 
 /-- Decompose a recursive function using its unfolding equation theorem.
@@ -1183,8 +1203,8 @@ private def decomposeViaDef (fnName : Name) (levelParams : List Name)
     decompose, then chain `eq_def` with the decomposition proof. -/
 private def decomposeViaEqDef (fnName eqDefName : Name) (levelParams : List Name)
     (srcIsNoncomputable : Bool)
-    (parsedClauses : Array (DecomposePattern × Name))
-    (eqId : Ident) : TermElabM Unit := do
+    (parsedClauses : Array (DecomposePattern × Name × Ident))
+    (cmdStx : Syntax) (eqId : Ident) : TermElabM Unit := do
   let eqDefInfo ← getConstInfo eqDefName
 
   -- The eq_def type is: ∀ (params...), f params = clean_body
@@ -1199,7 +1219,7 @@ private def decomposeViaEqDef (fnName eqDefName : Name) (levelParams : List Name
       (do
         let mut currentBody := cleanBody
         let mut introNames : Array Name := #[]
-        for (pat, newName) in parsedClauses do
+        for (pat, newName, _) in parsedClauses do
           currentBody ← applyClause currentBody pat newName levelParams srcIsNoncomputable
           if !introNames.contains newName then
             introNames := introNames.push newName
@@ -1228,6 +1248,9 @@ private def decomposeViaEqDef (fnName eqDefName : Name) (levelParams : List Name
       value       := finalProof
     })
 
+    -- Register LSP info (hover + go-to-definition)
+    registerDecomposeInfo cmdStx eqId eqName parsedClauses
+
     trace[Decompose] "#decompose: created {parsedClauses.size} definition(s) and theorem '{eqName}' (via {eqDefName})"
 
 @[command_elab decomposeCmd]
@@ -1240,6 +1263,10 @@ def elabDecompose : CommandElab := fun stx => do
         | some (.const name _) => pure name
         | some e => throwError "{fnId} resolved to non-constant expression: {e}"
         | none => throwError "Unknown: {fnId}"
+
+      -- Register hover/go-to-def info for the source function identifier
+      Elab.addConstInfo fnId fnName
+
       let env ← getEnv
       let some info := env.find? fnName | throwError "No declaration: {fnName}"
       match info with
@@ -1248,8 +1275,8 @@ def elabDecompose : CommandElab := fun stx => do
       let levelParams := info.levelParams
       let srcIsNoncomputable := isNoncomputable env fnName
 
-      -- Parse all clauses
-      let mut parsedClauses : Array (DecomposePattern × Name) := #[]
+      -- Parse all clauses (keep the name syntax for LSP info)
+      let mut parsedClauses : Array (DecomposePattern × Name × Ident) := #[]
       for clauseStx in clauses do
         match clauseStx with
         | `(decompose_clause| $pat => $name) => do
@@ -1259,7 +1286,7 @@ def elabDecompose : CommandElab := fun stx => do
           -- Resolve the new name in the current namespace
           let ns ← getCurrNamespace
           let fullName := if ns.isAnonymous then name.getId else ns ++ name.getId
-          parsedClauses := parsedClauses.push (p, fullName)
+          parsedClauses := parsedClauses.push (p, fullName, name)
         | _ => throwError "Invalid decompose clause syntax"
 
       -- Check if the function has an unfolding equation theorem (recursive functions:
@@ -1269,9 +1296,9 @@ def elabDecompose : CommandElab := fun stx => do
       let eqDefName? ← Meta.getUnfoldEqnFor? fnName
       match eqDefName? with
       | some eqDefName =>
-        decomposeViaEqDef fnName eqDefName levelParams srcIsNoncomputable parsedClauses eqId
+        decomposeViaEqDef fnName eqDefName levelParams srcIsNoncomputable parsedClauses stx eqId
       | none =>
-        decomposeViaDef fnName levelParams srcIsNoncomputable parsedClauses eqId
+        decomposeViaDef fnName levelParams srcIsNoncomputable parsedClauses stx eqId
   | _ => throwError "Invalid #decompose syntax"
 
 end Aeneas.Command.Decompose
