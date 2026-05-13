@@ -190,19 +190,20 @@ inductive DecomposePattern where
 -- Syntax
 -- ============================================================================
 
-declare_syntax_cat decompose_pat
+/- Using `behavior := symbol` to make sure tokens in the syntax ("full", "lam", etc.) can also be used as identifiers-/
+declare_syntax_cat decompose_pat (behavior := symbol)
 
-syntax "letRange " num num : decompose_pat
-syntax "letAt " num " (" decompose_pat ")" : decompose_pat
-syntax "full" : decompose_pat
-syntax "branch " num " (" decompose_pat ")" : decompose_pat
-syntax "branch " num " full" : decompose_pat
-syntax "lam " num " (" decompose_pat ")" : decompose_pat
-syntax "lam " num " full" : decompose_pat
-syntax "appFun " "(" decompose_pat ")" : decompose_pat
-syntax "appFun " "full" : decompose_pat
-syntax "argArg " num " (" decompose_pat ")" : decompose_pat
-syntax "argArg " num " full" : decompose_pat
+syntax &"letRange" num num : decompose_pat
+syntax &"letAt" num "(" decompose_pat ")" : decompose_pat
+syntax &"full" : decompose_pat
+syntax &"branch" num "(" decompose_pat ")" : decompose_pat
+syntax &"branch" num &"full" : decompose_pat
+syntax &"lam" num "(" decompose_pat ")" : decompose_pat
+syntax &"lam" num &"full" : decompose_pat
+syntax &"appFun" "(" decompose_pat ")" : decompose_pat
+syntax &"appFun" &"full" : decompose_pat
+syntax &"argArg" num "(" decompose_pat ")" : decompose_pat
+syntax &"argArg" num &"full" : decompose_pat
 
 partial def elabDecomposePat : Syntax → Except String DecomposePattern
   | `(decompose_pat| letRange $start $count) =>
