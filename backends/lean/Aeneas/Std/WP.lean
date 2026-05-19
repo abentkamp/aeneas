@@ -483,7 +483,35 @@ theorem spec_to_mvcgen {α : Type} {x : Result α} {Q : α → Prop}
   subst hx
   simp [Triple, hQv, WP.wp, PredTrans.apply]
 
+/-- Lift an Aeneas partial spec to an mvcgen-compatible `Triple`. The hypothesis
+covers all three branches of `Result` directly. -/
+theorem partial_spec_to_mvcgen {α : Type} {x : Result α}
+    {Q : PostCond α (.except Error (.except PUnit .pure))}
+    (h : Result.casesOn (motive := fun _ => Prop) x
+           (fun a => (Q.1 a).down)
+           (fun e => (Q.2.1 e).down)
+           (Q.2.2.1 ()).down) :
+    ⦃ ⌜ True ⌝ ⦄ x ⦃ Q ⦄ := by
+  simp only [Triple, WP.wp, PredTrans.apply]
+  cases x <;> simp_all
+
 end Aeneas.Std.WP
+
+namespace Aeneas.Std.WP
+
+/-- Lift an Aeneas partial spec to a (success-only) `spec` lemma usable by the
+`step` tactic. Each branch hypothesis says the corresponding failure/div case
+cannot hold. -/
+theorem partial_spec_to_spec {α : Type} {x : Result α}
+    {P : α → Prop} {Pf : Error → Prop} {Pd : Prop}
+    (h : Result.casesOn (motive := fun _ => Prop) x
+           (fun a => P a) (fun e => Pf e) Pd)
+    (hf : ∀ e, ¬ Pf e) (hd : ¬ Pd) :
+    spec x P := by
+  cases x
+  · simpa [spec, theta, wp_return] using h
+  · exact absurd h (hf _)
+  · exact absurd h hd
 
 namespace Aeneas.Std
 

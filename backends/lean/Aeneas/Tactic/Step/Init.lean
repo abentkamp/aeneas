@@ -299,6 +299,346 @@ private def generateMvcgenSpec (stx : Syntax) (attrKind : AttributeKind) (thName
     -- Register with @[spec] so mvcgen can find it
     Lean.Attribute.add mvcgenSpecName `spec .missing attrKind
 
+/-! ## Partial spec generation
+
+For theorems whose body is a `match` on a `Result α` returning `Prop`, we
+auto-generate two derived lemmas:
+- `<thName>.step_spec`: a success-only spec usable by the `step` tactic, taking
+  hypotheses that the failure/div arms cannot hold.
+- `<thName>.mvcgen_spec`: an mvcgen-style triple taking per-arm hypotheses that
+  the arm body implies the corresponding `Q` projection.
+-/
+
+/-- If the body of a (∀-stripped) theorem is a partial spec, i.e. a match on a
+`Result α` returning `Prop`, return the scrutinee expression. -/
+private def getPartialSpecScrut (body : Expr) : MetaM (Option Expr) := do
+  let some ma ← matchMatcherApp? body (alsoCasesOn := true) | return none
+  if ma.discrs.size ≠ 1 then return none
+  let scrut := ma.discrs[0]!
+  let scrutTy ← whnf (← inferType scrut)
+  if scrutTy.isAppOf ``Aeneas.Std.Result then return some scrut
+  return none
+
+/-- Build the canonical match expression
+    `match y with | ok a => qOk a | fail e => qFail e | div => qDiv` using
+    `Result.casesOn`. Each branch argument must already be a function/value of
+    the appropriate type. `motiveLevel` is the universe `u_1` of the motive's
+    codomain (e.g. `Level.zero` if the motive returns Prop values, or
+    `Level.zero.succ` if the motive returns `Prop` as a Type). -/
+private def mkCanonicalMatch (motiveLevel : Level) (α : Expr) (y : Expr) (motive : Expr)
+    (okBranch failBranch divBranch : Expr) : MetaM Expr := do
+  let casesOn := Lean.mkConst ``Aeneas.Std.Result.casesOn [motiveLevel, Level.zero]
+  return mkAppN casesOn #[α, motive, y, okBranch, failBranch, divBranch]
+
+/-- Reduce iota-reducible match expressions in `e`. -/
+private def reduceArm (e : Expr) : MetaM Expr := do
+  Meta.transform e (post := fun e => do
+    if e.isApp then
+      match (← Meta.reduceMatcher? e) with
+      | .reduced e' => return .visit e'
+      | _ => return .done e
+    else
+      return .done e)
+
+/-- Check if `e` (after reduction) is `False`. -/
+private def isFalseProp (e : Expr) : MetaM Bool := do
+  return (← whnf e).isConstOf ``False
+
+/-- Return the list of constructors of `Aeneas.Std.Error`. -/
+private def getErrorConstructors : MetaM (Array Name) := do
+  let env ← getEnv
+  match env.find? ``Aeneas.Std.Error with
+  | some (.inductInfo ind) => return ind.ctors.toArray
+  | _ => throwError "Could not find Aeneas.Std.Error inductive"
+
+/-- Generate the two partial-spec lemmas. Returns `true` on success. -/
+private def generatePartialSpecLemmas (stx : Syntax) (attrKind : AttributeKind)
+    (thName : Name) : MetaM Bool := do
+  let env ← getEnv
+  let some decl := env.findAsync? thName
+    | throwError "Could not find theorem {thName}"
+  let sig := decl.sig.get
+  -- Specialise universe levels to 0 (matching the helper lemmas in WP.lean).
+  let zeroLevels := List.replicate sig.levelParams.length Level.zero
+  let ty ← normalizeLetBindings (sig.type.instantiateLevelParams sig.levelParams zeroLevels)
+  forallTelescope ty fun fvars body => do
+    let some scrut ← getPartialSpecScrut body | return false
+    let scrutTy ← whnf (← inferType scrut)
+    let α := scrutTy.appArg!
+    -- Abstract body over scrut to get bodyFun = (fun y : Result α => body[scrut := y])
+    -- as a function expression (lambda).
+    let bodyAbsRaw ← kabstract body scrut
+    let bodyFun : Expr := Expr.lam `y scrutTy bodyAbsRaw .default
+    -- Result constructors at universe 0.
+    let errorTy := Lean.mkConst ``Aeneas.Std.Error
+    let mkOk (a : Expr) : Expr :=
+      mkAppN (Lean.mkConst ``Aeneas.Std.Result.ok [Level.zero]) #[α, a]
+    let mkFail (e : Expr) : Expr :=
+      mkAppN (Lean.mkConst ``Aeneas.Std.Result.fail [Level.zero]) #[α, e]
+    let divExpr : Expr := mkAppN (Lean.mkConst ``Aeneas.Std.Result.div [Level.zero]) #[α]
+    -- Build user-theorem application: <thName> fvars : bodyFun scrut.
+    let userThm := mkAppN (Lean.mkConst thName zeroLevels) fvars
+    -- Construct mvcgen_spec.
+    let mvcgenSpecName := Name.str thName "mvcgen_spec"
+    let mvcgenOk ← do
+      -- Build PostCond α (.except Error (.except PUnit .pure)). PostShape lives at
+      -- level 0 here (we already specialised α's universe to 0).
+      let postPure := Lean.mkConst ``Std.Do.PostShape.pure [Level.zero]
+      let postExcept := Lean.mkConst ``Std.Do.PostShape.except [Level.zero]
+      let punitTy := Lean.mkConst ``PUnit [Level.zero.succ]
+      let innerShape := mkApp (mkApp postExcept punitTy) postPure
+      let outerShape := mkApp (mkApp postExcept errorTy) innerShape
+      let postCondTy := mkApp (mkApp (Lean.mkConst ``Std.Do.PostCond [Level.zero]) α) outerShape
+      withLocalDeclD `Q postCondTy fun Q => do
+        -- Build h_ok : ∀ a, bodyFun (ok a) → (Q.1 a).down (with iota-reduced arm body for clean display)
+        let hOkTy ← withLocalDeclD `a α fun a => do
+          let armBody ← reduceArm (bodyFun.beta #[mkOk a])
+          let qOkApplied ← mkAppM ``Prod.fst #[Q]
+          let leaf ← mkAppM ``ULift.down #[mkApp qOkApplied a]
+          mkForallFVars #[a] (← mkArrow armBody leaf)
+        -- Decide whether to descend into Error constructors. We descend if the
+        -- reduced body of the fail arm still depends on the (fresh) Error fvar,
+        -- which indicates the user wrote a sub-pattern like `fail .integerOverflow`.
+        let descendIntoError ← withLocalDeclD `e errorTy fun e => do
+          let armBody ← reduceArm (bodyFun.beta #[mkFail e])
+          return armBody.containsFVar e.fvarId!
+        -- Collect per-constructor fail obligations (only when descending).
+        let mut failObligations : Array (Name × Expr) := #[]
+        if descendIntoError then
+          let ctors ← getErrorConstructors
+          for c in ctors do
+            let cExpr := Lean.mkConst c
+            let body ← reduceArm (bodyFun.beta #[mkFail cExpr])
+            unless (← isFalseProp body) do
+              failObligations := failObligations.push (c, body)
+        withLocalDeclD `h_ok hOkTy fun hOk => do
+          -- Declare fail hypothesis fvars. Either one universal `h_fail` or one
+          -- per-Error-constructor `h_fail_<ctor>`.
+          let withFailFVars (k : (Expr ⊕ Array (Name × Expr)) → MetaM (Expr × Expr)) : MetaM (Expr × Expr) := do
+            if descendIntoError then
+              -- Per-constructor: declare one fvar per non-False ctor.
+              let rec loop (i : Nat) (acc : Array (Name × Expr)) : MetaM (Expr × Expr) := do
+                if h : i < failObligations.size then
+                  let (c, body) := failObligations[i]
+                  let qSnd ← mkAppM ``Prod.snd #[Q]
+                  let qFailApplied ← mkAppM ``Prod.fst #[qSnd]
+                  let leaf ← mkAppM ``ULift.down #[mkApp qFailApplied (Lean.mkConst c)]
+                  let hypTy ← mkArrow body leaf
+                  let suffix := c.eraseMacroScopes.getString!
+                  let hypName := Name.mkSimple ("h_fail_" ++ suffix)
+                  withLocalDeclD hypName hypTy fun fv => loop (i + 1) (acc.push (c, fv))
+                else
+                  k (.inr acc)
+              loop 0 #[]
+            else
+              -- Universal: declare one ∀ e, body → ... fvar.
+              let hFailTy ← withLocalDeclD `e errorTy fun e => do
+                let armBody ← reduceArm (bodyFun.beta #[mkFail e])
+                let qSnd ← mkAppM ``Prod.snd #[Q]
+                let qFailApplied ← mkAppM ``Prod.fst #[qSnd]
+                let leaf ← mkAppM ``ULift.down #[mkApp qFailApplied e]
+                mkForallFVars #[e] (← mkArrow armBody leaf)
+              withLocalDeclD `h_fail hFailTy fun hFail => k (.inl hFail)
+          withFailFVars fun failArg => do
+            let armBodyDiv ← reduceArm (bodyFun.beta #[divExpr])
+            let qSnd ← mkAppM ``Prod.snd #[Q]
+            let qSndSnd ← mkAppM ``Prod.snd #[qSnd]
+            let qDivApplied ← mkAppM ``Prod.fst #[qSndSnd]
+            let leafDiv ← mkAppM ``ULift.down
+              #[mkApp qDivApplied (Lean.mkConst ``PUnit.unit [Level.zero.succ])]
+            let hDivTy ← mkArrow armBodyDiv leafDiv
+            -- Decide whether to introduce h_div: only if div arm body is non-False.
+            let divFalse ← isFalseProp armBodyDiv
+            let withDivFVar (k : Option Expr → MetaM (Expr × Expr)) : MetaM (Expr × Expr) := do
+              if divFalse then k none
+              else withLocalDeclD `h_div hDivTy fun hDiv => k (some hDiv)
+            withDivFVar fun hDivOpt => do
+              -- Build the canonical match motive's body for `y`:
+              --   match y with | ok a => (Q.1 a).down | fail e => (Q.2.1 e).down | div => (Q.2.2.1 ()).down
+              let innerMotive : Expr := Expr.lam `_y scrutTy (mkSort Level.zero) .default
+              -- Build inner branches for the canonical match.
+              let innerOk ← withLocalDeclD `a α fun a => do
+                let qOkApplied ← mkAppM ``Prod.fst #[Q]
+                let leaf ← mkAppM ``ULift.down #[mkApp qOkApplied a]
+                mkLambdaFVars #[a] leaf
+              let innerFail ← withLocalDeclD `e errorTy fun e => do
+                let qSnd ← mkAppM ``Prod.snd #[Q]
+                let qFailApplied ← mkAppM ``Prod.fst #[qSnd]
+                let leaf ← mkAppM ``ULift.down #[mkApp qFailApplied e]
+                mkLambdaFVars #[e] leaf
+              let innerDiv ← do
+                let qSnd ← mkAppM ``Prod.snd #[Q]
+                let qSndSnd ← mkAppM ``Prod.snd #[qSnd]
+                let qDivApplied ← mkAppM ``Prod.fst #[qSndSnd]
+                mkAppM ``ULift.down
+                  #[mkApp qDivApplied (Lean.mkConst ``PUnit.unit [Level.zero.succ])]
+              -- Build the OUTER motive for the cases-on used to produce the
+              -- canonical match form from the user's theorem:
+              --   motive y := bodyFun y → (canonical match form for y)
+              let outerMotive ← withLocalDeclD `y scrutTy fun y => do
+                let userTyAtY := bodyFun.beta #[y]
+                let canonAtY ← mkCanonicalMatch Level.zero.succ α y innerMotive innerOk innerFail innerDiv
+                mkLambdaFVars #[y] (← mkArrow userTyAtY canonAtY)
+              -- Build outer branches: each takes the user-side hypothesis and produces
+              -- the canonical leaf via h_ok / h_fail / h_div.
+              let outerOk ← withLocalDeclD `a α fun a => do
+                withLocalDeclD `hb (bodyFun.beta #[mkOk a]) fun hb => do
+                  mkLambdaFVars #[a, hb] (mkApp (mkApp hOk a) hb)
+              -- For the fail branch, either dispatch via a universal h_fail or
+              -- via Error.casesOn to per-Error-constructor hypotheses (filling in
+              -- `False.elim` for arms whose body reduces to False).
+              let outerFail ← withLocalDeclD `e errorTy fun e => do
+                withLocalDeclD `hb (bodyFun.beta #[mkFail e]) fun hb => do
+                  let body ←
+                    match failArg with
+                    | .inl hFail => pure (mkApp (mkApp hFail e) hb)
+                    | .inr fvarMap => do
+                      -- Build Error.casesOn (motive := fun e' => bodyFun (fail e') → (Q.2.1 e').down)
+                      --   e branch₁ ... branchₙ hb.
+                      let errorMotive ← withLocalDeclD `e' errorTy fun e' => do
+                        let userTyAt := bodyFun.beta #[mkFail e']
+                        let qSnd ← mkAppM ``Prod.snd #[Q]
+                        let qFailApplied ← mkAppM ``Prod.fst #[qSnd]
+                        let leaf ← mkAppM ``ULift.down #[mkApp qFailApplied e']
+                        mkLambdaFVars #[e'] (← mkArrow userTyAt leaf)
+                      let ctorsAll ← getErrorConstructors
+                      let mut branches : Array Expr := #[]
+                      for c in ctorsAll do
+                        -- Branch is fun (hb : bodyFun (fail c)) => either h_fail_c hb or False.elim hb
+                        let bcType := bodyFun.beta #[mkFail (Lean.mkConst c)]
+                        let br ← withLocalDeclD `hb bcType fun hbc => do
+                          let body ←
+                            match fvarMap.find? (fun (c', _) => c' == c) with
+                            | some (_, fv) => pure (mkApp fv hbc)
+                            | none =>
+                              let qSnd ← mkAppM ``Prod.snd #[Q]
+                              let qFailApplied ← mkAppM ``Prod.fst #[qSnd]
+                              let leaf ← mkAppM ``ULift.down
+                                #[mkApp qFailApplied (Lean.mkConst c)]
+                              mkAppOptM ``False.elim #[some leaf, some hbc]
+                          mkLambdaFVars #[hbc] body
+                        branches := branches.push br
+                      let errorCasesOn := Lean.mkConst ``Aeneas.Std.Error.casesOn [Level.zero]
+                      let casesOnApp := mkAppN errorCasesOn (#[errorMotive, e] ++ branches)
+                      pure (mkApp casesOnApp hb)
+                  mkLambdaFVars #[e, hb] body
+              let outerDiv ← withLocalDeclD `hb (bodyFun.beta #[divExpr]) fun hb => do
+                let body ← match hDivOpt with
+                  | some hDiv => pure (mkApp hDiv hb)
+                  | none => do
+                    let qSnd ← mkAppM ``Prod.snd #[Q]
+                    let qSndSnd ← mkAppM ``Prod.snd #[qSnd]
+                    let qDivApplied ← mkAppM ``Prod.fst #[qSndSnd]
+                    let leaf ← mkAppM ``ULift.down
+                      #[mkApp qDivApplied (Lean.mkConst ``PUnit.unit [Level.zero.succ])]
+                    mkAppOptM ``False.elim #[leaf, hb]
+                mkLambdaFVars #[hb] body
+              -- Apply Result.casesOn to (f xs):
+              let cased ← mkCanonicalMatch Level.zero α scrut outerMotive outerOk outerFail outerDiv
+              -- Apply the result to the user's theorem.
+              let canonProof := mkApp cased userThm
+              -- Wrap in partial_spec_to_mvcgen.
+              let proof ← mkAppM ``Aeneas.Std.WP.partial_spec_to_mvcgen #[canonProof]
+              let proofTy ← inferType proof
+              -- Collect all hypothesis fvars in declaration order for lambda/forall wrapping.
+              let failFVars : Array Expr :=
+                match failArg with
+                | .inl hFail => #[hFail]
+                | .inr fvarMap => fvarMap.map Prod.snd
+              let divFVars : Array Expr :=
+                match hDivOpt with
+                | some hDiv => #[hDiv]
+                | none => #[]
+              let allFVars : Array Expr := #[Q, hOk] ++ failFVars ++ divFVars
+              let proof ← mkLambdaFVars allFVars proof
+              let proofTy ← mkForallFVars allFVars proofTy
+              pure (proof, proofTy)
+    let (proofVal, proofTy) := mvcgenOk
+    let proofTerm ← mkLambdaFVars fvars proofVal
+    let thmTy ← mkForallFVars fvars proofTy
+    let auxDecl : TheoremVal := {
+      name        := mvcgenSpecName
+      levelParams := []
+      type        := thmTy
+      value       := proofTerm
+    }
+    addDecl (.thmDecl auxDecl)
+    addDeclarationRangesFromSyntax mvcgenSpecName stx
+    Lean.Attribute.add mvcgenSpecName `spec .missing attrKind
+    -- Construct step_spec.
+    let stepSpecName := Name.str thName "step_spec"
+    let stepOk ← do
+      -- step_spec: ∀ fvars, (hf : ∀ e, ¬ bodyFun (fail e)) → (hd : ¬ bodyFun div)? →
+      --              spec scrut (fun a => bodyFun (ok a))
+      -- If the div arm reduces to False, the `hd` hypothesis is provable by
+      -- `not_false` and we drop it for cleaner signatures.
+      let armBodyDiv ← reduceArm (bodyFun.beta #[divExpr])
+      let divFalse ← isFalseProp armBodyDiv
+      let hfTy ← withLocalDeclD `e errorTy fun e => do
+        let armBody ← reduceArm (bodyFun.beta #[mkFail e])
+        mkForallFVars #[e] (← mkAppM ``Not #[armBody])
+      withLocalDeclD `hf hfTy fun hf => do
+        let withHd (k : Expr → MetaM (Expr × Expr)) : MetaM (Expr × Expr) := do
+          if divFalse then
+            -- Synthesize hd := id : ¬ False at use sites.
+            let notFalse ← mkAppM ``not_false #[]
+            k notFalse
+          else
+            let hdTy ← mkAppM ``Not #[armBodyDiv]
+            withLocalDeclD `hd hdTy fun hd => k hd
+        withHd fun hd => do
+          -- Build the canonical "match" hypothesis using Result.casesOn:
+          --   match scrut with | ok a => bodyFun (ok a) | fail e => bodyFun (fail e) | div => bodyFun div
+          let innerMotive : Expr := Expr.lam `_y scrutTy (mkSort Level.zero) .default
+          let innerOk ← withLocalDeclD `a α fun a => do
+            let armBody := bodyFun.beta #[mkOk a]
+            mkLambdaFVars #[a] armBody
+          let innerFail ← withLocalDeclD `e errorTy fun e => do
+            let armBody := bodyFun.beta #[mkFail e]
+            mkLambdaFVars #[e] armBody
+          let innerDiv := bodyFun.beta #[divExpr]
+          -- The OUTER motive: y → (bodyFun y → canonical y).
+          let outerMotive ← withLocalDeclD `y scrutTy fun y => do
+            let userTyAtY := bodyFun.beta #[y]
+            let canonAtY ← mkCanonicalMatch Level.zero.succ α y innerMotive innerOk innerFail innerDiv
+            mkLambdaFVars #[y] (← mkArrow userTyAtY canonAtY)
+          let outerOk ← withLocalDeclD `a α fun a => do
+            withLocalDeclD `hb (bodyFun.beta #[mkOk a]) fun hb => do
+              mkLambdaFVars #[a, hb] hb
+          let outerFail ← withLocalDeclD `e errorTy fun e => do
+            withLocalDeclD `hb (bodyFun.beta #[mkFail e]) fun hb => do
+              mkLambdaFVars #[e, hb] hb
+          let outerDiv ← withLocalDeclD `hb (bodyFun.beta #[divExpr]) fun hb => do
+            mkLambdaFVars #[hb] hb
+          let cased ← mkCanonicalMatch Level.zero α scrut outerMotive outerOk outerFail outerDiv
+          let canonProof := mkApp cased userThm
+          -- Apply partial_spec_to_spec.
+          let proof ← mkAppM ``Aeneas.Std.WP.partial_spec_to_spec #[canonProof, hf, hd]
+          let proofTy ← inferType proof
+          let bindFVars : Array Expr := if divFalse then #[hf] else #[hf, hd]
+          let proof ← mkLambdaFVars bindFVars proof
+          let proofTy ← mkForallFVars bindFVars proofTy
+          pure (proof, proofTy)
+    let (proofVal2, proofTy2) := stepOk
+    let proofTerm2 ← mkLambdaFVars fvars proofVal2
+    let thmTy2 ← mkForallFVars fvars proofTy2
+    let auxDecl2 : TheoremVal := {
+      name        := stepSpecName
+      levelParams := []
+      type        := thmTy2
+      value       := proofTerm2
+    }
+    addDecl (.thmDecl auxDecl2)
+    addDeclarationRangesFromSyntax stepSpecName stx
+    return true
+
+/-- Detect whether a theorem body, after stripping ∀-binders, is a partial spec
+(a `match` on a `Result α` returning `Prop`). -/
+private def isPartialSpecThm (thType : Expr) : MetaM Bool := do
+  let ty ← normalizeLetBindings thType
+  forallTelescope ty fun _ body => do
+    return (← getPartialSpecScrut body).isSome
+
 private def saveStepSpecFromThm (ext : Extension) (attrKind : AttributeKind) (stx : Syntax)
     (thName : Name) : AttrM Unit := do
   -- Lookup the theorem
@@ -309,6 +649,28 @@ private def saveStepSpecFromThm (ext : Extension) (attrKind : AttributeKind) (st
     let some thDecl := env.findAsync? thName
       | throwError "Could not find theorem {thName}"
     let type := thDecl.sig.get.type
+    -- Check whether this is a partial spec; if so, generate the bridging lemmas
+    -- and register the resulting `step_spec` instead of the original theorem.
+    let isPartial ← MetaM.run' (isPartialSpecThm type)
+    if isPartial then
+      try
+        trace[Step] "Detected partial spec; generating step_spec and mvcgen_spec"
+        let _ ← MetaM.run' (generatePartialSpecLemmas stx attrKind thName)
+        -- Register the generated step_spec with the `step` database
+        let stepSpecName := Name.str thName "step_spec"
+        let fKey ← MetaM.run' (do
+          let stepDecl := (← getEnv).findAsync? stepSpecName
+          match stepDecl with
+          | none => throwError "Could not find generated theorem {stepSpecName}"
+          | some d =>
+            let ty ← normalizeLetBindings d.sig.get.type
+            let fExpr ← getStepSpecFunArgsExpr ty
+            DiscrTree.mkPath fExpr)
+        ScopedEnvExtension.add ext (fKey, stepSpecName) attrKind
+        trace[Step] "Registered {stepSpecName} with step"
+        return
+      catch e =>
+        logWarning m!"Could not generate partial-spec lemmas for {thName}: {e.toMessageData}"
     let fKey ← MetaM.run' (do
       trace[Step] "Theorem: {type}"
       -- Normalize to eliminate the let-bindings

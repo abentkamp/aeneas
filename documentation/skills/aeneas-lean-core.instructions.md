@@ -210,6 +210,38 @@ theorem process.spec (input : Slice U8) :
 an error case, write `True` — it's an honest placeholder that doesn't constrain
 anything. Fill it in when the spec for that case is known.
 
+### Partial specs: `@[step]` on a top-level `match` on `Result`
+
+For theorems whose body is a `match` on a `Result α` returning `Prop` (a
+"partial spec"), the `@[step]` attribute auto-generates two derived lemmas:
+
+- `<thName>.step_spec` — a success-only `spec` lemma usable by the `step`
+  tactic, with hypotheses asserting that each failure/div arm cannot hold.
+- `<thName>.mvcgen_spec` — an `mvcgen`-style `Triple`, registered with `@[spec]`,
+  with one hypothesis per non-`False` arm of the form
+  `(arm_body → (Q.<proj> args).down)`. Sub-patterns on `Error` constructors are
+  expanded, so a `.fail .integerOverflow` arm yields a specific hypothesis
+  `(arm_body → (Q.2.1 Error.integerOverflow).down)`. Arms whose body reduces
+  to `False` are dropped entirely.
+
+Example:
+```lean
+@[step]
+theorem add_spec_partial (x y : U32) :
+    match (x + y) with
+    | .ok z => z.val = x.val + y.val
+    | .fail .integerOverflow => x.val + y.val > U32.max
+    | _ => False := by ...
+-- Auto-generates:
+--   add_spec_partial.mvcgen_spec (x y : U32) {Q : ...}
+--     (h_ok : ∀ a, a.val = x.val + y.val → (Q.1 a).down)
+--     (h_fail_integerOverflow : x.val + y.val > U32.max
+--                                → (Q.2.1 Error.integerOverflow).down) :
+--     ⦃⌜True⌝⦄ (x + y) ⦃Q⦄
+--   add_spec_partial.step_spec (x y : U32) (hf : ∀ e, ¬ …) :
+--     spec (x + y) (fun a => a.val = x.val + y.val)
+```
+
 ### The `⦃ ⦄` notation
 Weakest precondition: `f ⦃ x => P x ⦄` means "f succeeds with value x and P x holds."
 
