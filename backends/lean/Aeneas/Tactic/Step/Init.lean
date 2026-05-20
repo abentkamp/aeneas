@@ -303,6 +303,43 @@ private def pruneTrivialObligations (extraFVars : Array Expr) :
       keptFVars := keptFVars.push fvar
   return (substArgs, keptFVars)
 
+/-- Match a `spec_partial` failure-condition lambda of the form
+`fun e => e = c ∧ P` (with `c` and `P` not depending on `e`) and return
+`(c, P)` on success. This lets the bridge specialize the failure post to
+the concrete error constructor `c`, replacing the universally-quantified
+obligation `∀ e, … p_fail e …` with a single specialized obligation. -/
+private def matchFailEqConst? (pFail : Expr) : MetaM (Option (Expr × Expr)) := do
+  let pFail ← whnf pFail
+  unless pFail.isLambda do return none
+  lambdaBoundedTelescope pFail 1 fun args body => do
+    if args.size ≠ 1 then return none
+    let e := args[0]!
+    let body ← whnf body
+    unless body.isAppOfArity ``And 2 do return none
+    let lhs := body.appFn!.appArg!
+    let rhs := body.appArg!
+    let lhs ← whnf lhs
+    unless lhs.isAppOfArity ``Eq 3 do return none
+    let eqArgs := lhs.getAppArgs
+    let l := eqArgs[1]!
+    let r := eqArgs[2]!
+    let c ←
+      if l == e then pure r
+      else if r == e then pure l
+      else return none
+    let eFvarId := e.fvarId!
+    if c.containsFVar eFvarId || rhs.containsFVar eFvarId then
+      return none
+    return some (c, rhs)
+
+/-- Given the body of a `spec_partial _ _ _ p_fail _` expression, try to
+match its `p_fail` argument against `fun e => e = c ∧ P` via
+`matchFailEqConst?`. -/
+private def matchSpecPartialFailEq? (body : Expr) : MetaM (Option (Expr × Expr)) := do
+  let body := body.consumeMData
+  unless body.isAppOfArity ``Aeneas.Std.WP.spec_partial 5 do return none
+  matchFailEqConst? body.getAppArgs[3]!
+
 /-- Register a theorem using `spec_partial` with `step`. This function generates a auxiliary lemma
 using `spec` instead of `spec_partial` and registers that one with `step`, so that the `step`
 tactic will only ever see `spec`. -/
@@ -310,10 +347,16 @@ private def saveStepPartialSpecFromThm (ext : Extension) (attrKind : AttributeKi
     (thDecl : AsyncConstantInfo) (ty fExpr : Expr) : MetaM Unit := do
   let sig := thDecl.sig.get
   let levelParams := sig.levelParams
-  let newName ← forallTelescope ty fun fvars _ => do
+  let newName ← forallTelescope ty fun fvars body => do
     let thConst := Lean.mkConst thDecl.name (levelParams.map Level.param)
     let thApp := mkAppN thConst fvars
-    let bridge ← mkAppM ``Aeneas.Std.WP.spec_of_spec_partial #[thApp]
+    let bridge ←
+      match ← matchSpecPartialFailEq? body with
+      | some (c, P) =>
+        mkAppOptM ``Aeneas.Std.WP.spec_of_spec_partial_failEq
+          #[none, none, none, some c, some P, none, some thApp]
+      | none =>
+        mkAppM ``Aeneas.Std.WP.spec_of_spec_partial #[thApp]
     forallTelescope (← inferType bridge) fun extraFVars _ => do
       let (substArgs, keptFVars) ← pruneTrivialObligations extraFVars
       let proof := mkAppN bridge substArgs
@@ -367,11 +410,17 @@ private def saveMvcgenPartialSpecFromThm (stx : Syntax) (attrKind : AttributeKin
     (thDecl : AsyncConstantInfo) : MetaM Unit := do
   let sig := thDecl.sig.get
   let thName := thDecl.name
-  forallTelescope sig.type fun fvars _ => do
+  forallTelescope sig.type fun fvars body => do
     let thConst := Lean.mkConst thName (sig.levelParams.map .param)
     let thApp := mkAppN thConst fvars
-    let bridge ← mkAppOptM ``Aeneas.Std.WP.spec_partial_to_mvcgen
-      #[none, none, none, none, none, some thApp]
+    let bridge ←
+      match ← matchSpecPartialFailEq? body with
+      | some (c, P) =>
+        mkAppOptM ``Aeneas.Std.WP.spec_partial_to_mvcgen_failEq
+          #[none, none, none, some c, some P, none, some thApp]
+      | none =>
+        mkAppOptM ``Aeneas.Std.WP.spec_partial_to_mvcgen
+          #[none, none, none, none, none, some thApp]
     forallTelescope (← inferType bridge) fun extraFVars _ => do
       let (substArgs, keptFVars) ← pruneTrivialObligations extraFVars
       let proof := mkAppN bridge substArgs

@@ -223,6 +223,16 @@ theorem spec_of_spec_partial
     spec x p_ok := by
   cases x <;> simp_all [spec_partial, spec, theta, wp_return]
 
+/-- Specialized variant of `spec_of_spec_partial` for failure conditions of the
+shape `fun e => e = c ∧ P`. The generated `step` obligation drops the
+`e = c` conjunct and the universal quantifier, leaving only `¬ P`. -/
+theorem spec_of_spec_partial_failEq
+    {α} {x : Result α} {p_ok : α → Prop} {c : Error} {P : Prop} {p_div : Prop}
+    (h : spec_partial x p_ok (fun e => e = c ∧ P) p_div)
+    (h_fail : ¬ P) (h_div : ¬ p_div) :
+    spec x p_ok :=
+  spec_of_spec_partial h (fun _ h => h_fail h.2) h_div
+
 end Aeneas.Std.WP
 
 /-
@@ -738,6 +748,21 @@ theorem spec_partial_to_mvcgen {α : Type u} {x : Result α}
   cases x
     <;> simp only [spec_partial] at h
     <;> simp [Triple, WP.wp, PredTrans.apply, h_ok, h_fail, h_div, h]
+
+/-- Specialized variant of `spec_partial_to_mvcgen` for failure conditions of
+the shape `fun e => e = c ∧ P`. The generated `mvcgen` obligation specializes
+the failure post to `c`, leaving `P → (Q.2.1 (.up c)).down`. -/
+theorem spec_partial_to_mvcgen_failEq
+    {α : Type u} {x : Result α}
+    {p_ok : α → Prop} {c : Error} {P : Prop} {p_div : Prop}
+    (h : spec_partial x p_ok (fun e => e = c ∧ P) p_div)
+    {Q : PostCond α (.except (ULift Error) (.except PUnit .pure))}
+    (h_ok   : ∀ r, p_ok r → (Q.1 r).down)
+    (h_fail : P → (Q.2.1 (.up c)).down)
+    (h_div  : p_div → (Q.2.2.1 .unit).down) :
+    ⦃ ⌜ True ⌝ ⦄ x ⦃ Q ⦄ :=
+  spec_partial_to_mvcgen h h_ok
+    (fun e h => by obtain ⟨he, hP⟩ := h; subst he; exact h_fail hP) h_div
 
 end Aeneas.Std.WP
 

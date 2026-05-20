@@ -118,4 +118,33 @@ example {α : Type u} (x : α) :
     ⦃ ⌜ True ⌝ ⦄ (myId x) ⦃ ⇓ z => ⌜ z = x ⌝ ⦄ := by
   mvcgen
 
+/-! `p_fail = fun e => e = c ∧ P` should be specialized: the `step_spec`
+    obligation drops the `e = c` conjunct and the `∀ e` binder, leaving
+    only `¬ P`. The `mvcgen_spec` failure obligation specializes the post
+    to `c` rather than quantifying over `e`. -/
+
+opaque myAdd (x y : U32) : Result U32
+
+@[step]
+axiom myAdd_spec_partial (x y : U32) :
+  spec_partial (myAdd x y)
+    (fun z => z.val = x.val + y.val)
+    (fun e => e = .integerOverflow ∧ x.val + y.val > U32.max)
+    False
+
+/-- Step obligation: `¬ (x.val + y.val > U32.max)` only. No `∀ e` and no
+    `e = .integerOverflow`. -/
+example (x y : U32) (h_fail : ¬ x.val + y.val > U32.max) :
+    spec (myAdd x y) (fun z => z.val = x.val + y.val) :=
+  myAdd_spec_partial.step_spec x y h_fail
+
+/-- Mvcgen obligation: `(x.val + y.val > U32.max) → Q.2.1 (.up .integerOverflow)`,
+    specialized to `.integerOverflow` rather than quantified over `e`. -/
+example (x y : U32)
+    {Q : Std.Do.PostCond U32 (.except (ULift Error) (.except PUnit .pure))}
+    (h_ok   : ∀ r, r.val = x.val + y.val → (Q.1 r).down)
+    (h_fail : x.val + y.val > U32.max → (Q.2.1 (.up .integerOverflow)).down) :
+    ⦃ ⌜ True ⌝ ⦄ (myAdd x y) ⦃ Q ⦄ :=
+  myAdd_spec_partial.mvcgen_spec x y h_ok h_fail
+
 end Aeneas.Step.SpecPartialTests
