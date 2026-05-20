@@ -271,6 +271,38 @@ private def saveStepSpecFromThm (ext : Extension) (attrKind : AttributeKind)
   ScopedEnvExtension.add ext (fKey, thName) attrKind
   trace[Step] "Saved the entry"
 
+/-- If `ty` has the shape `∀ x₁ … xₙ, False → P` modulo reduction — which
+covers `¬ False`, `False → P`, `∀ _, ¬ False`, `∀ _, False → P`, etc. —
+return a proof of `ty` of the form `fun … h => False.elim h`. Otherwise
+return `none`. Used to drop trivial obligations from the bridge lemmas
+applied by `saveStepPartialSpecFromThm` and `saveMvcgenPartialSpecFromThm`. -/
+private def mkTrivialFalseProof? (ty : Expr) : MetaM (Option Expr) :=
+  forallTelescopeReducing ty fun args body => do
+    if args.isEmpty then return none
+    let h := args[args.size - 1]!
+    let hTy ← whnf (← inferType h)
+    unless hTy.isConstOf ``False do return none
+    let pf ← mkAppOptM ``False.elim #[some body, some h]
+    some <$> mkLambdaFVars args pf
+
+/-- Walk the extra binders introduced by a `spec_partial` bridge lemma, drop
+the ones we can discharge with `mkTrivialFalseProof?`, and keep the rest.
+Returns the argument list to pass to `mkAppN bridge` (with trivial
+obligations replaced by their proofs) and the fvars that should remain as
+binders of the generated lemma. -/
+private def pruneTrivialObligations (extraFVars : Array Expr) :
+    MetaM (Array Expr × Array Expr) := do
+  let mut substArgs : Array Expr := #[]
+  let mut keptFVars : Array Expr := #[]
+  for fvar in extraFVars do
+    match ← mkTrivialFalseProof? (← inferType fvar) with
+    | some pf =>
+      substArgs := substArgs.push pf
+    | none =>
+      substArgs := substArgs.push fvar
+      keptFVars := keptFVars.push fvar
+  return (substArgs, keptFVars)
+
 /-- Register a theorem using `spec_partial` with `step`. This function generates a auxiliary lemma
 using `spec` instead of `spec_partial` and registers that one with `step`, so that the `step`
 tactic will only ever see `spec`. -/
@@ -283,9 +315,10 @@ private def saveStepPartialSpecFromThm (ext : Extension) (attrKind : AttributeKi
     let thApp := mkAppN thConst fvars
     let bridge ← mkAppM ``Aeneas.Std.WP.spec_of_spec_partial #[thApp]
     forallTelescope (← inferType bridge) fun extraFVars _ => do
-      let proof := mkAppN bridge extraFVars
+      let (substArgs, keptFVars) ← pruneTrivialObligations extraFVars
+      let proof := mkAppN bridge substArgs
       let innerTy ← inferType proof
-      let allFVars := fvars ++ extraFVars
+      let allFVars := fvars ++ keptFVars
       let proofTerm ← mkLambdaFVars allFVars proof
       let thmTy ← mkForallFVars allFVars innerTy
       let name := Name.str thDecl.name "step_spec"
@@ -340,9 +373,10 @@ private def saveMvcgenPartialSpecFromThm (stx : Syntax) (attrKind : AttributeKin
     let bridge ← mkAppOptM ``Aeneas.Std.WP.spec_partial_to_mvcgen
       #[none, none, none, none, none, some thApp]
     forallTelescope (← inferType bridge) fun extraFVars _ => do
-      let proof := mkAppN bridge extraFVars
+      let (substArgs, keptFVars) ← pruneTrivialObligations extraFVars
+      let proof := mkAppN bridge substArgs
       let innerTy ← inferType proof
-      let allFVars := fvars ++ extraFVars
+      let allFVars := fvars ++ keptFVars
       let proofTerm ← mkLambdaFVars allFVars proof
       let thmTy ← mkForallFVars allFVars innerTy
       saveMvcgenDecl attrKind stx thDecl thmTy proofTerm
