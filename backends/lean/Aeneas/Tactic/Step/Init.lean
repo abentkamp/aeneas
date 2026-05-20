@@ -285,23 +285,110 @@ private def mkTrivialFalseProof? (ty : Expr) : MetaM (Option Expr) :=
     let pf ← mkAppOptM ``False.elim #[some body, some h]
     some <$> mkLambdaFVars args pf
 
-/-- Walk the extra binders introduced by a `spec_partial` bridge lemma, drop
-the ones we can discharge with `mkTrivialFalseProof?`, and keep the rest.
-Returns the argument list to pass to `mkAppN bridge` (with trivial
-obligations replaced by their proofs) and the fvars that should remain as
-binders of the generated lemma. -/
-private def pruneTrivialObligations (extraFVars : Array Expr) :
-    MetaM (Array Expr × Array Expr) := do
-  let mut substArgs : Array Expr := #[]
-  let mut keptFVars : Array Expr := #[]
-  for fvar in extraFVars do
-    match ← mkTrivialFalseProof? (← inferType fvar) with
-    | some pf =>
-      substArgs := substArgs.push pf
+/-- Result of a successful obligation-simplifier match: the (instantiated)
+type of the new "simpler" hypothesis and the prefix needed to rebuild the
+proof of the original obligation (`mkAppN simplifier (prevArgs.push h)`
+yields a proof of the original `fvarTy`, where `h` is any proof of
+`simplerTy`). -/
+private structure SimplifierMatch where
+  simplerTy  : Expr
+  simplifier : Expr
+  prevArgs   : Array Expr
+
+/-- Unroll forall binders of `ty` one at a time, stopping as soon as the
+remaining body unifies with `target`. Used by `tryObligationSimplifier`
+to find the matching depth without descending into the simplifier's own
+conclusion (which may itself be a `∀`). Returns the introduced mvars on
+success. -/
+private partial def unrollSimplifierUntilMatch (ty : Expr) (target : Expr)
+    (acc : Array Expr) : MetaM (Option (Array Expr)) := do
+  if ← isDefEq ty target then return some acc
+  let ty ← whnf ty
+  match ty with
+  | .forallE _ argTy bodyTy _ =>
+    let mvar ← mkFreshExprMVar argTy
+    unrollSimplifierUntilMatch (bodyTy.instantiate1 mvar) target (acc.push mvar)
+  | _ => return none
+
+/-- Try the obligation simplifier `name` against `fvarTy`. The simplifier
+must have the shape `∀ x₁ … xₙ U → T_pattern` with the simpler hypothesis
+*last* by convention. Run under `withReducible` so a structural mismatch
+fails cheaply. -/
+private def tryObligationSimplifier (fvarTy : Expr) (name : Name) :
+    MetaM (Option SimplifierMatch) := do
+  try
+    withReducible do
+      let simplifier ← mkConstWithFreshMVarLevels name
+      let some args ← unrollSimplifierUntilMatch (← inferType simplifier) fvarTy #[]
+        | return none
+      if args.isEmpty then return none
+      let simplerTy ← instantiateMVars (← inferType args.back!)
+      if simplerTy.hasMVar then return none
+      let prevArgs ← args.pop.mapM instantiateMVars
+      if prevArgs.any (·.hasMVar) then return none
+      let simplifier ← instantiateMVars simplifier
+      if simplifier.hasMVar then return none
+      return some { simplerTy, simplifier, prevArgs }
+  catch _ => return none
+
+/-- Try each simplifier in `names` in order. Returns the first match, or
+`none` if none apply. -/
+private def tryObligationSimplifiers (fvarTy : Expr) (names : List Name) :
+    MetaM (Option SimplifierMatch) := do
+  for name in names do
+    if let some r ← tryObligationSimplifier fvarTy name then
+      return some r
+  return none
+
+/-- Walk `fvars` once, applying obligation simplifiers (using `names`) and
+then the trivial-`False` pruner to each binder. Simplifier runs before
+pruning so e.g. `∀ e, ¬ (e = c ∧ False)` first becomes `¬ False` and then
+disappears entirely. Calls the continuation `k` with the substitution
+arguments to feed to the bridge and the surviving fvars to bind in the
+generated lemma. -/
+private partial def simplifyAndPruneObligationsAux
+    (names : List Name) (fvars : Array Expr) (i : Nat)
+    (substArgs : Array Expr) (keptFVars : Array Expr)
+    (k : Array Expr → Array Expr → MetaM α) : MetaM α := do
+  if i < fvars.size then
+    let fvar := fvars[i]!
+    let fvarTy ← inferType fvar
+    match ← tryObligationSimplifiers fvarTy names with
+    | some m =>
+      match ← mkTrivialFalseProof? m.simplerTy with
+      | some trivPf =>
+        let proof := mkAppN m.simplifier (m.prevArgs.push trivPf)
+        simplifyAndPruneObligationsAux names fvars (i+1)
+          (substArgs.push proof) keptFVars k
+      | none =>
+        let userName ← fvar.fvarId!.getUserName
+        withLocalDeclD userName m.simplerTy fun newFvar => do
+          let proof := mkAppN m.simplifier (m.prevArgs.push newFvar)
+          simplifyAndPruneObligationsAux names fvars (i+1)
+            (substArgs.push proof) (keptFVars.push newFvar) k
     | none =>
-      substArgs := substArgs.push fvar
-      keptFVars := keptFVars.push fvar
-  return (substArgs, keptFVars)
+      match ← mkTrivialFalseProof? fvarTy with
+      | some trivPf =>
+        simplifyAndPruneObligationsAux names fvars (i+1)
+          (substArgs.push trivPf) keptFVars k
+      | none =>
+        simplifyAndPruneObligationsAux names fvars (i+1)
+          (substArgs.push fvar) (keptFVars.push fvar) k
+  else
+    k substArgs keptFVars
+
+private def simplifyAndPruneObligations
+    (names : List Name) (fvars : Array Expr)
+    (k : Array Expr → Array Expr → MetaM α) : MetaM α :=
+  simplifyAndPruneObligationsAux names fvars 0 #[] #[] k
+
+/-- Hardcoded list of obligation simplifiers for `step_spec`. -/
+private def stepObligationSimplifiers : List Name :=
+  [``Aeneas.Std.WP.step_fail_failEq]
+
+/-- Hardcoded list of obligation simplifiers for `mvcgen_spec`. -/
+private def mvcgenObligationSimplifiers : List Name :=
+  [``Aeneas.Std.WP.mvcgen_fail_failEq]
 
 /-- Register a theorem using `spec_partial` with `step`. This function generates a auxiliary lemma
 using `spec` instead of `spec_partial` and registers that one with `step`, so that the `step`
@@ -313,35 +400,25 @@ private def saveStepPartialSpecFromThm (ext : Extension) (attrKind : AttributeKi
   let newName ← forallTelescope ty fun fvars _ => do
     let thConst := Lean.mkConst thDecl.name (levelParams.map Level.param)
     let thApp := mkAppN thConst fvars
-    -- Try the failure-specialization bridge first: it produces cleaner
-    -- obligations when `p_fail` has shape `fun e => e = c ∧ P`. Fall back
-    -- to the generic bridge if unification fails. The speculative attempt
-    -- runs at `.reducible` transparency so a non-matching `p_fail` fails
-    -- cheaply rather than triggering expensive unfolds.
-    let bridge ←
-      try
-        withReducible <|
-          mkAppOptM ``Aeneas.Std.WP.spec_of_spec_partial_failEq
-            #[none, none, none, none, none, none, some thApp]
-      catch _ =>
-        mkAppM ``Aeneas.Std.WP.spec_of_spec_partial #[thApp]
+    let bridge ← mkAppM ``Aeneas.Std.WP.spec_of_spec_partial #[thApp]
     forallTelescope (← inferType bridge) fun extraFVars _ => do
-      let (substArgs, keptFVars) ← pruneTrivialObligations extraFVars
-      let proof := mkAppN bridge substArgs
-      let innerTy ← inferType proof
-      let allFVars := fvars ++ keptFVars
-      let proofTerm ← mkLambdaFVars allFVars proof
-      let thmTy ← mkForallFVars allFVars innerTy
-      let name := Name.str thDecl.name "step_spec"
-      let auxDecl : TheoremVal := {
-        name
-        levelParams
-        type  := thmTy
-        value := proofTerm
-      }
-      addDecl (.thmDecl auxDecl)
-      addDeclarationRangesFromSyntax name stx
-      pure name
+      simplifyAndPruneObligations stepObligationSimplifiers extraFVars
+        fun substArgs keptFVars => do
+          let proof := mkAppN bridge substArgs
+          let innerTy ← inferType proof
+          let allFVars := fvars ++ keptFVars
+          let proofTerm ← mkLambdaFVars allFVars proof
+          let thmTy ← mkForallFVars allFVars innerTy
+          let name := Name.str thDecl.name "step_spec"
+          let auxDecl : TheoremVal := {
+            name
+            levelParams
+            type  := thmTy
+            value := proofTerm
+          }
+          addDecl (.thmDecl auxDecl)
+          addDeclarationRangesFromSyntax name stx
+          pure name
   saveStepSpecFromThm ext attrKind newName fExpr
 
 private def saveMvcgenDecl (attrKind : AttributeKind) (stx : Syntax)
@@ -381,25 +458,17 @@ private def saveMvcgenPartialSpecFromThm (stx : Syntax) (attrKind : AttributeKin
   forallTelescope sig.type fun fvars _ => do
     let thConst := Lean.mkConst thName (sig.levelParams.map .param)
     let thApp := mkAppN thConst fvars
-    -- See `saveStepPartialSpecFromThm`: try the failure-specialization bridge
-    -- first at `.reducible` transparency so a mismatch fails cheaply, and
-    -- fall back to the generic bridge otherwise.
-    let bridge ←
-      try
-        withReducible <|
-          mkAppOptM ``Aeneas.Std.WP.spec_partial_to_mvcgen_failEq
-            #[none, none, none, none, none, none, some thApp]
-      catch _ =>
-        mkAppOptM ``Aeneas.Std.WP.spec_partial_to_mvcgen
-          #[none, none, none, none, none, some thApp]
+    let bridge ← mkAppOptM ``Aeneas.Std.WP.spec_partial_to_mvcgen
+      #[none, none, none, none, none, some thApp]
     forallTelescope (← inferType bridge) fun extraFVars _ => do
-      let (substArgs, keptFVars) ← pruneTrivialObligations extraFVars
-      let proof := mkAppN bridge substArgs
-      let innerTy ← inferType proof
-      let allFVars := fvars ++ keptFVars
-      let proofTerm ← mkLambdaFVars allFVars proof
-      let thmTy ← mkForallFVars allFVars innerTy
-      saveMvcgenDecl attrKind stx thDecl thmTy proofTerm
+      simplifyAndPruneObligations mvcgenObligationSimplifiers extraFVars
+        fun substArgs keptFVars => do
+          let proof := mkAppN bridge substArgs
+          let innerTy ← inferType proof
+          let allFVars := fvars ++ keptFVars
+          let proofTerm ← mkLambdaFVars allFVars proof
+          let thmTy ← mkForallFVars allFVars innerTy
+          saveMvcgenDecl attrKind stx thDecl thmTy proofTerm
 
 /-- Register a theorem (either `spec` or `spec_partial`) with `step` and `mvcgen`. -/
 private def applyStepAttr (ext : Extension) (attrKind : AttributeKind) (stx : Syntax)
