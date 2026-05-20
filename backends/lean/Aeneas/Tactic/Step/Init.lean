@@ -315,11 +315,14 @@ private def saveStepPartialSpecFromThm (ext : Extension) (attrKind : AttributeKi
     let thApp := mkAppN thConst fvars
     -- Try the failure-specialization bridge first: it produces cleaner
     -- obligations when `p_fail` has shape `fun e => e = c ∧ P`. Fall back
-    -- to the generic bridge if unification fails.
+    -- to the generic bridge if unification fails. The speculative attempt
+    -- runs at `.reducible` transparency so a non-matching `p_fail` fails
+    -- cheaply rather than triggering expensive unfolds.
     let bridge ←
       try
-        mkAppOptM ``Aeneas.Std.WP.spec_of_spec_partial_failEq
-          #[none, none, none, none, none, none, some thApp]
+        withReducible <|
+          mkAppOptM ``Aeneas.Std.WP.spec_of_spec_partial_failEq
+            #[none, none, none, none, none, none, some thApp]
       catch _ =>
         mkAppM ``Aeneas.Std.WP.spec_of_spec_partial #[thApp]
     forallTelescope (← inferType bridge) fun extraFVars _ => do
@@ -379,11 +382,13 @@ private def saveMvcgenPartialSpecFromThm (stx : Syntax) (attrKind : AttributeKin
     let thConst := Lean.mkConst thName (sig.levelParams.map .param)
     let thApp := mkAppN thConst fvars
     -- See `saveStepPartialSpecFromThm`: try the failure-specialization bridge
-    -- first, fall back to the generic one if unification fails.
+    -- first at `.reducible` transparency so a mismatch fails cheaply, and
+    -- fall back to the generic bridge otherwise.
     let bridge ←
       try
-        mkAppOptM ``Aeneas.Std.WP.spec_partial_to_mvcgen_failEq
-          #[none, none, none, none, none, none, some thApp]
+        withReducible <|
+          mkAppOptM ``Aeneas.Std.WP.spec_partial_to_mvcgen_failEq
+            #[none, none, none, none, none, none, some thApp]
       catch _ =>
         mkAppOptM ``Aeneas.Std.WP.spec_partial_to_mvcgen
           #[none, none, none, none, none, some thApp]
