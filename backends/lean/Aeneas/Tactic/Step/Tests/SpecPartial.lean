@@ -102,4 +102,20 @@ example (x : U32) (h_div : ¬ x.val = 0) :
     spec (myMayLoop x) (fun z => z.val = x.val) :=
   myMayLoop_spec_partial.step_spec x h_div
 
+/-! Universe polymorphism: a `spec_partial` lemma over a higher-universe
+    `α` must still produce a well-typed `mvcgen_spec`. -/
+
+opaque myId {α : Type u} (x : α) : Result α
+
+@[step]
+axiom myId_spec_partial {α : Type u} (x : α) :
+  spec_partial (myId x) (fun z => z = x) (fun _ => False) False
+
+example {α : Type u} (x : α) : spec (myId x) (fun z => z = x) :=
+  myId_spec_partial.step_spec x
+
+example {α : Type u} (x : α) :
+    ⦃ ⌜ True ⌝ ⦄ (myId x) ⦃ ⇓ z => ⌜ z = x ⌝ ⦄ := by
+  mvcgen
+
 end Aeneas.Step.SpecPartialTests
