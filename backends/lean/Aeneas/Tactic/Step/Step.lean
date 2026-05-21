@@ -93,14 +93,6 @@ inductive UsedTheorem where
   | localHyp: LocalDecl → UsedTheorem
   | stepThm : Name → UsedTheorem
 
-/-- Is `name` a theorem whose conclusion is `Aeneas.Std.WP.spec_partial …`? -/
-def isSpecPartialThm (name : Name) : MetaM Bool := do
-  let env ← getEnv
-  let some info := env.find? name | return false
-  forallTelescopeReducing info.type fun _ ty => do
-    let ty := ty.consumeMData
-    return ty.isAppOf ``Aeneas.Std.WP.spec_partial
-
 namespace UsedTheorem
 
 instance: ToString UsedTheorem where
@@ -115,14 +107,6 @@ def toSyntax: UsedTheorem → MetaM Syntax.Term
   Lean.Meta.Tactic.TryThis.delabToRefinableSyntax e
 | localHyp decl    => pure <| mkIdent decl.userName
 | stepThm name => do
-  /- If the registered name is an auto-generated `<orig>.step_spec` lemma
-     (produced by `@[step]` for a `spec_partial` theorem), prefer the original
-     user-facing name. We detect this by checking that the parent is itself a
-     theorem whose conclusion uses `spec_partial`. -/
-  let name ← match name with
-    | .str p "step_spec" => do
-        if (← isSpecPartialThm p) then pure p else pure name
-    | _ => pure name
   /- Unresolve the name to make sure that the name is valid, and it is
      as short as possible -/
   let name ← Lean.unresolveNameGlobalAvoidingLocals name
@@ -1054,14 +1038,7 @@ def parseStepArgs
         trace[Step] "With arg (theorem): {stx.raw}"
         let some e ← Term.resolveId? stx (withInfo := true)
           | throwError m!"Could not find theorem: {pspec}"
-        /- If the user named a `spec_partial` theorem, automatically dispatch to
-           the auto-generated `<name>.step_spec` aux lemma. -/
-        match e with
-        | .const name us => do
-          if ← isSpecPartialThm name then
-            return .const (name.str "step_spec") us
-          else return e
-        | _ => return e
+        return e
     | term => do
       trace[Step] "With arg (term): {term}"
       Tactic.elabTerm term none
@@ -1398,13 +1375,6 @@ def parseLetStep
         trace[Step] "With arg (theorem): {stx.raw}"
         let some e ← Term.resolveId? stx (withInfo := true)
           | throwError m!"Could not find theorem: {pspec}"
-        /- If the user named a `spec_partial` theorem, automatically dispatch to
-           the auto-generated `<name>.step_spec` aux lemma. -/
-        let e ← match e with
-          | .const name us => do
-            if ← isSpecPartialThm name then pure (.const (name.str "step_spec") us)
-            else pure e
-          | _ => pure e
         pure (some e, false)
     | term => do
       trace[Step] "term.raw.getKind: {term.raw.getKind}"
@@ -1512,7 +1482,7 @@ _✝ : z1 = y + 2
 
   /--
   info: Try this:
-  [apply] let* ⟨ z, h1 ⟩ ← UScalar.add_spec
+  [apply] let* ⟨ z, h1 ⟩ ← UScalar.add_spec.step_spec
   -/
   #guard_msgs in
   example {ty} {x y : UScalar ty} (h : x.val + y.val ≤ UScalar.max ty) :
@@ -1535,7 +1505,7 @@ info: example
   set_option linter.unusedTactic false in
   example {ty} {x y : UScalar ty} (h : x.val + y.val ≤ UScalar.max ty) :
     x + y ⦃ z => z.val = x.val + y.val ⦄ := by
-    let* ⟨ z, h1 ⟩ ← UScalar.add_spec
+    let* ⟨ z, h1 ⟩ ← UScalar.add_spec.step_spec
     extract_goal0
     scalar_tac
 
@@ -1560,8 +1530,8 @@ info: example
     (do
       let z1 ← x + y
       z1 + x) ⦃ z => z.val = 2 * x.val + y.val ⦄ := by
-    let* ⟨ z1, h1 ⟩ ← UScalar.add_spec
-    let* ⟨ z2, h2 ⟩ ← UScalar.add_spec
+    let* ⟨ z1, h1 ⟩ ← UScalar.add_spec.step_spec
+    let* ⟨ z2, h2 ⟩ ← UScalar.add_spec.step_spec
     extract_goal0
     scalar_tac
 
@@ -1569,8 +1539,8 @@ info: example
     (do
       let z1 ← x + y
       z1 + x) ⦃ z => z.val = 2 * x.val + y.val ⦄ := by
-    step with UScalar.add_spec as ⟨ z1, h1 ⟩
-    step with UScalar.add_spec as ⟨ z2, h2 ⟩
+    step with UScalar.add_spec.step_spec as ⟨ z1, h1 ⟩
+    step with UScalar.add_spec.step_spec as ⟨ z2, h2 ⟩
     scalar_tac
 
   example {ty} {x y : UScalar ty}
@@ -1589,40 +1559,40 @@ info: example
   example {ty} {x y : UScalar ty}
     (hmax : x.val + y.val ≤ UScalar.max ty) :
     x + y ⦃ z => z.val = x.val + y.val ⦄ := by
-    step? as ⟨ z, h1 ⟩ says step with UScalar.add_spec as ⟨ z, h1 ⟩
+    step? as ⟨ z, h1 ⟩ says step with UScalar.add_spec.step_spec as ⟨ z, h1 ⟩
     scalar_tac
 
   example {ty} {x y : IScalar ty}
     (hmin : IScalar.min ty ≤ x.val + y.val)
     (hmax : x.val + y.val ≤ IScalar.max ty) :
     x + y ⦃ z => z.val = x.val + y.val ⦄ := by
-    step? as ⟨ z, h1 ⟩ says step with IScalar.add_spec as ⟨ z, h1 ⟩
+    step? as ⟨ z, h1 ⟩ says step with IScalar.add_spec.step_spec as ⟨ z, h1 ⟩
     scalar_tac
 
   example {ty} {x y : UScalar ty}
     (hmax : x.val + y.val ≤ UScalar.max ty) :
     x + y ⦃ z => z.val = x.val + y.val ⦄ := by
-    step with UScalar.add_spec as ⟨ z ⟩
+    step with UScalar.add_spec.step_spec as ⟨ z ⟩
     scalar_tac
 
   example {ty} {x y : IScalar ty}
     (hmin : IScalar.min ty ≤ x.val + y.val)
     (hmax : x.val + y.val ≤ IScalar.max ty) :
     x + y ⦃ z => z.val = x.val + y.val ⦄ := by
-    step with IScalar.add_spec as ⟨ z ⟩
+    step with IScalar.add_spec.step_spec as ⟨ z ⟩
     scalar_tac
 
   example {x y : U32}
     (hmax : x.val + y.val ≤ U32.max) :
     x + y ⦃ z => z.val = x.val + y.val ⦄ := by
     -- This spec theorem is suboptimal (compared to `U32.add_spec`), but it is good to check that it works
-    step with UScalar.add_spec as ⟨ z, h1 ⟩
+    step with UScalar.add_spec.step_spec as ⟨ z, h1 ⟩
     scalar_tac
 
   example {x y : U32}
     (hmax : x.val + y.val ≤ U32.max) :
     x + y ⦃ z => z.val = x.val + y.val ⦄ := by
-    step with U32.add_spec as ⟨ z, h1 ⟩
+    step with U32.add_spec.step_spec as ⟨ z, h1 ⟩
     scalar_tac
 
   example {x y : U32}
@@ -1683,7 +1653,7 @@ info: example
     (hmax : x.val + y.val ≤ IScalar.max ty) :
     False ∨ x + y ⦃ z => z.val = x.val + y.val ⦄ := by
     right
-    step? as ⟨ z, h1 ⟩ says step with IScalar.add_spec as ⟨ z, h1 ⟩
+    step? as ⟨ z, h1 ⟩ says step with IScalar.add_spec.step_spec as ⟨ z, h1 ⟩
     scalar_tac
 
   /--
@@ -1759,7 +1729,7 @@ hf : ∀ (x y : U32), ↑x < 10 → ↑y < 10 → f x y ⦃ x✝ => True ⦄
       let tot := x.val + y.val
       x + y ⦃ z => z.val = tot ⦄ := by
       simp
-      step with U32.add_spec
+      step with U32.add_spec.step_spec
       scalar_tac
 
     def add1 (x y : U32) : Std.Result U32 := do
@@ -1795,8 +1765,8 @@ x y : U32
   example (x y : U32) (h : 2 * x.val + 2 * y.val ≤ U32.max) :
     add1 x y ⦃ _ => True ⦄ := by
     rw [add1]
-    step? as ⟨ z1, h ⟩ says step with U32.add_spec as ⟨ z1, h ⟩
-    step? as ⟨ z2, h ⟩ says step with U32.add_spec as ⟨ z2, h ⟩
+    step? as ⟨ z1, h ⟩ says step with U32.add_spec.step_spec as ⟨ z1, h ⟩
+    step? as ⟨ z2, h ⟩ says step with U32.add_spec.step_spec as ⟨ z2, h ⟩
 end Test
 
 namespace Test

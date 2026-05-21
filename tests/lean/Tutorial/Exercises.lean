@@ -22,7 +22,7 @@ theorem mul2_add1_spec (x : U32) (h : 2 * x.val + 1 ≤ U32.max)
   : mul2_add1 x ⦃ y => ↑y = 2 * ↑x + (1 : Int) ∧ ↑y = 2 * ↑x + (1 : Int) ⦄
   := by
   unfold mul2_add1
-  step with U32.add_spec as ⟨ x1 ⟩
+  step with U32.add_spec.step_spec as ⟨ x1 ⟩
   step as ⟨ x2 ⟩
   scalar_tac
 
@@ -105,7 +105,7 @@ theorem i32_id_spec (n : I32) (h : 0 ≤ n.val) :
   . simp [*]
   . step as ⟨ n1 ⟩
     step
-    step as ⟨ n2 ⟩
+    step as ⟨ n2 ⟩ by scalar_tac
     scalar_tac
 termination_by n.toNat
 decreasing_by

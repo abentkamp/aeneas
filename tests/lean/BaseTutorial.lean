@@ -133,9 +133,9 @@ theorem mul2_add1_spec
      the fact that [2 * x + 1 < U32.max]. In case [step] fails to prove a
      precondition, it leaves it as a subgoal.
    -/
-  step with U32.add_spec as ⟨ x1 ⟩
+  step with U32.add_spec.step_spec as ⟨ x1 ⟩
   /- We can call [step] a second time for the second addition -/
-  step with U32.add_spec as ⟨ x2 ⟩
+  step with U32.add_spec.step_spec as ⟨ x2 ⟩
   /- We are now left with the remaining goal. We do this by calling
      [grind], an automated decision procedure
    -/
@@ -365,7 +365,7 @@ theorem i32_id_spec (x : I32) (h : 0 ≤ x.val) :
     -- Recursive call
     step
     -- x2 + 1
-    step as ⟨ x2 ⟩
+    step as ⟨ x2 ⟩ by scalar_tac
     -- Postcondition
     grind
 -- Below: we have to prove that the recursive call performed in the proof terminates.

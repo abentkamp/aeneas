@@ -60,7 +60,7 @@ theorem i32_id_spec (n : I32) (h : 0 ≤ n.val) :
   . simp [*]
   . step as ⟨ n1 ⟩
     step
-    step as ⟨ n2 ⟩
+    step as ⟨ n2 ⟩ by scalar_tac
     scalar_tac
 termination_by n.toNat
 decreasing_by simp_wf; scalar_tac
