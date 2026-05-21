@@ -93,6 +93,14 @@ inductive UsedTheorem where
   | localHyp: LocalDecl → UsedTheorem
   | stepThm : Name → UsedTheorem
 
+/-- Is `name` a theorem whose conclusion is `Aeneas.Std.WP.spec_partial …`? -/
+def isSpecPartialThm (name : Name) : MetaM Bool := do
+  let env ← getEnv
+  let some info := env.find? name | return false
+  forallTelescopeReducing info.type fun _ ty => do
+    let ty := ty.consumeMData
+    return ty.isAppOf ``Aeneas.Std.WP.spec_partial
+
 namespace UsedTheorem
 
 instance: ToString UsedTheorem where
@@ -107,6 +115,14 @@ def toSyntax: UsedTheorem → MetaM Syntax.Term
   Lean.Meta.Tactic.TryThis.delabToRefinableSyntax e
 | localHyp decl    => pure <| mkIdent decl.userName
 | stepThm name => do
+  /- If the registered name is an auto-generated `<orig>.step_spec` lemma
+     (produced by `@[step]` for a `spec_partial` theorem), prefer the original
+     user-facing name. We detect this by checking that the parent is itself a
+     theorem whose conclusion uses `spec_partial`. -/
+  let name ← match name with
+    | .str p "step_spec" => do
+        if (← isSpecPartialThm p) then pure p else pure name
+    | _ => pure name
   /- Unresolve the name to make sure that the name is valid, and it is
      as short as possible -/
   let name ← Lean.unresolveNameGlobalAvoidingLocals name
@@ -1038,7 +1054,14 @@ def parseStepArgs
         trace[Step] "With arg (theorem): {stx.raw}"
         let some e ← Term.resolveId? stx (withInfo := true)
           | throwError m!"Could not find theorem: {pspec}"
-        return e
+        /- If the user named a `spec_partial` theorem, automatically dispatch to
+           the auto-generated `<name>.step_spec` aux lemma. -/
+        match e with
+        | .const name us => do
+          if ← isSpecPartialThm name then
+            return .const (name.str "step_spec") us
+          else return e
+        | _ => return e
     | term => do
       trace[Step] "With arg (term): {term}"
       Tactic.elabTerm term none
@@ -1375,6 +1398,13 @@ def parseLetStep
         trace[Step] "With arg (theorem): {stx.raw}"
         let some e ← Term.resolveId? stx (withInfo := true)
           | throwError m!"Could not find theorem: {pspec}"
+        /- If the user named a `spec_partial` theorem, automatically dispatch to
+           the auto-generated `<name>.step_spec` aux lemma. -/
+        let e ← match e with
+          | .const name us => do
+            if ← isSpecPartialThm name then pure (.const (name.str "step_spec") us)
+            else pure e
+          | _ => pure e
         pure (some e, false)
     | term => do
       trace[Step] "term.raw.getKind: {term.raw.getKind}"
@@ -1438,10 +1468,10 @@ namespace Test
   -/
   /--
   error: unsolved goals
-case hmax
+case h
 ty : UScalarTy
 x y : UScalar ty
-⊢ ↑x + ↑y ≤ UScalar.max ty
+⊢ ¬↑x + ↑y > UScalar.max ty
   -/
   #guard_msgs in
   example {ty} {x y : UScalar ty} :
@@ -1871,9 +1901,9 @@ _✝ : ↑z = ↑x + y
   -- Test that we properly extract the names from the post-conditions
   /--
   error: unsolved goals
-case hmax
+case h
 x y : U32
-⊢ ↑x + ↑y ≤ U32.max
+⊢ ¬↑x + ↑y > U32.max
 
 case a
 x y z : U32

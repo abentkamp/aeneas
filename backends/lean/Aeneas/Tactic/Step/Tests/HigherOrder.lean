@@ -78,6 +78,10 @@ info: Try this:
       intros y a✝
       let* ⟨ ⟩ ← [ +inferPost ] U32.add_spec
     agrind
+---
+warning: unused variable `h1`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
 -/
 #guard_msgs in
 example (x : U32) (h1 : x.val + 1 ≤ U32.max) (h2 : x.val + 2 ≤ U32.max) :

@@ -1075,22 +1075,22 @@ info: Try this:
       · sorry
 ---
 error: unsolved goals
-case hmax
+case h
 b : Bool
 x y : U32
 h✝ : b = true
-⊢ ↑x + ↑y ≤ U32.max
+⊢ ¬↑x + ↑y > U32.max
 
-case hmax
+case h
 b : Bool
 x y : U32
 h✝ : b = true
 x2 : U32
 _ : [> let x2 ← x + y <]
 x2_post : ↑x2 = ↑x + ↑y
-⊢ ↑x2 + ↑x2 ≤ U32.max
+⊢ ¬↑x2 + ↑x2 > U32.max
 
-case hmax
+case h
 b : Bool
 x y : U32
 h✝ : b = true
@@ -1100,22 +1100,22 @@ x2_post : ↑x2 = ↑x + ↑y
 x3 : U32
 _ : [> let x3 ← x2 + x2 <]
 x3_post : ↑x3 = ↑x2 + ↑x2
-⊢ ↑x3 + ↑4#u32 ≤ U32.max
+⊢ ¬↑x3 + ↑4#u32 > U32.max
 
-case hmax
+case h
 b : Bool
 x y : U32
 h✝ : ¬b = true
-⊢ ↑x + ↑y ≤ U32.max
+⊢ ¬↑x + ↑y > U32.max
 
-case hmax
+case h
 b : Bool
 x y✝ : U32
 h✝ : ¬b = true
 y : U32
 _ : [> let y ← x + y✝ <]
 y_post : ↑y = ↑x + ↑y✝
-⊢ ↑y + ↑2#u32 ≤ U32.max
+⊢ ¬↑y + ↑2#u32 > U32.max
 -/
 #guard_msgs in
 example b (x y : U32) :
