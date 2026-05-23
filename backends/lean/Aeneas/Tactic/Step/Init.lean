@@ -445,7 +445,7 @@ private def simplifyMvcgenHypotheses (extraMVars : Array Expr) : MetaM Unit := d
     throwError "spec_partial_to_mvcgen: expected 4 extra arguments, got {extraMVars.size}"
   let simpCtx ← mkSimpOnlyContext (#[
       ``mvcgen_fail_failEq_iff, ``mvcgen_fail_False_iff,
-      ``mvcgen_div_False_iff] ++ commonPushNotLemmas)
+      ``mvcgen_div_False_iff, ``and_imp] ++ commonPushNotLemmas)
   let simplify (mv : Expr) (name : String) : MetaM Unit := do
     trace[Step] "simplifyMvcgenHypotheses: {name} type: {← inferType mv}"
     try
