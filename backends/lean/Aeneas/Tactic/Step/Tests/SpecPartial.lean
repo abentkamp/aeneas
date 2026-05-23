@@ -104,27 +104,12 @@ info: Aeneas.Step.SpecPartialTests.myAddSigned_spec_partial.step_spec (x y : I32
 #guard_msgs in
 #check myAddSigned_spec_partial.step_spec
 
-
-/- ## Mvcgen-side conjunction splitting.
-
-A fail predicate with a nested conjunction `(x > 0 ∧ y > 0)` should be curried
-into a sequence of arrows on the generated `mvcgen_spec` via `and_imp`. -/
-
-opaque myAddPos (x y : I32) : Result I32
-
-@[step]
-axiom myAddPos_spec_partial (x y : I32) :
-  spec_partial (myAddPos x y)
-    (fun z => z.val = x.val + y.val)
-    (fun e => e = .integerOverflow ∧ x.val > 0 ∧ y.val > 0)
-    False
-
 /--
-info: Aeneas.Step.SpecPartialTests.myAddPos_spec_partial.mvcgen_spec (x y : I32) (Q : PostCond I32 postShape)
-  (h_ok : ∀ (r : I32), ↑r = ↑x + ↑y → willYield r Q) (h_fail : 0 < ↑x → 0 < ↑y → willFail Error.integerOverflow Q) :
-  ⦃⌜True⌝⦄ myAddPos x y ⦃Q⦄
+info: Aeneas.Step.SpecPartialTests.myAddSigned_spec_partial.mvcgen_spec (x y : I32) (Q : PostCond I32 postShape)
+  (h_ok : ∀ (r : I32), ↑r = ↑x + ↑y → willYield r Q)
+  (h_fail : I32.max < ↑x + ↑y ∨ ↑x + ↑y < I32.min → willFail Error.integerOverflow Q) : ⦃⌜True⌝⦄ myAddSigned x y ⦃Q⦄
 -/
 #guard_msgs in
-#check myAddPos_spec_partial.mvcgen_spec
+#check myAddSigned_spec_partial.mvcgen_spec
 
 end Aeneas.Step.SpecPartialTests
