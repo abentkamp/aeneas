@@ -434,13 +434,18 @@ private theorem mvcgen_div_False_iff {P : Prop} :
     (False → P) ↔ True :=
   ⟨fun _ => trivial, fun _ h => h.elim⟩
 
+/-- For `simplifyMvcgenHypotheses`: eliminates `uncurry'` in `h_ok` by splitting the
+    pair-quantifier into two separate quantifiers. -/
+private theorem mvcgen_uncurry {α β} {p : α → β → Prop} {q : α × β → Prop} :
+    (∀ (r : α × β), uncurry' p r → q r) ↔ (∀ (r₁ : α) (r₂ : β), p r₁ r₂ → q (r₁, r₂)) := by simp
+
 end
 
 /-- Try to simplify the arguments produced by `spec_partial_to_mvcgen`. -/
 private def simplifyMvcgenHypotheses (mvarOk mvarFail mvarDiv : Expr) : MetaM Unit := do
   let simpCtx ← mkSimpOnlyContext (#[
       ``mvcgen_fail_failEq_iff, ``mvcgen_fail_False_iff,
-      ``mvcgen_div_False_iff, ``and_imp] ++ commonPushNotLemmas)
+      ``mvcgen_div_False_iff, ``mvcgen_uncurry, ``and_imp] ++ commonPushNotLemmas)
   let simplify (mv : Expr) (name : String) : MetaM Unit := do
     trace[Step] "simplifyMvcgenHypotheses: {name} type: {← inferType mv}"
     try
