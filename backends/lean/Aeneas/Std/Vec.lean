@@ -127,10 +127,12 @@ def Vec.push {α : Type u} (v : Vec α) (x : α) : Result (Vec α)
     fail maximumSizeExceeded
 
 @[step]
-theorem Vec.push_spec {α : Type u} (v : Vec α) (x : α) (h : v.val.length < Usize.max) :
-  v.push x ⦃ v1 =>
-  v1.val = v.val ++ [x] ⦄ := by
-  unfold push; grind
+theorem Vec.push_spec {α : Type u} (v : Vec α) (x : α) :
+    spec_partial (v.push x)
+      (fun v1 => v1.val = v.val ++ [x])
+      (fun e => e = .maximumSizeExceeded ∧ v.val.length ≥ Usize.max)
+      False := by
+  simp only [spec_partial]; unfold push; grind
 
 @[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::insert" (keepParams := [true, false])]
 def Vec.insert {α : Type u} (v: Vec α) (i: Usize) (x: α) : Result (Vec α) :=
@@ -140,10 +142,13 @@ def Vec.insert {α : Type u} (v: Vec α) (i: Usize) (x: α) : Result (Vec α) :=
     fail arrayOutOfBounds
 
 @[step]
-theorem Vec.insert_spec {α : Type u} (v: Vec α) (i: Usize) (x: α)
-  (hbound : i.val < v.length) :
-  v.insert i x ⦃ nv => nv.val = v.val.set i x ⦄ := by
-  simp [insert, *]
+theorem Vec.insert_spec {α : Type u} (v: Vec α) (i: Usize) (x: α) :
+    spec_partial (v.insert i x)
+      (fun nv => nv.val = v.val.set i x)
+      (fun e => e = .arrayOutOfBounds ∧ i.val ≥ v.length)
+      False := by
+  unfold insert
+  by_cases h : i.val < v.length <;> simp [spec_partial, h]; scalar_tac
 
 def Vec.index_usize {α : Type u} (v: Vec α) (i: Usize) : Result α :=
   match v[i.val]? with
@@ -151,12 +156,13 @@ def Vec.index_usize {α : Type u} (v: Vec α) (i: Usize) : Result α :=
   | some x => ok x
 
 @[step]
-theorem Vec.index_usize_spec {α : Type u} [Inhabited α] (v: Vec α) (i: Usize)
-  (hbound : i.val < v.length) :
-  v.index_usize i ⦃ x => x = v.val[i.val]! ⦄ := by
-  simp only [index_usize]
-  simp at *
-  simp [*]
+theorem Vec.index_usize_spec {α : Type u} [Inhabited α] (v: Vec α) (i: Usize) :
+    spec_partial (v.index_usize i)
+      (fun x => x = v.val[i.val]!)
+      (fun e => e = .arrayOutOfBounds ∧ i.val ≥ v.length)
+      False := by
+  simp only [spec_partial, index_usize]
+  cases hopt : v[i.val]? <;> simp_all [List.getElem!_eq_getElem?_getD]
 
 def Vec.update {α : Type u} (v: Vec α) (i: Usize) (x: α) : Result (Vec α) :=
   match v.val[i.val]? with
@@ -165,12 +171,13 @@ def Vec.update {α : Type u} (v: Vec α) (i: Usize) (x: α) : Result (Vec α) :=
     ok ⟨ v.val.set i x, by have := v.property; simp [*] ⟩
 
 @[step]
-theorem Vec.update_spec {α : Type u} (v: Vec α) (i: Usize) (x : α)
-  (hbound : i.val < v.length) :
-  v.update i x ⦃ nv => nv = v.set i x ⦄ := by
-  simp only [update, set]
-  simp at *
-  split <;> simp_all
+theorem Vec.update_spec {α : Type u} (v: Vec α) (i: Usize) (x : α) :
+    spec_partial (v.update i x)
+      (fun nv => nv = v.set i x)
+      (fun e => e = .arrayOutOfBounds ∧ i.val ≥ v.length)
+      False := by
+  simp only [spec_partial, update, set]
+  cases hopt : v.val[i.val]? <;> simp_all
 
 @[scalar_tac_simps, grind =, agrind =]
 theorem Vec.set_length {α : Type u} (v: Vec α) (i: Usize) (x: α) :
@@ -185,12 +192,14 @@ def Vec.index_mut_usize {α : Type u} (v: Vec α) (i: Usize) :
   | div => div
 
 @[step]
-theorem Vec.index_mut_usize_spec {α : Type u} [Inhabited α] (v: Vec α) (i: Usize)
-  (hbound : i.val < v.length) :
-  v.index_mut_usize i ⦃ x y => x = v.val[i.val]! ∧ y = v.set i ⦄ := by
-  simp only [index_mut_usize]
-  have ⟨ x, h ⟩ := spec_imp_exists (index_usize_spec v i hbound)
-  simp [h]
+theorem Vec.index_mut_usize_spec {α : Type u} [Inhabited α] (v: Vec α) (i: Usize) :
+    spec_partial (v.index_mut_usize i)
+      (uncurry' fun x y => x = v.val[i.val]! ∧ y = v.set i)
+      (fun e => e = .arrayOutOfBounds ∧ i.val ≥ v.length)
+      False := by
+  have h := Vec.index_usize_spec v i
+  simp only [spec_partial, index_mut_usize, uncurry'] at h ⊢
+  cases hres : Vec.index_usize v i <;> simp_all
 
 @[rust_fun "alloc::vec::{core::ops::index::Index<alloc::vec::Vec<@T>, @I, @O>}::index"
   (keepParams := [true,true,false, true])]

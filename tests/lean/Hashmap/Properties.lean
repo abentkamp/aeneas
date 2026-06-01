@@ -363,7 +363,7 @@ theorem insert_no_resize_spec {α : Type} (hm : HashMap α) (key : Usize) (value
   simp at hhm
   have _ : hash_mod.val < alloc.vec.Vec.length hm.slots := by
     scalar_tac
-  step with alloc.vec.Vec.index_mut_usize_spec as ⟨ l, index_mut, h_leq, hIndexMut ⟩
+  step with alloc.vec.Vec.index_mut_usize_spec.step_spec as ⟨ l, index_mut, h_leq, hIndexMut ⟩
   simp [hIndexMut]
   have h_slot :
     slot_s_inv_hash hm.slots.length (hash_mod_key key hm.slots.length) l.v := by

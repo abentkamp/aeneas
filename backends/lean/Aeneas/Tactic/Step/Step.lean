@@ -1612,7 +1612,7 @@ info: example
   example {α : Type} (v: Vec α) (i: Usize) (x : α)
     (hbounds : i.val < v.length) :
     v.update i x ⦃ nv => nv.val = v.val.set i.val x ⦄ := by
-    step? says step with Vec.update_spec
+    step? says step with Vec.update_spec.step_spec
     simp [*]
 
   /- Checking that step can handle nested blocks -/
