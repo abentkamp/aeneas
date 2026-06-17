@@ -19,7 +19,14 @@ jobs:
         run: |
           set -eo pipefail
 
-          TAG_NAME="nightly-$(date +'%Y.%m.%d')"
+          SHORT_SHA="$(git rev-parse --short HEAD)"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual runs produce a per-commit `build-<sha>` release rather than
+            # overwriting the dated nightly.
+            TAG_NAME="build-${SHORT_SHA}"
+          else
+            TAG_NAME="nightly-$(date +'%Y.%m.%d')-${SHORT_SHA}"
+          fi
           echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
 
       - name: Create Release
@@ -79,10 +86,10 @@ jobs:
 
       - name: Package
         env:
-          # Embedded into the binary as the version reported by `aeneas -version`.
-          # Combined with the commit hash in flake.nix to produce e.g.
-          # `nightly-2026.06.17-<commitsha>`. `--impure` is required so that the
-          # flake can read this variable via `builtins.getEnv`.
+          # The release tag, embedded verbatim into the binary as the version
+          # reported by `aeneas -version` (e.g. `nightly-2026.06.17-<commitsha>`
+          # or `build-<commitsha>`). `--impure` is required so that the flake can
+          # read this variable via `builtins.getEnv`.
           AENEAS_RELEASE_VERSION: ${{ needs.prepare.outputs.tag_name }}
         run: |
           set -eo pipefail

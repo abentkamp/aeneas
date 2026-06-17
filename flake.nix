@@ -85,17 +85,16 @@
         # the git history, so `git describe` cannot be used; we pass the version
         # explicitly through the `AENEAS_VERSION` environment variable instead.
         #
-        # `commitSha` is the short commit hash of the flake's source tree.
-        # The release workflow sets `AENEAS_RELEASE_VERSION` (e.g.
-        # `nightly-2026.06.17`); when present, we prefix it to obtain a version
-        # of the form `nightly-YYYY.MM.DD-<commitsha>`. Reading this requires an
-        # impure evaluation (`nix build --impure`); during ordinary pure builds
-        # `builtins.getEnv` returns the empty string and we embed the bare
-        # commit hash.
+        # The release workflow sets `AENEAS_RELEASE_VERSION` to the full release
+        # tag (e.g. `nightly-2026.06.17-<commitsha>` or `build-<commitsha>`),
+        # which we embed verbatim so the reported version matches the GitHub
+        # release tag. Reading this requires an impure evaluation
+        # (`nix build --impure`); during ordinary pure builds `builtins.getEnv`
+        # returns the empty string and we fall back to the bare commit hash of
+        # the flake's source tree.
         commitSha = self.shortRev or self.dirtyShortRev or "unknown";
-        releasePrefix = builtins.getEnv "AENEAS_RELEASE_VERSION";
-        aeneasVersion =
-          if releasePrefix != "" then "${releasePrefix}-${commitSha}" else commitSha;
+        releaseVersion = builtins.getEnv "AENEAS_RELEASE_VERSION";
+        aeneasVersion = if releaseVersion != "" then releaseVersion else commitSha;
 
         easy_logging = pkgs.callPackage
           ({ fetchFromGitHub, ocamlPackages }:
