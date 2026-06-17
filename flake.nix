@@ -80,6 +80,23 @@
         charon-portable = inputs.charon.packages.${system}.charon-portable;
         charon-ml = inputs.charon.packages.${system}.charon-ml.override { inherit ocamlPackages; };
 
+        # The version embedded into the `aeneas` binary (reported by
+        # `aeneas -version`). Nix builds happen in a sandbox with no access to
+        # the git history, so `git describe` cannot be used; we pass the version
+        # explicitly through the `AENEAS_VERSION` environment variable instead.
+        #
+        # `commitSha` is the short commit hash of the flake's source tree.
+        # The release workflow sets `AENEAS_RELEASE_VERSION` (e.g.
+        # `nightly-2026.06.17`); when present, we prefix it to obtain a version
+        # of the form `nightly-YYYY.MM.DD-<commitsha>`. Reading this requires an
+        # impure evaluation (`nix build --impure`); during ordinary pure builds
+        # `builtins.getEnv` returns the empty string and we embed the bare
+        # commit hash.
+        commitSha = self.shortRev or self.dirtyShortRev or "unknown";
+        releasePrefix = builtins.getEnv "AENEAS_RELEASE_VERSION";
+        aeneasVersion =
+          if releasePrefix != "" then "${releasePrefix}-${commitSha}" else commitSha;
+
         easy_logging = pkgs.callPackage
           ({ fetchFromGitHub, ocamlPackages }:
             ocamlPackages.buildDunePackage rec {
@@ -110,6 +127,8 @@
               duneVersion = "3";
               src = ./src;
               OCAMLPARAM = "_,warn-error=+A"; # Turn all warnings into errors.
+              # Embed the version into the binary (see `aeneasVersion` above).
+              AENEAS_VERSION = aeneasVersion;
               propagatedBuildInputs = [
                 easy_logging
                 charon-ml

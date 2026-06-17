@@ -78,10 +78,16 @@ jobs:
           restore-prefixes-first-match: ${{ matrix.os }}-release
 
       - name: Package
+        env:
+          # Embedded into the binary as the version reported by `aeneas -version`.
+          # Combined with the commit hash in flake.nix to produce e.g.
+          # `nightly-2026.06.17-<commitsha>`. `--impure` is required so that the
+          # flake can read this variable via `builtins.getEnv`.
+          AENEAS_RELEASE_VERSION: ${{ needs.prepare.outputs.tag_name }}
         run: |
           set -eo pipefail
 
-          nix build -L .#${{ matrix.nix_attr }}
+          nix build -L --impure .#${{ matrix.nix_attr }}
           mkdir dist_staging
           cp -R result/. dist_staging/
           # Nix preserves read-only permissions from the store, so we must make files writable.
