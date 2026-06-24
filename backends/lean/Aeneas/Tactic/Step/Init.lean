@@ -294,6 +294,49 @@ private theorem step_fail_False_iff :
 private theorem step_div_False_iff : (¬ False) ↔ True :=
   ⟨fun _ => trivial, fun _ h => h⟩
 
+/-- For `simplifyStepHypotheses`: `fun | .assertionFailure => P | _ => False` form. -/
+private theorem step_fail_match_assertionFailure_iff {P : Prop} :
+    (∀ e : Aeneas.Std.Error, ¬ match e with | .assertionFailure => P | _ => False) ↔ ¬ P :=
+  ⟨fun h => h .assertionFailure, fun h e => by cases e <;> simp_all⟩
+
+/-- For `simplifyStepHypotheses`: `fun | .integerOverflow => P | _ => False` form. -/
+private theorem step_fail_match_integerOverflow_iff {P : Prop} :
+    (∀ e : Aeneas.Std.Error, ¬ match e with | .integerOverflow => P | _ => False) ↔ ¬ P :=
+  ⟨fun h => h .integerOverflow, fun h e => by cases e <;> simp_all⟩
+
+/-- For `simplifyStepHypotheses`: `fun | .divisionByZero => P | _ => False` form. -/
+private theorem step_fail_match_divisionByZero_iff {P : Prop} :
+    (∀ e : Aeneas.Std.Error, ¬ match e with | .divisionByZero => P | _ => False) ↔ ¬ P :=
+  ⟨fun h => h .divisionByZero, fun h e => by cases e <;> simp_all⟩
+
+/-- For `simplifyStepHypotheses`: `fun | .arrayOutOfBounds => P | _ => False` form. -/
+private theorem step_fail_match_arrayOutOfBounds_iff {P : Prop} :
+    (∀ e : Aeneas.Std.Error, ¬ match e with | .arrayOutOfBounds => P | _ => False) ↔ ¬ P :=
+  ⟨fun h => h .arrayOutOfBounds, fun h e => by cases e <;> simp_all⟩
+
+/-- For `simplifyStepHypotheses`: `fun | .maximumSizeExceeded => P | _ => False` form. -/
+private theorem step_fail_match_maximumSizeExceeded_iff {P : Prop} :
+    (∀ e : Aeneas.Std.Error, ¬ match e with | .maximumSizeExceeded => P | _ => False) ↔ ¬ P :=
+  ⟨fun h => h .maximumSizeExceeded, fun h e => by cases e <;> simp_all⟩
+
+/-- For `simplifyStepHypotheses`: `fun | .panic => P | _ => False` form. -/
+private theorem step_fail_match_panic_iff {P : Prop} :
+    (∀ e : Aeneas.Std.Error, ¬ match e with | .panic => P | _ => False) ↔ ¬ P :=
+  ⟨fun h => h .panic, fun h e => by cases e <;> simp_all⟩
+
+/-- For `simplifyStepHypotheses`: `fun | .undef => P | _ => False` form. -/
+private theorem step_fail_match_undef_iff {P : Prop} :
+    (∀ e : Aeneas.Std.Error, ¬ match e with | .undef => P | _ => False) ↔ ¬ P :=
+  ⟨fun h => h .undef, fun h e => by cases e <;> simp_all⟩
+
+/-- For `simplifyStepHypotheses`: two-constructor `fun | .divisionByZero => P1 | .integerOverflow => P2 | _ => False` form. -/
+private theorem step_fail_match_divisionByZero_integerOverflow_iff {P1 P2 : Prop} :
+    (∀ e : Aeneas.Std.Error,
+      ¬ match e with | .divisionByZero => P1 | .integerOverflow => P2 | _ => False) ↔
+    ¬ P1 ∧ ¬ P2 :=
+  ⟨fun h => ⟨h .divisionByZero, h .integerOverflow⟩,
+   fun ⟨h1, h2⟩ e => by cases e <;> simp_all⟩
+
 end
 
 /-- Build a `Simp.Context` containing exactly the given lemmas (no default simp set,
@@ -344,7 +387,12 @@ private def commonPushNotLemmas : Array Name :=
 private def simplifyStepHypotheses (mvarFail mvarDiv : Expr) : MetaM Unit := do
   let simpCtx ← mkSimpOnlyContext (#[
       ``step_fail_failEq_iff, ``step_fail_remove_forall_iff,
-      ``step_fail_False_iff, ``step_div_False_iff] ++ commonPushNotLemmas)
+      ``step_fail_False_iff, ``step_div_False_iff,
+      ``step_fail_match_assertionFailure_iff, ``step_fail_match_integerOverflow_iff,
+      ``step_fail_match_divisionByZero_iff, ``step_fail_match_arrayOutOfBounds_iff,
+      ``step_fail_match_maximumSizeExceeded_iff, ``step_fail_match_panic_iff,
+      ``step_fail_match_undef_iff,
+      ``step_fail_match_divisionByZero_integerOverflow_iff] ++ commonPushNotLemmas)
   let simplify (mv : Expr) (name : String) : MetaM Unit := do
     trace[Step] "simplifyStepHypotheses: {name} type: {← inferType mv}"
     try
@@ -437,13 +485,68 @@ private theorem mvcgen_div_False_iff {P : Prop} :
 private theorem mvcgen_uncurry' {α β} {p : α → β → Prop} {q : α × β → Prop} :
     (∀ (r : α × β), uncurry' p r → q r) ↔ (∀ (r₁ : α) (r₂ : β), p r₁ r₂ → q (r₁, r₂)) := by simp
 
+/-- For `simplifyMvcgenHypotheses`: `fun | .assertionFailure => P | _ => False` form. -/
+private theorem mvcgen_fail_match_assertionFailure_iff {α : Type u} {Q : Std.Do.PostCond α postShape} {P : Prop} :
+    (∀ e : Error, (match e with | .assertionFailure => P | _ => False) → willFail e Q) ↔
+    (P → willFail .assertionFailure Q) :=
+  ⟨fun h hp => h .assertionFailure hp, fun h e => by cases e <;> simp_all⟩
+
+/-- For `simplifyMvcgenHypotheses`: `fun | .integerOverflow => P | _ => False` form. -/
+private theorem mvcgen_fail_match_integerOverflow_iff {α : Type u} {Q : Std.Do.PostCond α postShape} {P : Prop} :
+    (∀ e : Error, (match e with | .integerOverflow => P | _ => False) → willFail e Q) ↔
+    (P → willFail .integerOverflow Q) :=
+  ⟨fun h hp => h .integerOverflow hp, fun h e => by cases e <;> simp_all⟩
+
+/-- For `simplifyMvcgenHypotheses`: `fun | .divisionByZero => P | _ => False` form. -/
+private theorem mvcgen_fail_match_divisionByZero_iff {α : Type u} {Q : Std.Do.PostCond α postShape} {P : Prop} :
+    (∀ e : Error, (match e with | .divisionByZero => P | _ => False) → willFail e Q) ↔
+    (P → willFail .divisionByZero Q) :=
+  ⟨fun h hp => h .divisionByZero hp, fun h e => by cases e <;> simp_all⟩
+
+/-- For `simplifyMvcgenHypotheses`: `fun | .arrayOutOfBounds => P | _ => False` form. -/
+private theorem mvcgen_fail_match_arrayOutOfBounds_iff {α : Type u} {Q : Std.Do.PostCond α postShape} {P : Prop} :
+    (∀ e : Error, (match e with | .arrayOutOfBounds => P | _ => False) → willFail e Q) ↔
+    (P → willFail .arrayOutOfBounds Q) :=
+  ⟨fun h hp => h .arrayOutOfBounds hp, fun h e => by cases e <;> simp_all⟩
+
+/-- For `simplifyMvcgenHypotheses`: `fun | .maximumSizeExceeded => P | _ => False` form. -/
+private theorem mvcgen_fail_match_maximumSizeExceeded_iff {α : Type u} {Q : Std.Do.PostCond α postShape} {P : Prop} :
+    (∀ e : Error, (match e with | .maximumSizeExceeded => P | _ => False) → willFail e Q) ↔
+    (P → willFail .maximumSizeExceeded Q) :=
+  ⟨fun h hp => h .maximumSizeExceeded hp, fun h e => by cases e <;> simp_all⟩
+
+/-- For `simplifyMvcgenHypotheses`: `fun | .panic => P | _ => False` form. -/
+private theorem mvcgen_fail_match_panic_iff {α : Type u} {Q : Std.Do.PostCond α postShape} {P : Prop} :
+    (∀ e : Error, (match e with | .panic => P | _ => False) → willFail e Q) ↔
+    (P → willFail .panic Q) :=
+  ⟨fun h hp => h .panic hp, fun h e => by cases e <;> simp_all⟩
+
+/-- For `simplifyMvcgenHypotheses`: `fun | .undef => P | _ => False` form. -/
+private theorem mvcgen_fail_match_undef_iff {α : Type u} {Q : Std.Do.PostCond α postShape} {P : Prop} :
+    (∀ e : Error, (match e with | .undef => P | _ => False) → willFail e Q) ↔
+    (P → willFail .undef Q) :=
+  ⟨fun h hp => h .undef hp, fun h e => by cases e <;> simp_all⟩
+
+/-- For `simplifyMvcgenHypotheses`: two-constructor `fun | .divisionByZero => P1 | .integerOverflow => P2 | _ => False` form. -/
+private theorem mvcgen_fail_match_divisionByZero_integerOverflow_iff {α : Type u} {Q : Std.Do.PostCond α postShape} {P1 P2 : Prop} :
+    (∀ e : Error,
+      (match e with | .divisionByZero => P1 | .integerOverflow => P2 | _ => False) → willFail e Q) ↔
+    ((P1 → willFail .divisionByZero Q) ∧ (P2 → willFail .integerOverflow Q)) :=
+  ⟨fun h => ⟨fun hp1 => h .divisionByZero hp1, fun hp2 => h .integerOverflow hp2⟩,
+   fun ⟨h1, h2⟩ e => by cases e <;> simp_all⟩
+
 end
 
 /-- Try to simplify the arguments produced by `spec_partial_to_mvcgen`. -/
 private def simplifyMvcgenHypotheses (mvarOk mvarFail mvarDiv : Expr) : MetaM Unit := do
   let simpCtx ← mkSimpOnlyContext (#[
       ``mvcgen_fail_failEq_iff, ``mvcgen_fail_False_iff,
-      ``mvcgen_div_False_iff, ``mvcgen_uncurry', ``and_imp] ++ commonPushNotLemmas)
+      ``mvcgen_div_False_iff, ``mvcgen_uncurry', ``and_imp,
+      ``mvcgen_fail_match_assertionFailure_iff, ``mvcgen_fail_match_integerOverflow_iff,
+      ``mvcgen_fail_match_divisionByZero_iff, ``mvcgen_fail_match_arrayOutOfBounds_iff,
+      ``mvcgen_fail_match_maximumSizeExceeded_iff, ``mvcgen_fail_match_panic_iff,
+      ``mvcgen_fail_match_undef_iff,
+      ``mvcgen_fail_match_divisionByZero_integerOverflow_iff] ++ commonPushNotLemmas)
   let simplify (mv : Expr) (name : String) : MetaM Unit := do
     trace[Step] "simplifyMvcgenHypotheses: {name} type: {← inferType mv}"
     try
