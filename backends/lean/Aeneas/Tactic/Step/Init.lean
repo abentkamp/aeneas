@@ -275,6 +275,12 @@ private def saveStepSpecFromThm (ext : Extension) (attrKind : AttributeKind)
 section
 open Aeneas.Std
 
+/-- Generic `forall_const` for `Error`: when the body of `∀ e : Error, P` does not mention the
+    bound `e`, drop the quantifier. Used by `simplifyStepHypotheses` / `simplifyMvcgenHypotheses`
+    in the constant-`p_fail` branch — the one alternative to expanding via `Error.forall_iff`. -/
+private theorem error_forall_const {P : Prop} : (∀ _ : Aeneas.Std.Error, P) ↔ P :=
+  ⟨fun h => h Error.panic, fun h _ => h⟩
+
 /-- For `simplifyStepHypotheses`: rewrites `¬ False` to `True`. -/
 private theorem step_div_False_iff : (¬ False) ↔ True :=
   ⟨fun _ => trivial, fun _ h => h⟩
@@ -323,22 +329,43 @@ where
         mvarId.setTag (baseTag.appendIndexAfter (idx + 1))
       return (idx + 1, acc.push mvarId)
 
-/-- Simp lemmas shared by `simplifyStepHypotheses` and `simplifyMvcgenHypotheses`.
+/-- Common cleanup simp lemmas shared by `simplifyStepHypotheses` and `simplifyMvcgenHypotheses`.
 
-    `Error.forall_iff` expands `∀ e : Error, P e` (produced by `spec_of_spec_partial` and
-    `spec_partial_to_mvcgen`) into a conjunction over `Error`'s constructors. Each conjunct
-    `P .Cᵢ` then reduces independently — a `match`-shaped `p_fail` collapses via `iota`, an
-    `e = c ∧ Q`-shaped one via constructor injectivity. `true_and`/`and_true` strip trivial
-    arms, `and_self` deduplicates identical ones (e.g. when `p_fail` does not depend on `e`),
-    and `splitAndGoals` splits the remaining conjuncts into separate hypotheses. -/
+    `Error.forall_iff` (added conditionally — see `pFailIsMatch`) expands `∀ e : Error, P e` into
+    a conjunction over `Error`'s constructors so each per-constructor conjunct `P .Cᵢ` can reduce
+    independently — a `match`-shaped `p_fail` collapses via `iota`, an `e = c ∧ Q`-shaped one via
+    constructor injectivity (Error derives `DecidableEq`, and `decide := true` is set on the simp
+    config). The lemmas here strip trivial arms (`true_and`, `and_true`, `false_and`, `and_false`,
+    `eq_self`), deduplicate identical ones (`and_self`), and push `¬` inwards. -/
 private def commonPushNotLemmas : Array Name :=
-  #[``Aeneas.Std.Error.forall_iff, ``and_self, ``eq_self,
+  #[``and_self, ``eq_self,
     ``gt_iff_lt, ``ge_iff_le, ``not_or, ``not_lt, ``not_le, ``or_imp, ``imp_true_iff, ``not_true,
     ``true_implies, ``true_and, ``and_true, ``false_and, ``and_false]
 
-/-- Try to simplify the arguments produced by `spec_of_spec_partial` -/
-private def simplifyStepHypotheses (mvarFail mvarDiv : Expr) : MetaM Unit := do
-  let simpCtx ← mkSimpOnlyContext (#[``step_div_False_iff] ++ commonPushNotLemmas)
+/-- Does `pFail : Error → Prop` not mention its argument? `true` for `fun _ => P`, `false` for
+    `fun e => match e with …` or `fun e => e = c ∧ P`. The caller passes the result of this
+    check to `simplifyStepHypotheses` / `simplifyMvcgenHypotheses` so they know whether to add
+    `Error.forall_iff` to the simp set. Skipping the expansion when `pFail` is constant matters
+    for `mvcgen` shapes like `fun _ => P`: the seven conjuncts `P → willFail .Cᵢ Q` differ on
+    `.Cᵢ`, so `and_self` cannot dedup them — without this guard the resulting `*.mvcgen_spec`
+    lemma would grow from one universally-quantified hypothesis to seven. -/
+private def pFailIsConstant (pFail : Expr) : MetaM Bool := do
+  try
+    withLocalDeclD `e (.const ``Aeneas.Std.Error []) fun e => do
+      let body := (pFail.beta #[e]).headBeta
+      return !body.containsFVar e.fvarId!
+  catch _ => return false
+
+/-- Try to simplify the arguments produced by `spec_of_spec_partial`. `pFailIsConstant` is `true`
+    when the original `p_fail` does not depend on its `e : Error` argument, in which case
+    `Error.forall_iff` is omitted from the simp set so the `∀ e, …` quantifier is removed by the
+    `error_forall_const` lemma rather than expanded into seven per-constructor conjuncts. -/
+private def simplifyStepHypotheses (pFailIsConstant : Bool) (mvarFail mvarDiv : Expr) :
+    MetaM Unit := do
+  let extra : Array Name :=
+    if pFailIsConstant then #[] else #[``Aeneas.Std.Error.forall_iff]
+  let simpCtx ← mkSimpOnlyContext
+    (#[``step_div_False_iff, ``error_forall_const] ++ extra ++ commonPushNotLemmas)
   let simplify (mv : Expr) (name : String) : MetaM Unit := do
     trace[Step] "simplifyStepHypotheses: {name} type: {← inferType mv}"
     try
@@ -360,11 +387,12 @@ private def saveStepPartialSpecFromThm (ext : Extension) (attrKind : AttributeKi
   let newName ← forallTelescope ty fun fvars _ => do
     let thConst := Lean.mkConst thDecl.name (levelParams.map Level.param)
     let thApp := mkAppN thConst fvars
+    let pFailIsConstant ← pFailIsConstant (← inferType thApp).getAppArgs[3]!
     let bridge ← mkAppM ``Aeneas.Std.WP.spec_of_spec_partial #[thApp]
     let (extraMVars, _, _) ← forallMetaTelescope (← inferType bridge)
     unless extraMVars.size = 2 do
       throwError "spec_of_spec_partial: expected 2 extra arguments, got {extraMVars.size}"
-    simplifyStepHypotheses extraMVars[0]! extraMVars[1]!
+    simplifyStepHypotheses pFailIsConstant extraMVars[0]! extraMVars[1]!
     let proof := mkAppN bridge extraMVars
     let { expr := proofAbstracted, .. } ← abstractMVars proof
     let proofTerm ← mkLambdaFVars fvars proofAbstracted
@@ -424,10 +452,18 @@ private theorem mvcgen_uncurry' {α β} {p : α → β → Prop} {q : α × β �
 
 end
 
-/-- Try to simplify the arguments produced by `spec_partial_to_mvcgen`. -/
-private def simplifyMvcgenHypotheses (mvarOk mvarFail mvarDiv : Expr) : MetaM Unit := do
+/-- Try to simplify the arguments produced by `spec_partial_to_mvcgen`. `pFailIsConstant` is
+    `true` when the original `p_fail` does not depend on its `e : Error` argument, in which case
+    `Error.forall_iff` is omitted from the simp set so `∀ e, P → willFail e Q` is left alone (one
+    universally-quantified hypothesis) rather than expanded into seven `P → willFail .Cᵢ Q`
+    conjuncts that share an antecedent but differ on the consequent. -/
+private def simplifyMvcgenHypotheses (pFailIsConstant : Bool)
+    (mvarOk mvarFail mvarDiv : Expr) : MetaM Unit := do
+  let extra : Array Name :=
+    if pFailIsConstant then #[] else #[``Aeneas.Std.Error.forall_iff]
   let simpCtx ← mkSimpOnlyContext (#[
-      ``mvcgen_div_False_iff, ``mvcgen_uncurry', ``and_imp] ++ commonPushNotLemmas)
+      ``mvcgen_div_False_iff, ``mvcgen_uncurry', ``and_imp,
+      ``error_forall_const] ++ extra ++ commonPushNotLemmas)
   let simplify (mv : Expr) (name : String) : MetaM Unit := do
     trace[Step] "simplifyMvcgenHypotheses: {name} type: {← inferType mv}"
     try
@@ -448,12 +484,13 @@ private def saveMvcgenPartialSpecFromThm (stx : Syntax) (attrKind : AttributeKin
   forallTelescope sig.type fun fvars _ => do
     let thConst := Lean.mkConst thName (sig.levelParams.map .param)
     let thApp := mkAppN thConst fvars
+    let pFailIsConstant ← pFailIsConstant (← inferType thApp).getAppArgs[3]!
     let bridge ← mkAppOptM ``Aeneas.Std.WP.spec_partial_to_mvcgen
       #[none, none, none, none, none, some thApp]
     let (extraMVars, _, _) ← forallMetaTelescope (← inferType bridge)
     unless extraMVars.size = 4 do
       throwError "spec_partial_to_mvcgen: expected 4 extra arguments, got {extraMVars.size}"
-    simplifyMvcgenHypotheses extraMVars[1]! extraMVars[2]! extraMVars[3]!
+    simplifyMvcgenHypotheses pFailIsConstant extraMVars[1]! extraMVars[2]! extraMVars[3]!
     let proof := mkAppN bridge extraMVars
     let { expr := proofAbstracted, .. } ← abstractMVars proof
     let proofTerm ← mkLambdaFVars fvars proofAbstracted

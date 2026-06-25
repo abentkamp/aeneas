@@ -47,16 +47,10 @@ info: Aeneas.Step.SpecPartialTests.myDiv_spec_partial.step_spec (x y : U32) (h_f
 #guard_msgs in
 #check myDiv_spec_partial.step_spec
 
--- A `p_fail` that does not mention `e` (here `fun _ => y.val = 0`) is a documented edge case
--- of the simp-driven per-constructor cleanup: the `Error.forall_iff` expansion produces seven
--- conjuncts that share the antecedent `↑y = 0` but differ on the `willFail .Cᵢ Q` consequent,
--- so `and_self` cannot dedup them. The lemma is still sound — just more verbose for this shape.
 /--
 info: Aeneas.Step.SpecPartialTests.myDiv_spec_partial.mvcgen_spec (x y : U32) (Q : PostCond U32 Result.postShape)
-  (h_ok : ∀ (r : U32), ↑r = ↑x / ↑y → willYield r Q) (h_fail_1 : ↑y = 0 → willFail Error.assertionFailure Q)
-  (h_fail_2 : ↑y = 0 → willFail Error.integerOverflow Q) (h_fail_3 : ↑y = 0 → willFail Error.divisionByZero Q)
-  (h_fail_4 : ↑y = 0 → willFail Error.arrayOutOfBounds Q) (h_fail_5 : ↑y = 0 → willFail Error.maximumSizeExceeded Q)
-  (h_fail_6 : ↑y = 0 → willFail Error.panic Q) (h_fail_7 : ↑y = 0 → willFail Error.undef Q) : ⦃⌜True⌝⦄ myDiv x y ⦃Q⦄
+  (h_ok : ∀ (r : U32), ↑r = ↑x / ↑y → willYield r Q) (h_fail : ∀ (e : Error), ↑y = 0 → willFail e Q) :
+  ⦃⌜True⌝⦄ myDiv x y ⦃Q⦄
 -/
 #guard_msgs in
 #check myDiv_spec_partial.mvcgen_spec
