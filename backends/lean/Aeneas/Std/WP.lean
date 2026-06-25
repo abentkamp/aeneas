@@ -214,6 +214,24 @@ theorem spec_partial_div (p_ok : α → Prop) p_fail p_div :
     spec_partial div p_ok p_fail p_div ↔ p_div := by
   simp [spec_partial]
 
+/-- Any predicate `p : Error → Prop` is propositionally equal to the disjunction, over the
+constructors `Cᵢ` of `Error`, of `e = Cᵢ ∧ p Cᵢ`. `step` and `mvcgen` use this (in
+`canonicalizeFailPostcond`) to rewrite a failure postcondition written as a `match` on the error
+into the `e = c ∧ P` shape that the downstream `*_fail_*` simp lemmas understand. The spurious
+`e = Cᵢ ∧ False` disjuncts and the still-unreduced match arms `p Cᵢ` are then cleaned up by those
+same simp lemmas (a `match` on a literal constructor reduces under `simp`). Proving the case
+analysis here, once, lets `canonicalizeFailPostcond` avoid running `simp` per `step`/`mvcgen`. -/
+theorem _root_.Aeneas.Std.Error.post_eq_disj (p : Error → Prop) :
+    p = fun e =>
+      (e = .assertionFailure    ∧ p .assertionFailure)    ∨
+      (e = .integerOverflow     ∧ p .integerOverflow)     ∨
+      (e = .divisionByZero      ∧ p .divisionByZero)      ∨
+      (e = .arrayOutOfBounds    ∧ p .arrayOutOfBounds)    ∨
+      (e = .maximumSizeExceeded ∧ p .maximumSizeExceeded) ∨
+      (e = .panic               ∧ p .panic)               ∨
+      (e = .undef               ∧ p .undef) := by
+  funext e; cases e <;> simp
+
 /-- Derive a total-correctness `spec` from `spec_partial` by ruling out the failure and divergence
 cases. Used by `@[step]` to generate a step-tactic lemma from a `spec_partial` theorem. -/
 theorem spec_of_spec_partial
