@@ -63,7 +63,7 @@ opaque myAdd (x y : U32) : Result U32
 axiom myAdd_spec_partial (x y : U32) :
   spec_partial (myAdd x y)
     (fun z => z.val = x.val + y.val)
-    (fun e => e = .integerOverflow ∧ x.val + y.val > U32.max)
+    (fun | .integerOverflow => x.val + y.val > U32.max | _ => False)
     False
 
 -- Pushing `¬` through `>` should produce `≤`.
@@ -81,7 +81,6 @@ info: Aeneas.Step.SpecPartialTests.myAdd_spec_partial.mvcgen_spec (x y : U32) (Q
 -/
 #guard_msgs in
 #check myAdd_spec_partial.mvcgen_spec
-
 
 /- ## Mock signed add: panics on over- and underflow -/
 
