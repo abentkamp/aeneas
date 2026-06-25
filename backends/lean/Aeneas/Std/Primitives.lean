@@ -55,7 +55,7 @@ inductive Error where
    | maximumSizeExceeded: Error
    | panic: Error
    | undef: Error
-deriving Repr, BEq
+deriving Repr, BEq, DecidableEq
 
 open Error
 

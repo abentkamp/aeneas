@@ -282,13 +282,16 @@ private theorem step_div_False_iff : (¬ False) ↔ True :=
 end
 
 /-- Build a `Simp.Context` containing exactly the given lemmas (no default simp set,
-    no simprocs). The resulting `simp` call is equivalent to `simp only [lemmas...]`. -/
+    no simprocs). The resulting `simp` call is equivalent to `simp only [lemmas...]`.
+    `decide := true` lets simp evaluate closed `Decidable` propositions — in particular,
+    `Error.Cᵢ = Error.Cⱼ` between literal constructors, which arises after `Error.forall_iff`
+    expands a `∀ e : Error, …` failure postcondition into per-constructor conjuncts. -/
 private def mkSimpOnlyContext (lemmas : Array Name) : MetaM Simp.Context := do
   let mut simpThms : SimpTheorems := {}
   for thmName in lemmas do
     simpThms ← simpThms.addConst thmName (post := false) (inv := false)
   Simp.mkContext
-    (config := { failIfUnchanged := false })
+    (config := { failIfUnchanged := false, decide := true })
     (simpTheorems := #[simpThms])
     (congrTheorems := ← getSimpCongrTheorems)
 
@@ -329,7 +332,7 @@ where
     arms, `and_self` deduplicates identical ones (e.g. when `p_fail` does not depend on `e`),
     and `splitAndGoals` splits the remaining conjuncts into separate hypotheses. -/
 private def commonPushNotLemmas : Array Name :=
-  #[``Aeneas.Std.Error.forall_iff, ``and_self,
+  #[``Aeneas.Std.Error.forall_iff, ``and_self, ``eq_self,
     ``gt_iff_lt, ``ge_iff_le, ``not_or, ``not_lt, ``not_le, ``or_imp, ``imp_true_iff, ``not_true,
     ``true_implies, ``true_and, ``and_true, ``false_and, ``and_false]
 
