@@ -59,7 +59,7 @@ theorem Array.subslice_spec {α : Type u} {n : Usize} [Inhabited α] (a : Array 
       (fun s =>
         s.val = a.val.slice r.start.val r.end.val ∧
         (∀ i, i + r.start.val < r.end.val → s.val[i]! = a.val[r.start.val + i]!))
-      (fun e => e = .panic ∧ ¬ (r.start.val < r.end.val ∧ r.end.val ≤ a.val.length))
+      (fun | .panic => ¬ (r.start.val < r.end.val ∧ r.end.val ≤ a.val.length) | _ => False)
       False
   := by
   unfold subslice
@@ -89,8 +89,10 @@ theorem Array.update_subslice_spec {α : Type u} {n : Usize} [Inhabited α] (a :
         (∀ i, i < r.start.val → na[i]! = a[i]!) ∧
         (∀ i, r.start.val ≤ i → i < r.end.val → na[i]! = s[i - r.start.val]!) ∧
         (∀ i, r.end.val ≤ i → i < n.val → na[i]! = a[i]!))
-      (fun e => e = .panic ∧
-        ¬ (r.start.val < r.end.val ∧ r.end.val ≤ a.length ∧ s.val.length = r.end.val - r.start.val))
+      (fun
+        | .panic =>
+          ¬ (r.start.val < r.end.val ∧ r.end.val ≤ a.length ∧ s.val.length = r.end.val - r.start.val)
+        | _ => False)
       False := by
   unfold update_subslice
   split <;> rename_i h <;> simp [spec_partial]
