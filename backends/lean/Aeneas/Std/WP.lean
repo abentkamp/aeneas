@@ -21,23 +21,47 @@ def theta (m:Result α) : Wp α :=
   | fail _ => fun _ => False
   | div => fun _ => False
 
+/-- The most general spec for a `Result` computation: it constrains the outcome in
+all three cases. `pspec x okPost failPost divPost` holds when:
+- if `x` terminates without panicking (`ok v`), then `okPost v` holds;
+- if `x` panics (`fail e`), then `failPost e` holds;
+- if `x` diverges (`div`), then `divPost` holds.
+
+`spec` and `dspec` are defined as special cases:
+- `spec x p`  is `pspec x p (fun _ => False) False` — terminates successfully;
+- `dspec x p` is `pspec x p (fun _ => False) True`  — terminates successfully or diverges. -/
+def pspec {α} (x : Result α) (okPost : α → Prop) (failPost : Error → Prop) (divPost : Prop) :=
+  match x with
+  | ok x => okPost x
+  | fail e => failPost e
+  | div => divPost
+
+@[simp, grind =, agrind =]
+theorem pspec_ok {α} (x : α) {okPost failPost divPost} :
+    pspec (ok x) okPost failPost divPost ↔ okPost x := by simp [pspec]
+
+@[simp, grind =, agrind =]
+theorem pspec_fail {α} (e : Error) {okPost : α → Prop} {failPost divPost} :
+    pspec (fail e) okPost failPost divPost ↔ failPost e := by simp [pspec]
+
+@[simp, grind =, agrind =]
+theorem pspec_div {α} {okPost : α → Prop} {failPost divPost} :
+    pspec (div : Result α) okPost failPost divPost ↔ divPost := by simp [pspec]
+
 def spec {α} (x:Result α) (p:Post α) :=
-  theta x p
+  pspec x p (fun _ => False) False
 
 def dspec {α} (x:Result α) (p:Post α) :=
-  match x with
-  | ok x => p x
-  | fail _ => False
-  | div => True
+  pspec x p (fun _ => False) True
 
 theorem spec_dspec (α) (x : Result α) (p: Post α) : spec x p → dspec x p := by
   intros s
-  simp [spec, dspec] at *
-  cases x <;> simp at * <;> assumption
+  simp only [spec, dspec] at *
+  cases x <;> simp_all [pspec]
 theorem dspec_admissible {α} (p : Post α )
   : Lean.Order.admissible (fun x => dspec x p) := by
   apply Lean.Order.admissible_flatOrder
-  simp [dspec]
+  simp [dspec, pspec]
 
 /-- Variant of `uncurry` used to decompose tuples in post-conditions.
 
@@ -56,13 +80,13 @@ def uncurry' {α β} (p : α → β → Prop) : α × β → Prop :=
 @[defeq] theorem uncurry'_eq x (p : α → β → Prop) : uncurry' p x = p x.fst x.snd := by simp [uncurry']
 
 @[simp, grind =, agrind =]
-theorem spec_ok (x : α) : spec (ok x) p ↔ p x := by simp [spec, theta, wp_return]
+theorem spec_ok (x : α) : spec (ok x) p ↔ p x := by simp [spec]
 
 @[simp, grind =, agrind =]
-theorem spec_fail (e : Error) : spec (fail e) p ↔ False := by simp [spec, theta]
+theorem spec_fail (e : Error) : spec (fail e) p ↔ False := by simp [spec]
 
 @[simp, grind =, agrind =]
-theorem spec_div : spec div p ↔ False := by simp [spec, theta]
+theorem spec_div : spec div p ↔ False := by simp [spec]
 
 /-! ### `spec_*` for tuple posts
 
@@ -85,8 +109,8 @@ theorem spec_mono {α} {P₁ : Post α} {m : Result α} {P₀ : Post α} (h : sp
   (∀ x, P₀ x → P₁ x) → spec m P₁ := by
   intros HMonPost
   revert h
-  unfold spec theta wp_return
-  cases m <;> grind
+  simp only [spec]
+  cases m <;> simp_all [pspec]
 
 theorem spec_bind {α β} {k : α -> Result β} {Pₖ : Post β} {m : Result α} {Pₘ : Post α} :
   spec m Pₘ →
@@ -128,8 +152,8 @@ theorem spec_mono' {α} {P₁ : Post α} {m : Result α} {P₀ : Post α} (h : s
   qimp P₀ P₁ → spec m P₁ := by
   intros HMonPost
   revert h
-  unfold spec theta wp_return
-  cases m <;> grind [qimp]
+  simp only [spec]
+  cases m <;> simp_all [pspec, qimp]
 
 /-- Implication of a `spec` predicate with quantifier -/
 def qimp_spec {α β} (P : α → Prop) (k : α → Result β) (Q : β → Prop) : Prop :=
@@ -181,7 +205,7 @@ theorem qimp_spec_exists {α β γ} (P : γ → α → Prop) (k : α → Result 
 
 theorem spec_equiv_exists (m:Result α) (P:Post α) :
   spec m P ↔ (∃ y, m = ok y ∧ P y) := by
-  cases m <;> simp [spec, theta, wp_return]
+  cases m <;> simp [spec, pspec]
 
 theorem spec_imp_exists {m:Result α} {P:Post α} :
   spec m P → (∃ y, m = ok y ∧ P y) := by
@@ -196,8 +220,8 @@ theorem dspec_mono' {α} {P₁ : Post α} {m : Result α} {P₀ : Post α} (h : 
   qimp P₀ P₁ → dspec m P₁ := by
   intros HMonPost
   revert h
-  unfold dspec
-  cases m <;> grind [qimp]
+  simp only [dspec]
+  cases m <;> simp_all [pspec, qimp]
 
 /-- Implication of a `dspec` predicate with quantifier -/
 def qimp_dspec {α β} (P : α → Prop) (k : α → Result β) (Q : β → Prop) : Prop :=

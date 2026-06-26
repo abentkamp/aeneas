@@ -1022,7 +1022,7 @@ theorem Slice.mapM_spec {α β} {f : α → Result β} {s : Slice α} {post : Na
       apply this; intro i hi
       let i' : Usize := Usize.ofNatCore i (by scalar_tac)
       have hf' := hf i' (by scalar_tac)
-      simp [spec, theta] at hf'
+      simp [spec, pspec] at hf'
       show ∃ b, f s[i'] = ok b
       cases hfi : f s[i'] <;> simp_all
     intro l; induction l with
@@ -1039,10 +1039,9 @@ theorem Slice.mapM_spec {α β} {f : α → Result β} {s : Slice α} {post : Na
     refine ⟨by grind [List.mapM_Result_length], fun i hi => ?_⟩
     have hlen : i < s.len := by have := List.mapM_Result_length heq; simp [Slice.len] at *; omega
     have hthis := List.mapM_Result_ok heq (↑i) (by scalar_tac)
-    specialize hf i hlen; simp only [spec, theta] at hf
+    specialize hf i hlen; simp only [spec, pspec] at hf
     erw [hthis] at hf
-    simp only [wp_return] at hf ⊢
-    exact hf
+    simpa using hf
   case h_2 e heq => simp [hl'] at heq
   case h_3 heq => simp [hl'] at heq
 
@@ -1080,10 +1079,10 @@ theorem core.slice.Slice.fill.spec {T : Type} (cloneInst : core.clone.Clone T)
       s'.val = List.replicate s.length v ⦄ := by
   unfold core.slice.Slice.fill
   have hcl : cloneInst.clone v = ok v := by
-    simp only [WP.spec, WP.theta] at hclone
+    simp only [WP.spec, WP.pspec] at hclone
     match hc : cloneInst.clone v with
     | .ok v' =>
-      congr 1; have := hclone; rw [hc] at this; simp [WP.wp_return] at this; exact this
+      congr 1; have := hclone; rw [hc] at this; simp at this; exact this
     | .fail _ => exfalso; have := hclone; rw [hc] at this; simp at this
     | .div => exfalso; have := hclone; rw [hc] at this; simp at this
   have hmapM := List.mapM_const_ok s.val hcl
