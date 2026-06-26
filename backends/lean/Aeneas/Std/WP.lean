@@ -267,6 +267,53 @@ theorem dspec_imp_forall {m:Result α} {P:Post α} :
   dspec m P → (∀ y, m = ok y → P y) := by
   grind only [= dspec_ok]
 
+/-! ### `pspec` combinators for the `step` tactic
+
+`step` works directly on `pspec`. The monotonicity and bind lemmas below weaken all
+three posts (ok / fail / div) at once. The three weakenings are bundled into a single
+`Prop` (`pqimp` for `mono`, `qimp_pspec` for `bind`) so the whole thing fits the `step`
+tactic's "one continuation goal" calling convention.
+
+Because `False` (the fail/div post that `spec`, and the fail post that `dspec`, carry)
+implies any post, this subsumes the old per-spec-kind lifting: a `spec`/`dspec` theorem
+discharges a step in any `pspec` goal — no `LiftingInfo` / conversion theorem needed. -/
+
+/-- Pointwise weakening of all three `pspec` posts, bundled into one `Prop`. -/
+def pqimp {α} (okP₀ okP₁ : α → Prop) (failP₀ failP₁ : Error → Prop) (divP₀ divP₁ : Prop) : Prop :=
+  qimp okP₀ okP₁ ∧ (∀ e, failP₀ e → failP₁ e) ∧ (divP₀ → divP₁)
+
+/-- Monotonicity of `pspec` in all three posts. Mirrors `spec_mono'`/`dspec_mono'`,
+    but also weakens the fail and div posts. -/
+theorem pspec_mono' {α} {okP₁ : Post α} {failP₁ : Error → Prop} {divP₁ : Prop}
+    {failP₀ : Error → Prop} {divP₀ : Prop} {m : Result α} {okP₀ : Post α}
+    (h : pspec m okP₀ failP₀ divP₀) :
+    pqimp okP₀ okP₁ failP₀ failP₁ divP₀ divP₁ → pspec m okP₁ failP₁ divP₁ := by
+  rintro ⟨hok, hfail, hdiv⟩
+  cases m with
+  | ok x => exact hok x h
+  | fail e => exact hfail e h
+  | div => exact hdiv h
+
+/-- Continuation predicate for the `pspec` bind rule: the ok-post continuation, plus
+    the weakening of `m`'s fail/div posts to those of the whole `bind`. -/
+def qimp_pspec {α β} (okPₘ : α → Prop) (k : α → Result β) (okPₖ : β → Prop)
+    (failPₘ failPₖ : Error → Prop) (divPₘ divPₖ : Prop) : Prop :=
+  (∀ x, okPₘ x → pspec (k x) okPₖ failPₖ divPₖ) ∧ (∀ e, failPₘ e → failPₖ e) ∧ (divPₘ → divPₖ)
+
+/-- Bind rule for `pspec`. The fail/div posts of the whole `bind` (`failPₖ`/`divPₖ`)
+    are threaded through, while `m`'s fail/div posts (`failPₘ`/`divPₘ`) need only imply
+    them. Mirrors `spec_bind'`/`dspec_bind'`. -/
+theorem pspec_bind' {α β} {okPₖ : Post β} {failPₖ : Error → Prop} {divPₖ : Prop}
+    {failPₘ : Error → Prop} {divPₘ : Prop} {k : α → Result β} {m : Result α} {okPₘ : Post α}
+    (h : pspec m okPₘ failPₘ divPₘ) :
+    qimp_pspec okPₘ k okPₖ failPₘ failPₖ divPₘ divPₖ →
+    pspec (Std.bind m k) okPₖ failPₖ divPₖ := by
+  rintro ⟨hok, hfail, hdiv⟩
+  cases m with
+  | ok x => simpa using hok x (by simpa using h)
+  | fail e => simpa using hfail e (by simpa using h)
+  | div => simpa using hdiv (by simpa using h)
+
 end Aeneas.Std.WP
 
 /-
