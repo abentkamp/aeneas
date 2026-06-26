@@ -339,8 +339,8 @@ where
     `eq_self`), deduplicate identical ones (`and_self`), and push `¬` inwards. -/
 private def commonPushNotLemmas : Array Name :=
   #[``and_self, ``eq_self,
-    ``gt_iff_lt, ``ge_iff_le, ``not_or, ``not_lt, ``not_le, ``or_imp, ``imp_true_iff, ``not_true,
-    ``true_implies, ``true_and, ``and_true, ``false_and, ``and_false]
+    ``gt_iff_lt, ``ge_iff_le, ``not_or, ``Classical.not_not, ``not_lt, ``not_le, ``or_imp,
+    ``imp_true_iff, ``not_true, ``true_implies, ``true_and, ``and_true, ``false_and, ``and_false]
 
 /-- Does `pFail : Error → Prop` not mention its argument? `true` for `fun _ => P`, `false` for
     `fun e => match e with …` or `fun e => e = c ∧ P`. The caller passes the result of this
