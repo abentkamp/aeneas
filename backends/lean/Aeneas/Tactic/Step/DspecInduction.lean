@@ -254,6 +254,7 @@ theorem test_div_2_manual (x y : Std.I32) : Std.WP.dspec (simple_diverge_2' x y)
       . simp [*]
       . step
         step
+        step
         simp [*]
 
 theorem test_div_2_tactic (x y : Std.I32) : Std.WP.dspec (simple_diverge_2' x y) (fun res => res = 10#i32)
@@ -265,6 +266,7 @@ theorem test_div_2_tactic (x y : Std.I32) : Std.WP.dspec (simple_diverge_2' x y)
     split
     . simp [*]
     . step
+      step
       step
       simp [*]
 

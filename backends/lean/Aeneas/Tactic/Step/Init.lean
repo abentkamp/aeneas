@@ -212,6 +212,30 @@ section Methods
     withLocalDeclsD ⟨ tys ⟩ k
 end Methods
 
+/-- If `e` is an application of a definition that is not itself a registered spec
+    statement but unfolds (in one step) to one — e.g. `spec`/`dspec`, which unfold to
+    `pspec` — return the unfolded application. Otherwise return `e` unchanged.
+
+    This lets the `step` tactic treat `spec`/`dspec` goals and theorems uniformly as the
+    single registered spec statement (`pspec`), their underlying definition. -/
+def unfoldToRegisteredSpec (e : Expr) : MetaM Expr := do
+  let e := e.consumeMData
+  match e.getAppFn with
+  | .const name _ =>
+    if (← specStatementLookup name).isSome then
+      -- Already a registered spec statement (e.g. `pspec`).
+      return e
+    else
+      match ← unfoldDefinition? e with
+      | some e' =>
+        let e' := e'.consumeMData
+        match e'.getAppFn with
+        | .const name' _ =>
+          if (← specStatementLookup name').isSome then return e' else return e
+        | _ => return e
+      | none => return e
+  | _ => return e
+
 /- Analyze a goal or a step theorem to decompose its arguments.
 
   StepSpec theorems should be of the following shape:
@@ -227,7 +251,8 @@ def getStepSpecFunArgsExpr (ty : Expr) :
   -- ty == ∀ xs, spec (f x1 ... xn) P
   let (xs, _xs_bi, ty₂) ← forallMetaTelescope ty
   trace[Step] "Universally quantified arguments and assumptions: {xs}"
-  -- ty₂ == spec (f x1 ... xn) P
+  -- ty₂ == spec (f x1 ... xn) P ; unfold `spec`/`dspec` to the underlying `pspec`
+  let ty₂ ← unfoldToRegisteredSpec ty₂
   let (spec?, args) := ty₂.consumeMData.withApp (fun f args => (f, args))
   let specName ← match spec? with
     | Expr.const name _ => pure name

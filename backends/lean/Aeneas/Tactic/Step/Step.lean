@@ -72,6 +72,9 @@ attribute [step_simps]
   and_assoc Std.Result.ok.injEq Prod.mk.injEq
   exists_eq_left exists_eq_left' exists_eq_right exists_eq_right' exists_eq exists_eq' true_and and_true
   Std.WP.spec_ok
+  -- `step` works on `pspec`: reduce a fully-evaluated result (`ok`/`fail`/`div`) the same
+  -- way `spec_ok` does for `spec`.
+  Std.WP.pspec_ok Std.WP.pspec_fail Std.WP.pspec_div
   -- This one gets only applied to full applications of `uncurry'`, which are typically revealed after applying `spec_ok`
   Std.WP.uncurry'_eq
 
@@ -234,6 +237,7 @@ structure Args where
 def getFirstBind (goalTy : Expr) : MetaM (Bool × Expr × SpecInfo) := do
   forallTelescope goalTy fun nvars goalTy => do
 
+  let goalTy ← unfoldToRegisteredSpec goalTy
   let (spec?, args) := goalTy.consumeMData.withApp (fun f args => (f, args))
   let name ← match spec? with
     | Expr.const name _ => pure name
@@ -261,6 +265,7 @@ def getFirstBind (goalTy : Expr) : MetaM (Bool × Expr × SpecInfo) := do
     checks: it lets `step*` and the case-splitting helpers operate uniformly on any
     registered spec statement rather than only on the total-correctness `spec`. -/
 def matchSpecGoal? (goalTy : Expr) : MetaM (Option (SpecInfo × Expr)) := do
+  let goalTy ← unfoldToRegisteredSpec goalTy
   goalTy.consumeMData.withApp fun spec? args => do
   let .const name _ := spec? | return none
   let .some info ← specStatementLookup name | return none
@@ -440,6 +445,7 @@ def getPostNamesFromGoal : TacticM (Array (Option Name)) := do
   try
     let goalTy ← (← getMainGoal).getType
     let goalTy ← instantiateMVars goalTy
+    let goalTy ← unfoldToRegisteredSpec goalTy
     goalTy.consumeMData.withApp fun spec? args => do
     let specname ← match spec? with
       | Expr.const name _ => pure name
@@ -534,6 +540,12 @@ def tryMatch (info : SpecInfo) (lifting : Option LiftingInfo) (isLet : Bool) (th
       trace[Step] "After lifting have: {liftingThmApplied} : {liftingThmAppliedTy}"
       pure (liftingThmApplied, thTy)
 
+  -- `step` deals only with `pspec`: unfold a `spec`/`dspec` theorem to its underlying
+  -- `pspec` form for parsing. The proof `th` keeps its (defeq) original type; the
+  -- `Meta.check` below assigns the bind/mono lemma's fail/div metavars by unifying with it.
+  let thTy ← unfoldToRegisteredSpec thTy
+  trace[Step] "Theorem type as pspec: {thTy}"
+
   -- `thTy` should be of the shape `spec program post`: we need to retrieve `program`
   let (thHead, thArgs) := thTy.consumeMData.withApp (fun f args => (f, args))
   if !thHead.isConst || thHead.constName! != info.spec_name then
@@ -556,6 +568,10 @@ def tryMatch (info : SpecInfo) (lifting : Option LiftingInfo) (isLet : Bool) (th
   trace[Step] "Uninstantiated specMonoBind: {specMonoBind}: {← inferType specMonoBind}"
 
   let specMonoBind := mkAppN specMonoBind #[program, P, th]
+  -- Force unification of the bind/mono lemma's source fail/div posts with those of `th`
+  -- (e.g. `fun _ => False` / `False` for a `spec` theorem). Without this, those
+  -- metavars stay unassigned and the weakening sub-goals can't be discharged.
+  Lean.Meta.check specMonoBind
   let specMonoBindTy ← inferType specMonoBind
   trace[Step] "Applied specMonoBind with theorem: {specMonoBind}: {specMonoBindTy}"
 
@@ -655,6 +671,9 @@ def extractCallSiteTree (goalTy : Expr) : MetaM (Option NameTree) := do
   match_expr goalTy.consumeMData with
   | Std.WP.qimp_spec _ _ _ k _ => return some (← getContInput k)
   | Std.WP.qimp _ _ Q => return some (← getContInput Q)
+  -- `pspec` bind/mono continuations (bundle the ok-continuation with fail/div weakenings)
+  | Std.WP.qimp_pspec _ _ _ k _ _ _ _ _ => return some (← getContInput k)
+  | Std.WP.pqimp _ _ okP₁ _ _ _ _ => return some (← getContInput okP₁)
   | _ => return none
 
 /-- Introduce the outputs (variables and postconditions) into the context after applying
@@ -1054,6 +1073,9 @@ def getLiftingForThm (info : SpecInfo) (thm : Expr) : MetaM (Option LiftingInfo)
   let thTy ← inferType thm
   let thTy ← normalizeLetBindings thTy
   let thOutput ← forallTelescopeReducing thTy (fun _ out => return out)
+  -- `step` deals only with `pspec`: a `spec`/`dspec` theorem is recognized by unfolding
+  -- it to its underlying `pspec` form.
+  let thOutput ← unfoldToRegisteredSpec thOutput
   let spec? := thOutput.consumeMData.withApp (fun f _ => f)
   trace[Step] "spec? is {spec?}"
   let name ← match spec? with
@@ -1099,6 +1121,15 @@ def stepAsmsOrLookupTheorem (args : Args) (withTh : Option Expr) :
   /- There might be uninstantiated meta-variables in the goal that we need
      to instantiate (otherwise we will get stuck). -/
   let goalTy ← instantiateMVars goalTy
+  /- `step` works on `pspec`. If the goal is stated as `spec`/`dspec`, change it to the
+     (definitionally equal) `pspec` form so the spec lemmas (which conclude `pspec …`)
+     unify with it under the restricted transparency used below. -/
+  let goalTyP ← unfoldToRegisteredSpec goalTy
+  let goalTy ← if goalTyP != goalTy then do
+      let mgoal ← mgoal.replaceTargetDefEq goalTyP
+      replaceMainGoal [mgoal]
+      pure goalTyP
+    else pure goalTy
   trace[Step] "stepAsmsOrLookupTheorem: target: {goalTy}"
   /- Dive into the goal to lookup the theorem
      Remark: if we don't isolate the call to `withStepSpec` to immediately "close"

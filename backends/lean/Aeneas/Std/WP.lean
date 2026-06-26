@@ -294,11 +294,41 @@ theorem pspec_mono' {α} {okP₁ : Post α} {failP₁ : Error → Prop} {divP₁
   | fail e => exact hfail e h
   | div => exact hdiv h
 
+/-- The ok-post continuation of the `pspec` bind rule: `∀ x, P x → pspec (k x) Q failQ divQ`.
+    This mirrors `qimp_spec` (with `pspec` instead of `spec`), so the `step` tactic can
+    decompose it with the same uncurry/exists/iff machinery. -/
+def qimp_pspec_ok {α β} (P : α → Prop) (k : α → Result β)
+    (Q : β → Prop) (failQ : Error → Prop) (divQ : Prop) : Prop :=
+  ∀ x, P x → pspec (k x) Q failQ divQ
+
+@[simp]
+def qimp_pspec_ok_uncurry' {α₀ α₁ β} (P : α₀ → α₁ → Prop) (k : α₀ × α₁ → Result β)
+    (Q : β → Prop) (failQ : Error → Prop) (divQ : Prop) :
+  qimp_pspec_ok (uncurry' P) k Q failQ divQ ↔ ∀ x, qimp_pspec_ok (P x) (curry k x) Q failQ divQ := by
+  simp [qimp_pspec_ok, curry]
+
+@[simp]
+theorem qimp_pspec_ok_unit {α} (P : Unit → Prop) (k : Unit → Result α)
+    (Q : α → Prop) (failQ : Error → Prop) (divQ : Prop) :
+  qimp_pspec_ok P k Q failQ divQ ↔ (P () → pspec (k ()) Q failQ divQ) := by
+  grind [qimp_pspec_ok]
+
+@[simp]
+theorem qimp_pspec_ok_exists {α β γ} (P : γ → α → Prop) (k : α → Result β)
+    (Q : β → Prop) (failQ : Error → Prop) (divQ : Prop) :
+  qimp_pspec_ok (fun x => ∃ y, P y x) k Q failQ divQ ↔ ∀ x, qimp_pspec_ok (P x) k Q failQ divQ := by
+  simp only [qimp_pspec_ok, forall_exists_index]; grind
+
+def qimp_pspec_ok_iff {α β} (P : α → Prop) (k : α → Result β)
+    (Q : β → Prop) (failQ : Error → Prop) (divQ : Prop) :
+  qimp_pspec_ok P k Q failQ divQ ↔ ∀ x, imp (P x) (pspec (k x) Q failQ divQ) := by
+  simp [qimp_pspec_ok, imp]
+
 /-- Continuation predicate for the `pspec` bind rule: the ok-post continuation, plus
     the weakening of `m`'s fail/div posts to those of the whole `bind`. -/
 def qimp_pspec {α β} (okPₘ : α → Prop) (k : α → Result β) (okPₖ : β → Prop)
     (failPₘ failPₖ : Error → Prop) (divPₘ divPₖ : Prop) : Prop :=
-  (∀ x, okPₘ x → pspec (k x) okPₖ failPₖ divPₖ) ∧ (∀ e, failPₘ e → failPₖ e) ∧ (divPₘ → divPₖ)
+  qimp_pspec_ok okPₘ k okPₖ failPₖ divPₖ ∧ (∀ e, failPₘ e → failPₖ e) ∧ (divPₘ → divPₖ)
 
 /-- Bind rule for `pspec`. The fail/div posts of the whole `bind` (`failPₖ`/`divPₖ`)
     are threaded through, while `m`'s fail/div posts (`failPₘ`/`divPₘ`) need only imply
@@ -310,9 +340,29 @@ theorem pspec_bind' {α β} {okPₖ : Post β} {failPₖ : Error → Prop} {divP
     pspec (Std.bind m k) okPₖ failPₖ divPₖ := by
   rintro ⟨hok, hfail, hdiv⟩
   cases m with
-  | ok x => simpa using hok x (by simpa using h)
+  | ok x => simpa [qimp_pspec_ok] using hok x (by simpa using h)
   | fail e => simpa using hfail e (by simpa using h)
   | div => simpa using hdiv (by simpa using h)
+
+/-- Unfold `pqimp` into its conjunction. Stated as an `Iff` (rather than relying on the
+    raw `def`) so it can be used as a `step` elimination simp lemma. -/
+theorem pqimp_split {α} (okP₀ okP₁ : α → Prop) (failP₀ failP₁ : Error → Prop) (divP₀ divP₁ : Prop) :
+    pqimp okP₀ okP₁ failP₀ failP₁ divP₀ divP₁ ↔
+      qimp okP₀ okP₁ ∧ (∀ e, failP₀ e → failP₁ e) ∧ (divP₀ → divP₁) := Iff.rfl
+
+/-- Unfold `qimp_pspec` into its conjunction (ok-continuation + fail/div weakenings),
+    as an `Iff` usable in the `step` elimination simp set. -/
+theorem qimp_pspec_split {α β} (okPₘ : α → Prop) (k : α → Result β) (okPₖ : β → Prop)
+    (failPₘ failPₖ : Error → Prop) (divPₘ divPₖ : Prop) :
+    qimp_pspec okPₘ k okPₖ failPₘ failPₖ divPₘ divPₖ ↔
+      qimp_pspec_ok okPₘ k okPₖ failPₖ divPₖ ∧ (∀ e, failPₘ e → failPₖ e) ∧ (divPₘ → divPₖ) := Iff.rfl
+
+/-! The fail/div weakenings in `pqimp`/`qimp_pspec` are trivial whenever the source
+post is `False` (which is the case for every `spec`/`dspec` theorem). These lemmas let
+the `step` elimination simp set collapse them — that simp set is restricted (it does not
+include the default `@[simp]` set), so they must be listed explicitly. -/
+@[simp] theorem forall_false_imp {α} (P : α → Prop) : (∀ x, False → P x) ↔ True := by simp
+@[simp] theorem false_imp {p : Prop} : (False → p) ↔ True := by simp
 
 end Aeneas.Std.WP
 
@@ -545,6 +595,32 @@ def delabDSpec : Delab := do
     `($monadExpr ⦃ $bodyTerm ⦄div)
   else
     `($monadExpr ⦃ $(binders[0]!) $(binders.drop 1)* => $bodyTerm ⦄div)
+
+/-- Delaborator for `WP.pspec e okPost failPost divPost`. Since `step` works on `pspec`,
+    goals are often stated in `pspec` form even when they came from `spec`/`dspec`. When
+    the fail/div posts match those patterns (`failPost = fun _ => False`, `divPost = False`
+    for `spec`, `True` for `dspec`), render using the corresponding `⦃ ⦄`/`⦃ ⦄div` notation;
+    otherwise fall back to the default pretty-printer. -/
+@[scoped delab app.Aeneas.Std.WP.pspec]
+def delabPspec : Delab := do
+  guard $ (← getExpr).isAppOfArity' ``pspec 5
+  let args := (← getExpr).getAppArgs
+  let failIsFalse :=
+    match args[3]! with
+    | .lam _ _ body _ => body.isConstOf ``False
+    | _ => false
+  unless failIsFalse do failure
+  let isSpec := args[4]!.isConstOf ``False
+  let isDSpec := args[4]!.isConstOf ``True
+  unless isSpec || isDSpec do failure
+  let monadExpr ← withNaryArg 1 delab
+  let (binders, bodyTerm) ← withNaryArg 2 delabPostBinders
+  if isSpec then
+    if binders.size == 0 then `($monadExpr ⦃ $bodyTerm ⦄)
+    else `($monadExpr ⦃ $(binders[0]!) $(binders.drop 1)* => $bodyTerm ⦄)
+  else
+    if binders.size == 0 then `($monadExpr ⦃ $bodyTerm ⦄div)
+    else `($monadExpr ⦃ $(binders[0]!) $(binders.drop 1)* => $bodyTerm ⦄div)
 
 /-!
 # Tests
@@ -863,6 +939,17 @@ theorem spec_to_mvcgen {α : Type u} {x : Result α} {Q : α → Prop}
   subst hx
   simp [Triple, WP.wp, PredTrans.apply, hQv]
 
+/-- mvcgen lifting for the registered `pspec` statement. Specialized to the `spec`
+    pattern (`failPost = fun _ => False`, `divPost = False`), which forces `ok`: this is
+    exactly the form a `spec` theorem unfolds to. For genuinely partial (`dspec`/`pspec`)
+    theorems `mkAppM` fails to unify and mvcgen-spec generation is skipped (it is
+    best-effort and wrapped in a `try`). -/
+theorem pspec_to_mvcgen {α : Type u} {x : Result α} {Q : α → Prop}
+    (h : pspec x Q (fun _ => False) False) :
+    ⦃ ⌜ True ⌝ ⦄ x ⦃ ⇓ r => ⌜ Q r ⌝ ⦄ :=
+  -- `spec x Q` is definitionally `pspec x Q (fun _ => False) False`.
+  spec_to_mvcgen h
+
 theorem dspec_to_mvcgen {α : Type u} {x : Result α} {Q : α → Prop}
     (h : dspec x Q) :
     ⦃ ⌜ ¬ x = .div ⌝ ⦄ x ⦃ ⇓ r => ⌜ Q r ⌝ ⦄ := by
@@ -925,56 +1012,35 @@ namespace Aeneas.Std.WP
 want to introduce in the context -/
 theorem forall_unit {p : Prop} : (Unit → p) ↔ p := by simp
 
--- registers the spec statements for use in the step tactic, see Spec.lean
+-- registers the spec statement for use in the step tactic, see Spec.lean.
+-- `step` deals only with `pspec`; `spec`/`dspec` goals and theorems are unfolded to
+-- `pspec` (their underlying definition) before the step machinery sees them, so a single
+-- registration suffices and no per-kind lifting is needed.
 #register_spec_statement {
-    spec_name := ``Std.WP.spec
-    arity := 3
+    spec_name := ``Std.WP.pspec
+    arity := 5
     program_index := 1
     post_index := 2
-    mk_spec_mono := ``Std.WP.spec_mono'
-    mk_spec_mono_skip_args := 2
-    mk_spec_bind := ``Std.WP.spec_bind'
-    mk_spec_bind_skip_args := 4
+    mk_spec_mono := ``Std.WP.pspec_mono'
+    mk_spec_mono_skip_args := 6
+    mk_spec_bind := ``Std.WP.pspec_bind'
+    mk_spec_bind_skip_args := 8
     uncurry_elim_tactics := #[
-      ``Std.WP.qimp_spec_unit, ``Std.WP.qimp_unit,
-      ``Std.WP.qimp_spec_exists, ``Std.WP.qimp_exists,
+      ``Std.WP.qimp_pspec_split, ``Std.WP.pqimp_split,
+      ``Std.WP.forall_false_imp, ``Std.WP.false_imp,
+      ``Std.WP.qimp_pspec_ok_unit, ``Std.WP.qimp_unit,
+      ``Std.WP.qimp_pspec_ok_exists, ``Std.WP.qimp_exists,
       ``forall_unit, ``true_imp_iff
     ]
     qimp_elim_tactics := #[
-      ``Std.WP.qimp_spec_iff, ``Std.WP.qimp_iff,
+      ``Std.WP.qimp_pspec_split, ``Std.WP.pqimp_split,
+      ``Std.WP.forall_false_imp, ``Std.WP.false_imp,
+      ``Std.WP.qimp_pspec_ok_iff, ``Std.WP.qimp_iff,
       ``Std.WP.imp_and_iff, ``Std.uncurry_apply_pair,
       ``Std.WP.uncurry'_eq, ``Std.WP.uncurry'_pair,
       ``Std.WP.imp_exists_iff,
       ``forall_unit, ``true_imp_iff]
-    to_mvcgen := .some ``Std.WP.spec_to_mvcgen
+    to_mvcgen := .some ``Std.WP.pspec_to_mvcgen
     liftings := #[]
-  }
-
-#register_spec_statement {
-    spec_name := ``Std.WP.dspec
-    arity := 3
-    program_index := 1
-    post_index := 2
-    mk_spec_mono := ``Std.WP.dspec_mono'
-    mk_spec_mono_skip_args := 2
-    mk_spec_bind := ``Std.WP.dspec_bind'
-    mk_spec_bind_skip_args := 4
-    uncurry_elim_tactics := #[
-      ``Std.WP.qimp_dspec_unit, ``Std.WP.qimp_unit,
-      ``Std.WP.qimp_dspec_exists, ``Std.WP.qimp_exists,
-      ``forall_unit, ``true_imp_iff
-    ]
-    qimp_elim_tactics := #[
-      ``Std.WP.qimp_dspec_iff, ``Std.WP.qimp_iff,
-      ``Std.WP.imp_and_iff, ``Std.uncurry_apply_pair,
-      ``Std.WP.uncurry'_eq, ``Std.WP.uncurry'_pair,
-      ``Std.WP.imp_exists_iff,
-      ``forall_unit, ``true_imp_iff]
-    to_mvcgen := .some ``Std.WP.dspec_to_mvcgen
-    liftings := #[
-      { from_statement := ``Std.WP.spec
-        conversion_thm := ``Std.WP.spec_dspec
-        conversion_thm_inferred_args := 3 }
-    ]
   }
 end Aeneas.Std.WP
