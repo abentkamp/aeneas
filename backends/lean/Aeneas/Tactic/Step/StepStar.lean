@@ -11,9 +11,7 @@ def esplitMatchAtSpec (h : Name) (names : Option (List (List (Option Name)))) :
   withTraceNode `Utils (fun _ => do pure m!"esplitMatchAtSpec") do
   focus do withMainContext do
   let tgt ← getMainTarget
-  tgt.consumeMData.withApp fun spec? args => do
-  if ¬ (spec?.isConstOf ``Std.WP.spec) ∨ args.size ≠ 3 then throwError "Not a valid spec goal"
-  let prog := args[1]!
+  let some (_, prog) ← Step.matchSpecGoal? tgt | throwError "Not a valid spec goal"
   -- Check that we have a matcher
   let some ma ← Meta.matchMatcherApp? prog (alsoCasesOn := true)
     | throwError "not a matcher: {prog}"
@@ -63,9 +61,7 @@ theorem dite_false : (dite False t e) = e (by simp) := by simp
 def esplitIteAtSpec (h : Name) : TacticM (List (FVarId × MVarId)) := do
   focus do withMainContext do
   let tgt ← getMainTarget
-  tgt.consumeMData.withApp fun spec? args => do
-  if ¬ (spec?.isConstOf ``Std.WP.spec) ∨ args.size ≠ 3 then throwError "Not a valid spec goal"
-  let prog := args[1]!
+  let some (_, prog) ← Step.matchSpecGoal? tgt | throwError "Not a valid spec goal"
   -- Check that we have an if then else
   prog.withApp fun ite? args => do
   trace[Utils] "ite?: {ite?}, args: {args}"
@@ -140,9 +136,7 @@ def esplitAtSpec (h : Name) (names : Option (List (List (Option Name)))) : Tacti
   withTraceNode `Utils (fun _ => do pure m!"esplitAtSpec") do
   focus do withMainContext do
   let tgt ← getMainTarget
-  tgt.consumeMData.withApp fun spec? args => do
-  if ¬ (spec?.isConstOf ``Std.WP.spec) ∨ args.size ≠ 3 then throwError "Not a valid spec goal"
-  let prog := args[1]!
+  let some (_, prog) ← Step.matchSpecGoal? tgt | throwError "Not a valid spec goal"
   -- Check whether we have a matcher
   let ma ← Meta.matchMatcherApp? prog (alsoCasesOn := true)
   if ma.isSome
@@ -386,11 +380,9 @@ def analyzeTarget : TacticM TargetKind := do
   withTraceNode `Step (fun _ => do pure m!"analyzeTarget") do
   try
     let goalTy ← (← getMainGoal).getType
-    -- Dive into the `spec program post`
-    goalTy.consumeMData.withApp fun spec? args => do
-    if h: spec?.isConstOf ``Std.WP.spec ∧ args.size = 3 then
-      trace[Step] "application of `spec` with arity 3"
-      let program := args[1]
+    -- Dive into the `specK program post` (for any registered spec kind)
+    if let some (_, program) ← Step.matchSpecGoal? goalTy then
+      trace[Step] "application of a registered spec statement"
       -- Check if this is a bind
       let e ← Utils.normalizeLetBindings program
       if let .const ``Bind.bind .. := e.getAppFn then
@@ -403,7 +395,7 @@ def analyzeTarget : TacticM TargetKind := do
       else
         pure .result
     else
-      trace[Step] "not an application of `spec` with arity 3"
+      trace[Step] "not an application of a registered spec statement"
       pure .result
   catch _ =>
     trace[Step] "exception caught"
@@ -670,8 +662,7 @@ where
             | .forallE _ _ body _ => stripForall body
             | e => e
           let innerTy := stripForall precTy
-          let isSpec := innerTy.consumeMData.withApp fun f args =>
-            f.isConstOf ``Std.WP.spec && args.size == 3
+          let isSpec := (← Step.matchSpecGoal? innerTy).isSome
           if isSpec then
             let tag ← mvarId.getTag
             let (subInfo, introNames) ← commitIfNoEx do
@@ -1366,6 +1357,46 @@ example (f : Usize → Result Unit) (p : Option Usize × Usize) (h : p.1 = some 
      | none => ok ()
      | some j => f j) ⦃ _ => True ⦄ := by
   step*
+
+/-! ### `step*` with partial specs (`dspec`)
+
+`step*` and its case-splitting helpers operate on any spec statement registered
+with `#register_spec_statement`, not just the total-correctness `spec`. The tests
+below exercise the partial-correctness `dspec` (notation `⦃ ... ⦄div`), which goes
+through the same generic machinery (`analyzeTarget`, `esplitAtSpec`, precondition
+detection) thanks to `matchSpecGoal?`. -/
+
+-- Iterated stepping under `dspec`, lifting the (total) scalar specs to `dspec`.
+example (x y : U32) (h : x.val * y.val ≤ U32.max) :
+  (do
+    let z0 ← x * y
+    let z1 ← y * x
+    massert (z1 == z0)) ⦃ _ => True ⦄div := by
+  step*
+
+-- Case split on a `match` under `dspec`.
+example (x : Option Nat) :
+  (match x with | none => .ok 0 | some x => .ok x) ⦃ _ => True ⦄div := by
+  step*
+
+-- Case split on an `if then else` under `dspec`.
+example (b : Bool) : (if b then .ok 0 else .ok 1) ⦃ _ => True ⦄div := by
+  step*
+
+-- A precondition that is itself a (partial) spec goal: `step*` should recurse
+-- into it. This goes through the generalized precondition-detection path.
+example (f : U32 → Result Unit) (p : Option U32 × U32) (h : p.1 = some 0#u32)
+    (hf : ∀ j, f j ⦃ _ => True ⦄div) :
+    (let (o, _) := p
+     match o with
+     | none => ok ()
+     | some j => f j) ⦃ _ => True ⦄div := by
+  step*
+
+-- `step*?` (trace generation) also works under `dspec`.
+example (x : Option Nat) :
+  (match x with | none => .ok 0 | some x => .ok x) ⦃ _ => True ⦄div := by
+  step*?
 
 end Examples
 

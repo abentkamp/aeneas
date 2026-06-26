@@ -252,6 +252,23 @@ def getFirstBind (goalTy : Expr) : MetaM (Bool × Expr × SpecInfo) := do
   then pure (true, args[4], info)
   else pure (false, compTy, info)
 
+/-- If `goalTy` is a fully-applied registered spec statement (`specK program post`,
+    for any spec kind registered with `#register_spec_statement`, e.g. the total
+    `WP.spec` or the partial `WP.dspec`), return the corresponding `SpecInfo` together
+    with the program expression. Returns `none` otherwise.
+
+    This is the spec-kind-generic replacement for hard-coded `isConstOf ``Std.WP.spec`
+    checks: it lets `step*` and the case-splitting helpers operate uniformly on any
+    registered spec statement rather than only on the total-correctness `spec`. -/
+def matchSpecGoal? (goalTy : Expr) : MetaM (Option (SpecInfo × Expr)) := do
+  goalTy.consumeMData.withApp fun spec? args => do
+  let .const name _ := spec? | return none
+  let .some info ← specStatementLookup name | return none
+  if args.size = info.arity then
+    return some (info, args[info.program_index]!)
+  else
+    return none
+
 /-- Names introduced by the `do` elaborator's `mkPatContinuation` as a
     fallback (`_xN`) when no leaf name is available — e.g. all leaves are
     `_`. These get filtered out so we fall back to spec post-condition names. -/
@@ -412,7 +429,7 @@ def getBindVarNames : TacticM (Array (Option Name)) := do
     let goalTy ← (← getMainGoal).getType
     let goalTy ← instantiateMVars goalTy
     forallTelescope goalTy fun _ goalTy => do
-    let_expr Std.WP.spec _ m _ := goalTy | return #[]
+    let some (_, m) ← matchSpecGoal? goalTy | return #[]
     let_expr Bind.bind _ _ _ _ _ cont := m | return #[]
     getPostNames cont
   catch _ => pure #[]
