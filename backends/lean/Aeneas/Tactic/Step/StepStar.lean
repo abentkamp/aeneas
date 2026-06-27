@@ -1430,6 +1430,30 @@ theorem myU8Add_spec (x y : U8) (h : x.val + y.val ≤ U8.max) :
   refine ⟨fun _ h => h, fun _ hov => ?_⟩
   scalar_tac
 
+/-! ### Comparison: both lemma and goal are total `spec`
+
+When the addition's lemma is itself a total `spec` (so the no-overflow obligation lives in
+its *precondition* rather than a panic post), `step*` closes the goal outright:
+
+  - the precondition `x.val + y.val ≤ U8.max` is discharged eagerly from `h` by `step`'s
+    solver (it never surfaces as a leftover VC), and
+  - `step` introduces the output `z` and the spec's post as a hypothesis
+    `z_post : z.val = x.val + y.val`, leaving the goal's post `z.val = x.val + y.val`,
+    which follows immediately.
+
+Contrast with `myU8Add_spec` above, where the panic post is non-trivial: there the
+no-overflow obligation appears as the fail-post weakening `∀ e, … > U8.max → False`, the
+`pqimp` conjunction does not collapse, and the VC is left for the user to discharge. -/
+opaque myU8Add2 (x y : U8) : Result U8
+
+@[step]
+axiom myU8Add2_spec (x y : U8) (h : x.val + y.val ≤ U8.max) :
+  myU8Add2 x y ⦃ z => z.val = x.val + y.val ⦄
+
+example (x y : U8) (h : x.val + y.val ≤ U8.max) :
+  myU8Add2 x y ⦃ z => z.val = x.val + y.val ⦄ := by
+  step*
+
 end Examples
 
 end Aeneas
