@@ -656,6 +656,8 @@ def extractCallSiteTree (goalTy : Expr) : MetaM (Option NameTree) := do
   -- `pspec` bind/mono continuations (bundle the ok-continuation with fail/div weakenings)
   | Std.WP.qimp_pspec _ _ _ k _ _ _ _ _ => return some (← getContInput k)
   | Std.WP.pqimp _ _ okP₁ _ _ _ _ => return some (← getContInput okP₁)
+  -- the ok-continuation alone, after the bundle has been split (see `splitPspecSideGoals`)
+  | Std.WP.qimp_pspec_ok _ _ _ k _ _ _ => return some (← getContInput k)
   | _ => return none
 
 /-- Introduce the outputs (variables and postconditions) into the context after applying
@@ -963,6 +965,46 @@ def inferPostMainGoal (args : Args) (mainGoal : Option MainGoal) : TacticM (Opti
     let goal ← inferPost mg.goal (eliminate := fun decl => decl.type.isAppOf ``prettyMonadEq)
     pure (some { mg with goal := goal })
 
+/-- The `pspec` bind/mono lemmas bundle the ok-continuation with the fail/div post
+    weakenings into one `pqimp`/`qimp_pspec` conjunction. Split that goal so the
+    ok-continuation (which becomes the regular post VC) is separate from the fail/div
+    weakenings (the panic / divergence VCs).
+
+    The weakenings are trivial whenever the source post is `False` — which is the case for
+    every `spec`/`dspec` theorem — so we discharge those here and return only the genuine
+    survivors as side goals (the caller routes them through the precondition pipeline, so a
+    real panic VC ends up as its own goal, separate from the post). A goal that is not such
+    a bundle is returned unchanged. -/
+def splitPspecSideGoals (g : MVarId) : TacticM (MVarId × List MVarId) := do
+  let ty ← instantiateMVars (← g.getType)
+  let some n := ty.consumeMData.getAppFn.constName? | return (g, [])
+  unless n == ``Std.WP.pqimp || n == ``Std.WP.qimp_pspec do return (g, [])
+  let some tyU ← unfoldDefinition? ty | return (g, [])
+  let tag ← g.getTag
+  let g ← g.change tyU
+  let andIntro ← mkConstWithFreshMVarLevels ``And.intro
+  let [gOk, gRest] ← g.apply andIntro | return (g, [])
+  -- keep the original case tag on the ok-continuation (the `And.intro` split would
+  -- otherwise rename it to `…left`)
+  gOk.setTag tag
+  let weakenings ←
+    try
+      let [gFail, gDiv] ← gRest.apply andIntro | pure [gRest]
+      pure [gFail, gDiv]
+    catch _ => pure [gRest]
+  -- Discharge the trivial (`False`-source) weakenings; keep genuine VCs as side goals.
+  let survivors ← weakenings.filterMapM fun sg => do
+    setGoals [sg]
+    -- `forall_const` strips the vacuous `∀ e : Error` so the surviving VC is in the
+    -- arithmetic shape the precondition solver can discharge.
+    match ← Simp.simpAt true { failIfUnchanged := false }
+            { addSimpThms := #[``Std.WP.forall_false_imp, ``Std.WP.false_imp,
+                               ``true_imp_iff, ``imp_self, ``forall_const] }
+            (.targets #[] true) with
+    | none => pure none                  -- closed: trivial weakening
+    | some _ => pure (some (← getMainGoal)) -- survives: a real panic/divergence VC (simplified)
+  return (gOk, survivors)
+
 def stepWith (info : SpecInfo) (args : Args) (isLet:Bool) (fExpr : Expr) (th : Expr) :
   TacticM Goals := do
   withTraceNode `Step (fun _ => pure m!"stepWith") do
@@ -974,6 +1016,12 @@ def stepWith (info : SpecInfo) (args : Args) (isLet:Bool) (fExpr : Expr) (th : E
   withMainContext do
   traceGoalWithNode "current goal"
   let mainGoal ← getMainGoal
+  /- Split the bundled `pspec` continuation: the ok-continuation stays the main goal,
+     while the fail/div post weakenings become separate side goals. This reports panic /
+     divergence VCs separately from the regular post VC; the survivors are routed through
+     the precondition pipeline below. -/
+  let (mainGoal, sideGoals) ← splitPspecSideGoals mainGoal
+  let newGoals := newGoals ++ sideGoals.toArray
   /- Process the pre-conditions as soon as possible (we want to start processing them
      in parallel) -/
   -- Split between the sub-goals which are propositions and the others

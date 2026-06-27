@@ -1415,20 +1415,27 @@ axiom myU8Add_pspec (x y : U8) :
     (fun _ => x.val + y.val > U8.max)
     False
 
-/- A single `step` reduces the total `spec` goal (`pspec … (fun _ => False) False`) to the
-   `pspec_mono'` side condition — a conjunction of the three post weakenings:
+/- `step*` closes this outright. Stepping the call reduces the total `spec` goal
+   (`pspec … (fun _ => False) False`) to the `pspec_mono'` side conditions, which `step`
+   splits into separate goals:
 
-     (∀ z, z.val = x.val + y.val → z.val = x.val + y.val)   -- ok-post (trivial)
-     ∧ (∀ e, x.val + y.val > U8.max → False)                -- PANIC VC: "no overflow"
-     ∧ (False → False)                                      -- div-post (trivial)
+     ok-post:  ∀ z, z.val = x.val + y.val → z.val = x.val + y.val   (trivial)
+     PANIC VC: ∀ e, x.val + y.val > U8.max → False                  ("no overflow")
+     div-post: False → False                                        (trivial, discharged)
 
-   The panic post thus surfaces as the no-overflow obligation, discharged from `h`. -/
+   The panic VC is a *separate side goal* (not bundled with the post), routed through the
+   precondition solver, which discharges it from `h`. -/
 theorem myU8Add_spec (x y : U8) (h : x.val + y.val ≤ U8.max) :
   myU8Add x y ⦃ z => z.val = x.val + y.val ⦄ := by
   step*
-  -- leftover VC: `(∀ z, z = z) ∧ (∀ e, x.val + y.val > U8.max → False)`
-  refine ⟨fun _ h => h, fun _ hov => ?_⟩
-  scalar_tac
+
+/-- Variant whose post does not constrain the result, but which keeps the no-overflow
+    hypothesis. `step*` closes the (trivial) post and discharges the *separate* panic VC
+    `∀ e, x.val + y.val > U8.max → False` from `h` — illustrating that the panic VC is its
+    own goal, handled by the precondition solver rather than bundled with the post. -/
+example (x y : U8) (h : x.val + y.val ≤ U8.max) :
+  myU8Add x y ⦃ _ => True ⦄ := by
+  step*
 
 /-! ### Comparison: both lemma and goal are total `spec`
 
