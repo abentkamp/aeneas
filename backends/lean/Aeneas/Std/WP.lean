@@ -275,8 +275,8 @@ three posts (ok / fail / div) at once. The three weakenings are bundled into a s
 tactic's "one continuation goal" calling convention.
 
 Because `False` (the fail/div post that `spec`, and the fail post that `dspec`, carry)
-implies any post, this subsumes the old per-spec-kind lifting: a `spec`/`dspec` theorem
-discharges a step in any `pspec` goal — no `LiftingInfo` / conversion theorem needed. -/
+implies any post, a `spec`/`dspec` theorem discharges a step in any `pspec` goal with no
+conversion theorem — so `step` needs no per-spec-kind lifting at all. -/
 
 /-- Pointwise weakening of all three `pspec` posts, bundled into one `Prop`. -/
 def pqimp {α} (okP₀ okP₁ : α → Prop) (failP₀ failP₁ : Error → Prop) (divP₀ divP₁ : Prop) : Prop :=
@@ -1042,7 +1042,6 @@ def pspecInfo : SpecInfo := {
       ``Std.WP.imp_exists_iff,
       ``forall_unit, ``true_imp_iff]
     to_mvcgen := .some ``Std.WP.pspec_to_mvcgen
-    liftings := #[]
   }
 end Aeneas.Std.WP
 

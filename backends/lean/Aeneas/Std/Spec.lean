@@ -10,11 +10,6 @@ namespace Aeneas
 -- (see WP.lean). `step` references that instance directly via `specStatementLookup`; there is
 -- no registration command or environment extension.
 
-structure LiftingInfo where
-  from_statement : Name
-  conversion_thm : Name
-  conversion_thm_inferred_args : Nat
-
 structure SpecInfo where
   spec_name : Lean.Name
   arity : Nat
@@ -30,8 +25,6 @@ structure SpecInfo where
   qimp_elim_tactics : Array Lean.Name
 
   to_mvcgen: Option Name
-
-  liftings : Array LiftingInfo
   deriving Inhabited
 
 end Aeneas

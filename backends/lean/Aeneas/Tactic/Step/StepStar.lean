@@ -1366,7 +1366,7 @@ the total-correctness `spec`. The tests below exercise the partial-correctness `
 machinery (`analyzeTarget`, `esplitAtSpec`, precondition detection) thanks to
 `matchSpecGoal?`. -/
 
--- Iterated stepping under `dspec`, lifting the (total) scalar specs to `dspec`.
+-- Iterated stepping under `dspec`, using the (total) scalar specs.
 example (x y : U32) (h : x.val * y.val ≤ U32.max) :
   (do
     let z0 ← x * y
