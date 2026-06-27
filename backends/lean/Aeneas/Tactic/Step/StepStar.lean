@@ -1360,11 +1360,11 @@ example (f : Usize → Result Unit) (p : Option Usize × Usize) (h : p.1 = some 
 
 /-! ### `step*` with partial specs (`dspec`)
 
-`step*` and its case-splitting helpers operate on any spec statement registered
-with `#register_spec_statement`, not just the total-correctness `spec`. The tests
-below exercise the partial-correctness `dspec` (notation `⦃ ... ⦄div`), which goes
-through the same generic machinery (`analyzeTarget`, `esplitAtSpec`, precondition
-detection) thanks to `matchSpecGoal?`. -/
+`step*` and its case-splitting helpers operate on the `pspec` spec statement, not just
+the total-correctness `spec`. The tests below exercise the partial-correctness `dspec`
+(notation `⦃ ... ⦄div`), which unfolds to `pspec` and goes through the same generic
+machinery (`analyzeTarget`, `esplitAtSpec`, precondition detection) thanks to
+`matchSpecGoal?`. -/
 
 -- Iterated stepping under `dspec`, lifting the (total) scalar specs to `dspec`.
 example (x y : U32) (h : x.val * y.val ≤ U32.max) :

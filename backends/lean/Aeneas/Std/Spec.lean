@@ -1,14 +1,14 @@
 import Lean
-import AeneasMeta.Extensions
--- import Aeneas.Tactic.Step.Init
-open Lean Elab Term Meta
+open Lean
 
 namespace Aeneas
-open Extensions
 
--- This file defines an extension for defining spec statements that
--- can be used with the step tactic.
-
+-- This file defines the metadata describing a "spec statement" — a predicate wrapping a
+-- monadic program and its postcondition — that the `step` tactic operates on.
+--
+-- There is a single such statement, `pspec`, whose `SpecInfo` instance is `Std.WP.pspecInfo`
+-- (see WP.lean). `step` references that instance directly via `specStatementLookup`; there is
+-- no registration command or environment extension.
 
 structure LiftingInfo where
   from_statement : Name
@@ -33,38 +33,5 @@ structure SpecInfo where
 
   liftings : Array LiftingInfo
   deriving Inhabited
-
-structure SpecInfoExtensionState where
-  specInfos : Std.HashMap Name SpecInfo
-  deriving Inhabited
-
-/- Initialize the state extension for adding spec theorems -/
-initialize specAttr : SimpleScopedEnvExtension SpecInfo SpecInfoExtensionState  ← do
-  let ext ← registerSimpleScopedEnvExtension {
-    name        := `specStatementRegistrationExtension,
-    initial     := {
-      specInfos := Std.HashMap.emptyWithCapacity
-    },
-    addEntry    := fun state new =>
-      {state with specInfos := state.specInfos.insert new.spec_name new},
-  }
-  pure ext
-
-syntax (name := register_spec_statement_cmd)
-  "#register_spec_statement " term : command
-
-@[command_elab register_spec_statement_cmd]
-unsafe def register_spec_statement : Lean.Elab.Command.CommandElab := fun stx => do
-  let info := stx[1]
-  let expr ← Command.liftTermElabM do
-    elabTerm info (some (mkConst ``SpecInfo))
-  let value ← Lean.Elab.Command.liftTermElabM do
-    Lean.Meta.evalExpr SpecInfo (mkConst ``SpecInfo) expr
-  specAttr.add value
-
-def specStatementLookup (n : Name) : MetaM (Option SpecInfo) := do
-  let env ← getEnv
-  let state := specAttr.getState env
-  return state.specInfos.get? n
 
 end Aeneas

@@ -1012,11 +1012,12 @@ namespace Aeneas.Std.WP
 want to introduce in the context -/
 theorem forall_unit {p : Prop} : (Unit → p) ↔ p := by simp
 
--- registers the spec statement for use in the step tactic, see Spec.lean.
--- `step` deals only with `pspec`; `spec`/`dspec` goals and theorems are unfolded to
--- `pspec` (their underlying definition) before the step machinery sees them, so a single
--- registration suffices and no per-kind lifting is needed.
-#register_spec_statement {
+/-- The single spec statement understood by the `step` tactic. `step` references this
+`SpecInfo` directly — there is no registration mechanism. `spec`/`dspec` goals and
+theorems are unfolded to their underlying `pspec` form before the step machinery sees
+them (see `unfoldToRegisteredSpec`), so a single instance suffices and no per-kind
+lifting is needed. -/
+def pspecInfo : SpecInfo := {
     spec_name := ``Std.WP.pspec
     arity := 5
     program_index := 1
@@ -1044,3 +1045,13 @@ theorem forall_unit {p : Prop} : (Unit → p) ↔ p := by simp
     liftings := #[]
   }
 end Aeneas.Std.WP
+
+namespace Aeneas
+open Lean Meta
+
+/-- Return the `SpecInfo` for a spec-statement head constant, or `none`. `step` only
+understands `pspec`; `spec`/`dspec` are unfolded to `pspec` before this is consulted. -/
+def specStatementLookup (n : Name) : MetaM (Option SpecInfo) :=
+  pure (if n == ``Std.WP.pspec then some Std.WP.pspecInfo else none)
+
+end Aeneas

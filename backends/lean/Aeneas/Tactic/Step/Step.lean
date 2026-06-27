@@ -256,10 +256,10 @@ def getFirstBind (goalTy : Expr) : MetaM (Bool × Expr × SpecInfo) := do
   then pure (true, args[4], info)
   else pure (false, compTy, info)
 
-/-- If `goalTy` is a fully-applied registered spec statement (`specK program post`,
-    for any spec kind registered with `#register_spec_statement`, e.g. the total
-    `WP.spec` or the partial `WP.dspec`), return the corresponding `SpecInfo` together
-    with the program expression. Returns `none` otherwise.
+/-- If `goalTy` is a fully-applied spec statement (`specK program post`, where `specK` is
+    the registered `pspec`, or `spec`/`dspec` which unfold to it via `unfoldToRegisteredSpec`),
+    return the corresponding `SpecInfo` together with the program expression. Returns `none`
+    otherwise.
 
     This is the spec-kind-generic replacement for hard-coded `isConstOf ``Std.WP.spec`
     checks: it lets `step*` and the case-splitting helpers operate uniformly on any
