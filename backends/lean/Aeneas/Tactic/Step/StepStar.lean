@@ -1398,6 +1398,38 @@ example (x : Option Nat) :
   (match x with | none => .ok 0 | some x => .ok x) ⦃ _ => True ⦄div := by
   step*?
 
+/-! ### `pspec` with a non-trivial panic post
+
+An opaque `U8` addition whose `pspec` returns the sum on success and *panics exactly on
+overflow*. Proving a regular (total) `spec` for it makes the panic post surface as a
+verification condition (no overflow), which `step*` discharges from the precondition. -/
+
+opaque myU8Add (x y : U8) : Result U8
+
+/-- On `ok`, the result is the mathematical sum; it panics (with any error) exactly when
+    that sum overflows `U8`; it never diverges. -/
+@[step]
+axiom myU8Add_pspec (x y : U8) :
+  Std.WP.pspec (myU8Add x y)
+    (fun z => z.val = x.val + y.val)
+    (fun _ => x.val + y.val > U8.max)
+    False
+
+/- A single `step` reduces the total `spec` goal (`pspec … (fun _ => False) False`) to the
+   `pspec_mono'` side condition — a conjunction of the three post weakenings:
+
+     (∀ z, z.val = x.val + y.val → z.val = x.val + y.val)   -- ok-post (trivial)
+     ∧ (∀ e, x.val + y.val > U8.max → False)                -- PANIC VC: "no overflow"
+     ∧ (False → False)                                      -- div-post (trivial)
+
+   The panic post thus surfaces as the no-overflow obligation, discharged from `h`. -/
+theorem myU8Add_spec (x y : U8) (h : x.val + y.val ≤ U8.max) :
+  myU8Add x y ⦃ z => z.val = x.val + y.val ⦄ := by
+  step*
+  -- leftover VC: `(∀ z, z = z) ∧ (∀ e, x.val + y.val > U8.max → False)`
+  refine ⟨fun _ h => h, fun _ hov => ?_⟩
+  scalar_tac
+
 end Examples
 
 end Aeneas
