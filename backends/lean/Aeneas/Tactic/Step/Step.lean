@@ -965,16 +965,49 @@ def inferPostMainGoal (args : Args) (mainGoal : Option MainGoal) : TacticM (Opti
     let goal ← inferPost mg.goal (eliminate := fun decl => decl.type.isAppOf ``prettyMonadEq)
     pure (some { mg with goal := goal })
 
+/-- Run the trivial-weakening simp on `g`. Returns `[]` if it closes the goal (a vacuous
+    weakening such as `False → _` or `True → True`), or `[g']` (the simplified goal) if a
+    genuine VC remains. -/
+private def dischargeTrivialWeakening (g : MVarId) : TacticM (List MVarId) := do
+  setGoals [g]
+  match ← Simp.simpAt true { failIfUnchanged := false }
+          { addSimpThms := #[``Std.WP.forall_false_imp, ``Std.WP.false_imp,
+                             ``true_imp_iff, ``imp_self, ``forall_const] }
+          (.targets #[] true) with
+  | none => pure []
+  | some _ => pure [← getMainGoal]
+
+/-- Process a fail-post weakening goal `∀ e : Error, failₘ e → failₖ e`. If the source post
+    is vacuous (`fun _ => False`, as in every `spec`/`dspec` theorem) it collapses without a
+    case split. Otherwise we case-split on the error so as to generate *one VC per error
+    constructor*, reduce each, and drop the trivial ones (those whose hypothesis reduced to
+    `False`). The survivors are the per-error panic VCs. -/
+private def splitFailWeakening (g : MVarId) : TacticM (List MVarId) := do
+  setGoals [g]
+  -- Cheap path: a `fun _ => False` source post collapses (`∀ e, False → _`).
+  match ← Simp.simpAt true { failIfUnchanged := false }
+          { addSimpThms := #[``Std.WP.forall_false_imp, ``Std.WP.false_imp, ``true_imp_iff] }
+          (.targets #[] true) with
+  | none => pure []
+  | some _ =>
+    -- Non-trivial fail post: one goal per error constructor; the `match` reduces in each.
+    let g ← getMainGoal
+    let (e, g) ← g.intro1
+    let subgoals ← g.cases e
+    let survivors ← subgoals.toList.mapM fun s => dischargeTrivialWeakening s.mvarId
+    pure survivors.flatten
+
 /-- The `pspec` bind/mono lemmas bundle the ok-continuation with the fail/div post
     weakenings into one `pqimp`/`qimp_pspec` conjunction. Split that goal so the
     ok-continuation (which becomes the regular post VC) is separate from the fail/div
     weakenings (the panic / divergence VCs).
 
-    The weakenings are trivial whenever the source post is `False` — which is the case for
-    every `spec`/`dspec` theorem — so we discharge those here and return only the genuine
-    survivors as side goals (the caller routes them through the precondition pipeline, so a
-    real panic VC ends up as its own goal, separate from the post). A goal that is not such
-    a bundle is returned unchanged. -/
+    The fail weakening yields one VC per `Error` constructor, dropping the trivial ones
+    (whose hypothesis is `False`); the div weakening yields at most one VC. Vacuous
+    weakenings — the case for every `spec`/`dspec` theorem — collapse to nothing. The
+    caller routes the survivors through the precondition pipeline, so a real panic VC ends
+    up as its own goal, separate from the post. A goal that is not such a bundle is returned
+    unchanged. -/
 def splitPspecSideGoals (g : MVarId) : TacticM (MVarId × List MVarId) := do
   let ty ← instantiateMVars (← g.getType)
   let some n := ty.consumeMData.getAppFn.constName? | return (g, [])
@@ -987,23 +1020,15 @@ def splitPspecSideGoals (g : MVarId) : TacticM (MVarId × List MVarId) := do
   -- keep the original case tag on the ok-continuation (the `And.intro` split would
   -- otherwise rename it to `…left`)
   gOk.setTag tag
-  let weakenings ←
-    try
-      let [gFail, gDiv] ← gRest.apply andIntro | pure [gRest]
-      pure [gFail, gDiv]
-    catch _ => pure [gRest]
-  -- Discharge the trivial (`False`-source) weakenings; keep genuine VCs as side goals.
-  let survivors ← weakenings.filterMapM fun sg => do
-    setGoals [sg]
-    -- `forall_const` strips the vacuous `∀ e : Error` so the surviving VC is in the
-    -- arithmetic shape the precondition solver can discharge.
-    match ← Simp.simpAt true { failIfUnchanged := false }
-            { addSimpThms := #[``Std.WP.forall_false_imp, ``Std.WP.false_imp,
-                               ``true_imp_iff, ``imp_self, ``forall_const] }
-            (.targets #[] true) with
-    | none => pure none                  -- closed: trivial weakening
-    | some _ => pure (some (← getMainGoal)) -- survives: a real panic/divergence VC (simplified)
-  return (gOk, survivors)
+  let some (gFail, gDiv) ← (do
+      try
+        let [gFail, gDiv] ← gRest.apply andIntro | return none
+        return some (gFail, gDiv)
+      catch _ => return none)
+    | return (gOk, ← dischargeTrivialWeakening gRest)
+  let failVCs ← splitFailWeakening gFail
+  let divVCs ← dischargeTrivialWeakening gDiv
+  return (gOk, failVCs ++ divVCs)
 
 def stepWith (info : SpecInfo) (args : Args) (isLet:Bool) (fExpr : Expr) (th : Expr) :
   TacticM Goals := do

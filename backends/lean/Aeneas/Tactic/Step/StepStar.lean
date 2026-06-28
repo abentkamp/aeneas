@@ -1417,25 +1417,25 @@ axiom myU8Add_pspec (x y : U8) :
 
 /- `step*` closes this outright. Stepping the call reduces the total `spec` goal
    (`pspec … (fun _ => False) False`) to the `pspec_mono'` side conditions, which `step`
-   splits into separate goals:
+   splits into separate goals. The fail weakening is split *per error constructor* with the
+   trivial (`False`-hypothesis) cases dropped, so the panic obligation is reduced to the one
+   non-trivial case:
 
-     ok-post:  ∀ z, z.val = x.val + y.val → z.val = x.val + y.val      (trivial)
-     PANIC VC: ∀ e, (match e with                                      (the panic obligation)
-                       | .integerOverflow => x.val + y.val > U8.max
-                       | _ => False) → False
-     div-post: False → False                                          (trivial, discharged)
+     ok-post:  ∀ z, z.val = x.val + y.val → z.val = x.val + y.val   (trivial)
+     PANIC VC: x.val + y.val > U8.max → False                       (the `integerOverflow` case)
+     div-post: False → False                                        (trivial, discharged)
 
-   The panic VC is a *separate side goal* (not bundled with the post), routed through the
-   precondition solver. The solver case-splits on the error: the `integerOverflow` case is
-   discharged from `h` (no overflow) and the others are vacuous (`False → False`). -/
+   (the six other error constructors give `False → False` and are removed). The panic VC is
+   a *separate side goal* (not bundled with the post), routed through the precondition
+   solver, which discharges it from `h`. -/
 theorem myU8Add_spec (x y : U8) (h : x.val + y.val ≤ U8.max) :
   myU8Add x y ⦃ z => z.val = x.val + y.val ⦄ := by
   step*
 
 /-- Variant whose post does not constrain the result, but which keeps the no-overflow
-    hypothesis. `step*` closes the (trivial) post and discharges the *separate* panic VC
-    from `h`, illustrating that the panic VC is its own goal handled by the precondition
-    solver rather than bundled with the post. -/
+    hypothesis. `step*` closes the (trivial) post and discharges the single per-error panic
+    VC from `h`, illustrating that it is its own goal handled by the precondition solver
+    rather than bundled with the post. -/
 example (x y : U8) (h : x.val + y.val ≤ U8.max) :
   myU8Add x y ⦃ _ => True ⦄ := by
   step*
