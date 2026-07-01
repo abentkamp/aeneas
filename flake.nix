@@ -76,8 +76,47 @@
         ocamlPackages = pkgs.ocaml-ng.ocamlPackages_5_2;
         ocamlPackagesStatic = pkgs.pkgsStatic.ocaml-ng.ocamlPackages_5_2;
         coqPackages = pkgs.coqPackages_8_18;
-        charon = inputs.charon.packages.${system}.charon;
-        charon-portable = inputs.charon.packages.${system}.charon-portable;
+        # charon-unwrapped's cargo test suite has two failures on aarch64:
+        # - 'toml': aarch64 rustc generates discriminant comparisons for
+        #   Option::is_some() instead of the match expression in the expected output
+        # - 'error-dependencies': cargo-miri setup fails with EACCES in the nix sandbox
+        # Override with doCheck = false and rebuild the wrappers that depend on it.
+        charon-unwrapped = inputs.charon.packages.${system}.charon-unwrapped.overrideAttrs (_: {
+          doCheck = false;
+        });
+
+        # Mirrors the charon wrapper definition in AeneasVerif/charon/flake.nix.
+        charon =
+          let rustToolchain = inputs.charon.packages.${system}.rustToolchain;
+          in pkgs.runCommand "charon"
+            {
+              nativeBuildInputs = [ pkgs.makeWrapper ]
+                ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [ pkgs.bintools ];
+            }
+            (''
+              cp -r ${charon-unwrapped} $out
+              chmod -R u+w $out
+              wrapProgram $out/bin/charon \
+                --set CHARON_TOOLCHAIN_IS_IN_PATH 1 \
+                --prefix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath [ rustToolchain ]}" \
+                --prefix PATH : "${pkgs.lib.makeBinPath [ rustToolchain ]}"
+            '' + pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
+              install_name_tool -add_rpath "${rustToolchain}/lib" "$out/bin/charon-driver"
+            '');
+
+        # Mirrors the charon-portable definition in AeneasVerif/charon/flake.nix.
+        charon-portable = pkgs.runCommand "charon-portable" { } (''
+          mkdir -p $out/bin
+          cp ${charon-unwrapped}/bin/charon $out/bin/charon
+          cp ${charon-unwrapped}/bin/charon-driver $out/bin/charon-driver
+        '' + pkgs.lib.optionalString pkgs.stdenv.isLinux ''
+          for f in $out/bin/*; do
+            chmod +w $f
+            ${pkgs.patchelf}/bin/patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 $f || true
+            ${pkgs.patchelf}/bin/patchelf --remove-rpath $f || true
+          done
+        '');
+
         charon-ml = inputs.charon.packages.${system}.charon-ml.override { inherit ocamlPackages; };
 
         easy_logging = pkgs.callPackage
