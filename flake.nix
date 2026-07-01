@@ -8,12 +8,11 @@
     flake-utils.follows = "charon/flake-utils";
     nixpkgs.follows = "charon/nixpkgs";
     fstar.url = "github:FStarLang/fstar";
-    hax.url = "github:cryspen/hax";
   };
 
   # Remark: keep the list of outputs in sync with the list of inputs above
   # (see above remark)
-  outputs = inputs @ { self, flake-utils, nixpkgs, fstar, hax, ... }:
+  outputs = inputs @ { self, flake-utils, nixpkgs, fstar, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs {
@@ -205,14 +204,10 @@
           ]);
         };
 
-        # Pre-vendor all cargo dependencies for the hax_specs test crate.
-        # This is a fixed-output derivation that can access the network; it runs
-        # once and is cached in the Nix store, keeping the vendor dir out of git.
-        haxSpecsVendor = pkgs.rustPlatform.fetchCargoVendor {
-          pname = "hax_specs-vendor";
-          version = "0.1.0";
-          src = ./tests/src/hax_specs;
-          hash = pkgs.lib.fakeHash; # replaced with the real hash reported by `nix build`
+        # Vendor all cargo dependencies for the hax_specs test crate using the
+        # checksums already present in Cargo.lock — no separate hash needed.
+        haxSpecsVendor = pkgs.rustPlatform.importCargoLock {
+          lockFile = ./tests/src/hax_specs/Cargo.lock;
         };
 
         # Run the translation on various files.
@@ -240,8 +235,8 @@
             export RUSTC_CMD=rustc
             export CARGO_CMD=cargo
 
-            # Configure cargo to use pre-vendored dependencies (no network needed)
-            # and override hax-lib with the version from the hax Nix flake input.
+            # Configure cargo to use pre-vendored dependencies (no network needed).
+            # importCargoLock derives all crate hashes from the existing Cargo.lock.
             for dir in tests/src/hax_specs tests/src/hax_specs_step; do
               mkdir -p "$dir/.cargo"
               cat > "$dir/.cargo/config.toml" <<CARGOEOF
@@ -253,11 +248,6 @@
 
             [source.vendored-sources]
             directory = "${haxSpecsVendor}"
-
-            [patch.crates-io]
-            hax-lib = { path = "${hax}/hax-lib" }
-            hax-lib-macros = { path = "${hax}/hax-lib/macros" }
-            hax-lib-macros-types = { path = "${hax}/hax-lib/macros/types" }
             CARGOEOF
             done
 
