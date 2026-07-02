@@ -11,7 +11,9 @@ fi
 # Unset CI to force precompilation of modules, which is disabled by default in
 # CI in lakefile.lean. This ensures releases contain the shared libraries
 # required for plugin loading.
-CI="" lake build
+# Note: `CI="" lake build` would NOT work here because Lean checks
+# `(IO.getEnv "CI").isNone`; an empty string is not None.
+env -u CI lake build
 
 # Pack prebuilt oleans into an archive for Lake's automatic olean download.
 # Users who pin to a release tag get these instead of compiling from source.
