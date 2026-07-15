@@ -789,14 +789,6 @@ namespace Aeneas.Std.WP
 open Std Result
 open Std.Do
 
-instance Result.instWP : WP Result.{u} (.except (ULift Error) (.except PUnit .pure)) where
-  wp x := {
-    trans Q := match x with | .ok a => Q.1 a | .fail e => Q.2.1 (ULift.up e) | .div => Q.2.2.1 .unit
-    conjunctiveRaw Q₁ Q₂ := by
-      apply SPred.bientails.of_eq
-      cases x <;> simp
-  }
-
 instance : LawfulMonad Result where
     map_const := by intros; rfl
     id_map := by intros _ x; cases x <;> rfl
